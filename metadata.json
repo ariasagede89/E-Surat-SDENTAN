@@ -1,0 +1,6 @@
+{
+  "name": "E-SURAT SDENTAN",
+  "description": "Aplikasi E-SURAT SDENTAN (Sistem Informasi Administrasi Surat SDN 1 Pekutatan) dengan penomoran otomatis Permendagri No 83 Tahun 2022, surat masuk, surat keluar, arsip, data guru & siswa, serta integrasi Cloud Firestore.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

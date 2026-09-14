@@ -1,0 +1,156 @@
+{
+  "entities": {
+    "SuratMasuk": {
+      "title": "SuratMasuk",
+      "description": "Dokumen pencatatan surat masuk di SDN 1 Pekutatan",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "noAgenda": { "type": "string", "maxLength": 50 },
+        "noSurat": { "type": "string", "maxLength": 100 },
+        "tglSurat": { "type": "string", "maxLength": 30 },
+        "tglTerima": { "type": "string", "maxLength": 30 },
+        "pengirim": { "type": "string", "maxLength": 200 },
+        "perihal": { "type": "string", "maxLength": 500 },
+        "sifat": { "type": "string", "enum": ["Biasa", "Penting", "Sangat Penting", "Rahasia"] },
+        "status": { "type": "string", "enum": ["Menunggu Tindak Lanjut", "Sedang Diproses", "Selesai"] },
+        "tglTindakLanjut": { "type": "string", "maxLength": 30 },
+        "disposisi": { "type": "string", "maxLength": 1000 },
+        "diteruskanKepada": { "type": "string", "maxLength": 200 },
+        "keterangan": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["noSurat", "pengirim", "perihal", "tglTerima"]
+    },
+    "SuratKeluar": {
+      "title": "SuratKeluar",
+      "description": "Dokumen surat keluar SDN 1 Pekutatan",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "jenisSurat": { "type": "string", "enum": ["surat_ijin_guru", "surat_keterangan", "surat_undangan", "surat_keputusan", "surat_tugas", "lainnya"] },
+        "noSurat": { "type": "string", "maxLength": 150 },
+        "kodeKlasifikasi": { "type": "string", "maxLength": 50 },
+        "namaKlasifikasi": { "type": "string", "maxLength": 200 },
+        "tglSurat": { "type": "string", "maxLength": 30 },
+        "tujuan": { "type": "string", "maxLength": 300 },
+        "perihal": { "type": "string", "maxLength": 500 },
+        "isiSurat": { "type": "string", "maxLength": 5000 },
+        "dataKhusus": { "type": "object" },
+        "status": { "type": "string", "enum": ["Konsep", "Disetujui", "Terkirim", "Diarsipkan"] },
+        "penandatangan": { "type": "string", "maxLength": 200 },
+        "nipPenandatangan": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["noSurat", "jenisSurat", "tglSurat", "perihal"]
+    },
+    "ArsipSurat": {
+      "title": "ArsipSurat",
+      "description": "Arsip fisik dan digital surat keluar",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "noSurat": { "type": "string", "maxLength": 150 },
+        "kodeKlasifikasi": { "type": "string", "maxLength": 50 },
+        "perihal": { "type": "string", "maxLength": 500 },
+        "tujuan": { "type": "string", "maxLength": 300 },
+        "tglArsip": { "type": "string", "maxLength": 30 },
+        "lokasiFisik": { "type": "string", "maxLength": 200 },
+        "kategori": { "type": "string", "maxLength": 100 },
+        "keterangan": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["noSurat", "perihal", "tglArsip"]
+    },
+    "Guru": {
+      "title": "Guru",
+      "description": "Data Pendidik dan Tenaga Kependidikan SDN 1 Pekutatan",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "nip": { "type": "string", "maxLength": 30 },
+        "nuptk": { "type": "string", "maxLength": 50 },
+        "nama": { "type": "string", "maxLength": 200 },
+        "jabatan": { "type": "string", "maxLength": 100 },
+        "pangkatGol": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "enum": ["PNS", "PPPK", "Honorer", "GTT"] },
+        "jenisPtk": { "type": "string", "enum": ["kepala_sekolah", "guru", "tu"] },
+        "noHp": { "type": "string", "maxLength": 30 },
+        "email": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["nama", "jabatan"]
+    },
+    "Siswa": {
+      "title": "Siswa",
+      "description": "Data Peserta Didik SDN 1 Pekutatan",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "nisn": { "type": "string", "maxLength": 30 },
+        "nis": { "type": "string", "maxLength": 30 },
+        "nama": { "type": "string", "maxLength": 200 },
+        "kelas": { "type": "string", "maxLength": 10 },
+        "jenisKelamin": { "type": "string", "enum": ["L", "P"] },
+        "tempatLahir": { "type": "string", "maxLength": 100 },
+        "tglLahir": { "type": "string", "maxLength": 30 },
+        "namaOrtu": { "type": "string", "maxLength": 200 },
+        "alamat": { "type": "string", "maxLength": 300 }
+      },
+      "required": ["nama", "kelas", "jenisKelamin"]
+    },
+    "PengaturanSekolah": {
+      "title": "PengaturanSekolah",
+      "description": "Identitas sekolah dan template kop SDN 1 Pekutatan",
+      "type": "object",
+      "properties": {
+        "namaSekolah": { "type": "string", "maxLength": 200 },
+        "npsn": { "type": "string", "maxLength": 30 },
+        "nss": { "type": "string", "maxLength": 30 },
+        "instansiBaris1": { "type": "string", "maxLength": 200 },
+        "instansiBaris2": { "type": "string", "maxLength": 200 },
+        "instansiBaris3": { "type": "string", "maxLength": 200 },
+        "alamat": { "type": "string", "maxLength": 300 },
+        "desa": { "type": "string", "maxLength": 100 },
+        "kecamatan": { "type": "string", "maxLength": 100 },
+        "kabupaten": { "type": "string", "maxLength": 100 },
+        "provinsi": { "type": "string", "maxLength": 100 },
+        "kodePos": { "type": "string", "maxLength": 20 },
+        "telepon": { "type": "string", "maxLength": 50 },
+        "email": { "type": "string", "maxLength": 100 },
+        "website": { "type": "string", "maxLength": 100 },
+        "kepalaSekolah": { "type": "string", "maxLength": 200 },
+        "nipKepalaSekolah": { "type": "string", "maxLength": 50 },
+        "pangkatKepalaSekolah": { "type": "string", "maxLength": 100 },
+        "kodeSuratSekolah": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["namaSekolah", "kepalaSekolah"]
+    }
+  },
+  "firestore": {
+    "/suratMasuk/{suratId}": {
+      "schema": "SuratMasuk",
+      "description": "Koleksi surat masuk"
+    },
+    "/suratKeluar/{suratId}": {
+      "schema": "SuratKeluar",
+      "description": "Koleksi surat keluar resmi"
+    },
+    "/arsipSurat/{arsipId}": {
+      "schema": "ArsipSurat",
+      "description": "Koleksi arsip surat keluar"
+    },
+    "/guru/{guruId}": {
+      "schema": "Guru",
+      "description": "Koleksi data guru dan staf"
+    },
+    "/siswa/{siswaId}": {
+      "schema": "Siswa",
+      "description": "Koleksi data siswa"
+    },
+    "/settings/identitas": {
+      "schema": "PengaturanSekolah",
+      "description": "Data identitas sekolah dan kop"
+    }
+  }
+}

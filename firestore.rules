@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Health check and connection probes
+    match /_system_health/{docId} {
+      allow read, write: if true;
+    }
+
+    // Rules for Surat Masuk
+    match /suratMasuk/{suratId} {
+      allow read: if true;
+      allow write: if true; // Allows offline/prototype and authenticated staff
+    }
+
+    // Rules for Surat Keluar
+    match /suratKeluar/{suratId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Rules for Arsip Surat
+    match /arsipSurat/{arsipId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Rules for Guru
+    match /guru/{guruId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Rules for Siswa
+    match /siswa/{siswaId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Rules for Pengaturan
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}
