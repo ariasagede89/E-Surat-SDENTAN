@@ -69,9 +69,62 @@ export function exportToWord(
     ? (isF4 ? '21.5cm' : '21.0cm')
     : (isF4 ? '33.0cm' : '29.7cm');
 
-  const pageMargin = isLandscape
-    ? '1.0cm 1.2cm 1.0cm 1.2cm'
-    : '2.0cm 2.0cm 2.0cm 2.0cm';
+  const widthDxa = isLandscape ? (isF4 ? '18709' : '16838') : (isF4 ? '12189' : '11906');
+  const heightDxa = isLandscape ? (isF4 ? '12189' : '11906') : (isF4 ? '18709' : '16838');
+  const topDxa = isLandscape ? '227' : '850';
+  const rightDxa = isLandscape ? '397' : '850';
+  const bottomDxa = isLandscape ? '198' : '850';
+  const leftDxa = isLandscape ? '397' : '850';
+
+  const pageMarginCss = isLandscape
+    ? '0.4cm 0.7cm 0.35cm 0.7cm'
+    : '1.5cm 1.5cm 1.5cm 1.5cm';
+
+  const sectPrXml = `<!--[if gte mso 9]>
+    <div style="mso-element:section-pr">
+      <w:SectPr>
+        <w:pgSz w:w="${widthDxa}" w:h="${heightDxa}" w:orient="${orientation}" />
+        <w:pgMar w:top="${topDxa}" w:right="${rightDxa}" w:bottom="${bottomDxa}" w:left="${leftDxa}" w:header="120" w:footer="120" w:gutter="0" />
+      </w:SectPr>
+    </div>
+    <![endif]-->`;
+
+  // Pattern to detect multi-page attendance or document breaks
+  const pageBreakPattern = /(?:<div[^>]*class=["'][^"']*page-break[^"']*["'][^>]*>[\s\S]*?<\/div>|<br[^>]*mso-break-type:\s*section-break[^>]*>|<br[^>]*class=["'][^"']*page-break[^"']*["'][^>]*>|<!--\s*PAGE_BREAK\s*-->)/gi;
+
+  let bodyContent = '';
+  if (/class=["']Section\d+["']/i.test(htmlContent)) {
+    // If sections are already defined in HTML
+    bodyContent = htmlContent;
+  } else if (pageBreakPattern.test(htmlContent)) {
+    // Split into individual pages and wrap each with its own Section class and XML SectPr
+    const rawPages = htmlContent
+      .split(pageBreakPattern)
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
+
+    bodyContent = rawPages
+      .map((pageHtml, idx) => {
+        const secIndex = idx + 1;
+        const isLastPage = idx === rawPages.length - 1;
+        return `
+    <div class="Section${secIndex}">
+      ${pageHtml}
+      ${sectPrXml}
+    </div>
+    ${!isLastPage ? `<br clear="all" style="page-break-before: always; mso-break-type: section-break;" />` : ''}
+        `;
+      })
+      .join('\n');
+  } else {
+    // Single page document
+    bodyContent = `
+    <div class="Section1">
+      ${htmlContent}
+      ${sectPrXml}
+    </div>
+    `;
+  }
 
   const wordDocHtml = `<!DOCTYPE html>
 <html xmlns:v="urn:schemas-microsoft-com:vml"
@@ -112,24 +165,40 @@ export function exportToWord(
     }
     @page {
       size: ${paperWidth} ${paperHeight};
-      margin: ${isLandscape ? '0.4cm 0.7cm 0.35cm 0.7cm' : '1.5cm 1.5cm 1.5cm 1.5cm'};
+      margin: ${pageMarginCss};
       mso-page-orientation: ${orientation};
       mso-header-margin: 10pt;
       mso-footer-margin: 10pt;
       mso-paper-source: 0;
     }
-    @page Section1 {
+    ${Array.from({ length: 40 }, (_, i) => {
+      const s = i + 1;
+      return `
+    @page Section${s} {
       size: ${paperWidth} ${paperHeight};
-      margin: ${isLandscape ? '0.4cm 0.7cm 0.35cm 0.7cm' : '1.5cm 1.5cm 1.5cm 1.5cm'};
+      margin: ${pageMarginCss};
       mso-page-orientation: ${orientation};
       mso-header-margin: 10pt;
       mso-footer-margin: 10pt;
       mso-paper-source: 0;
     }
-    div.Section1 {
-      page: Section1;
+    div.Section${s} {
+      page: Section${s};
       width: 100%;
     }
+    @page WordSection${s} {
+      size: ${paperWidth} ${paperHeight};
+      margin: ${pageMarginCss};
+      mso-page-orientation: ${orientation};
+      mso-header-margin: 10pt;
+      mso-footer-margin: 10pt;
+      mso-paper-source: 0;
+    }
+    div.WordSection${s} {
+      page: WordSection${s};
+      width: 100%;
+    }`;
+    }).join('\n')}
     body {
       font-family: 'Times New Roman', Times, serif;
       font-size: 10.0pt;
@@ -218,23 +287,7 @@ export function exportToWord(
   </style>
 </head>
 <body lang="ID" style="tab-interval:36.0pt">
-  <div class="Section1">
-    ${htmlContent}
-    <!--[if gte mso 9]>
-    <div style="mso-element:section-pr">
-      <w:SectPr>
-        <w:pgSz w:w="${isLandscape ? (isF4 ? '18709' : '16838') : (isF4 ? '12189' : '11906')}"
-                w:h="${isLandscape ? (isF4 ? '12189' : '11906') : (isF4 ? '18709' : '16838')}"
-                w:orient="${isLandscape ? 'landscape' : 'portrait'}" />
-        <w:pgMar w:top="${isLandscape ? '227' : '850'}"
-                 w:right="${isLandscape ? '397' : '850'}"
-                 w:bottom="${isLandscape ? '198' : '850'}"
-                 w:left="${isLandscape ? '397' : '850'}"
-                 w:header="120" w:footer="120" w:gutter="0" />
-      </w:SectPr>
-    </div>
-    <![endif]-->
-  </div>
+  ${bodyContent}
 </body>
 </html>`;
 
@@ -1064,6 +1117,15 @@ export function buildLembarDisposisiHtml(surat: SuratMasuk, sekolah: PengaturanS
               </div>
           </td>
         </tr>
+        ${surat.petugasTindakLanjut ? `
+        <tr>
+          <td colspan="2" style="padding: 8px; background-color: #f8fafc; font-size: 10pt;">
+            <strong>REALISASI TINDAK LANJUT:</strong><br>
+            Telah ditindaklanjuti oleh: <strong>${surat.petugasTindakLanjut}</strong> pada tanggal <strong>${formatTanggalIndonesia(surat.tglSelesaiTindakLanjut || '')}</strong>.
+            ${surat.catatanTindakLanjut ? `<br>Catatan/Keterangan: <em>"${surat.catatanTindakLanjut}"</em>` : ''}
+          </td>
+        </tr>
+        ` : ''}
       </table>
     </div>
   `;
@@ -1294,6 +1356,7 @@ export interface AbsenGuruOptions {
   mode?: 'kolektif_per_lembar' | 'rekap_bulanan' | 'kolektif';
   ptkPerPage?: number;
   filterKategori?: 'semua' | 'kepala_sekolah' | 'guru' | 'tu';
+  showKop?: boolean;
 }
 
 const NAMA_HARI_INDONESIA = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -1324,6 +1387,7 @@ export function buildAbsenGuruHtml(
   let mode: 'kolektif_per_lembar' | 'rekap_bulanan' | 'kolektif' = 'kolektif_per_lembar';
   let ptkPerPage = 5;
   let filterKategori: 'semua' | 'kepala_sekolah' | 'guru' | 'tu' = 'semua';
+  let showKop = false; // Pilihan utama: cetak presensi tanpa KOP
 
   if (typeof bulanOrOptions === 'object') {
     year = bulanOrOptions.year || 2026;
@@ -1333,6 +1397,7 @@ export function buildAbsenGuruHtml(
     mode = bulanOrOptions.mode || 'kolektif_per_lembar';
     ptkPerPage = bulanOrOptions.ptkPerPage || 5;
     filterKategori = bulanOrOptions.filterKategori || 'semua';
+    showKop = bulanOrOptions.showKop ?? false;
   }
 
   // Filter list if requested
@@ -1347,7 +1412,7 @@ export function buildAbsenGuruHtml(
   const holidayCount = Object.keys(holidays).length;
   const effectiveDays = Math.max(0, totalDays - holidayCount);
 
-  const kopHtml = buildOfficialKopHtml(sekolah, true);
+  const kopHtml = showKop ? buildOfficialKopHtml(sekolah, true) : '';
 
   // =========================================================================
   // FORMAT 1: FORMAT MATRIKS REKAPITULASI BULANAN PTK (SEMUA PTK 1 LEMBAR)
@@ -1488,28 +1553,31 @@ export function buildAbsenGuruHtml(
     isLast: boolean = true
   ) => {
     const count = ptkSubList.length;
-    // Total lebar tabel dalam points untuk Landscape F4: ~780 pt
-    const noColPt = 22;
-    const dateColPt = 82;
-    const totalRemainingPt = 780 - noColPt - dateColPt; // ~676 pt
-    const ptkBlockPt = count > 0 ? Math.floor(totalRemainingPt / count) : 135; // ~135 pt per PTK pada kelipatan 5
+    // Total lebar tabel dalam points untuk Landscape F4: ~820 pt dengan margin samping 6mm
+    // Dibuat lebih lega untuk Pagi, Sore, dan TTD
+    const noColPt = 20;
+    const dateColPt = 78;
+    const totalRemainingPt = 820 - noColPt - dateColPt; // ~722 pt
+    const ptkBlockPt = count > 0 ? Math.floor(totalRemainingPt / count) : 144; // ~144 pt per PTK pada kelipatan 5
     
-    // 4 Sub-kolom per PTK (Pagi, TTD, Sore, TTD)
-    const subPagiPt = Math.floor(ptkBlockPt * 0.22); // ~29 pt
-    const subTtdPt = Math.floor((ptkBlockPt - subPagiPt * 2) / 2); // ~38 pt
-    const subSorePt = subPagiPt; // ~29 pt
-    const subTtdSorePt = ptkBlockPt - (subPagiPt + subTtdPt + subSorePt); // ~39 pt
+    // 4 Sub-kolom per PTK (Pagi, TTD, Sore, TTD) - dibuat lebih lega dan proporsional
+    const subPagiPt = Math.floor(ptkBlockPt * 0.21); // ~30 pt (cukup untuk jam "07.00")
+    const subTtdPt = Math.floor((ptkBlockPt - subPagiPt * 2) / 2); // ~42 pt (lebih lega untuk tanda tangan)
+    const subSorePt = subPagiPt; // ~30 pt (cukup untuk jam "14.30")
+    const subTtdSorePt = ptkBlockPt - (subPagiPt + subTtdPt + subSorePt); // ~42 pt (lebih lega untuk tanda tangan)
     const totalPtkColsPt = ptkBlockPt * count;
+    const rowHeightPt = showKop ? 10 : 12; // Lebih lega saat tanpa KOP (12pt vs 10pt)
+    const rowHeightPx = showKop ? 13 : 16;
 
     return `
       <div class="absen-ptk-kolektif-sheet" style="font-family: 'Times New Roman', serif; color: #000; width: 100%; margin: 0 auto; page-break-inside: avoid; break-inside: avoid;">
         ${kopHtml}
 
-        <div style="text-align: center; margin-top: 1pt; margin-bottom: 3pt;">
-          <h3 style="margin: 0; text-decoration: underline; font-size: 9.5pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.15;">
+        <div style="text-align: center; margin-top: ${showKop ? '1pt' : '2pt'}; margin-bottom: ${showKop ? '3pt' : '5pt'};">
+          <h3 style="margin: 0; text-decoration: underline; font-size: ${showKop ? '9.5pt' : '10.5pt'}; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.15;">
             DAFTAR HADIR / PRESENSI PENDIDIK & TENAGA KEPENDIDIKAN (PTK)
           </h3>
-          <p style="margin: 1pt 0 0 0; font-size: 8.0pt; line-height: 1.15;">
+          <p style="margin: 1.5pt 0 0 0; font-size: ${showKop ? '8.0pt' : '8.5pt'}; line-height: 1.15;">
             Bulan: <strong>${bulanNama}</strong> &nbsp;|&nbsp; Tahun Ajaran 2026/2027
             ${pageInfo && pageInfo.total > 1 ? ` &nbsp;|&nbsp; Halaman <strong>${pageInfo.current} dari ${pageInfo.total}</strong>` : ''}
           </p>
@@ -1531,7 +1599,7 @@ export function buildAbsenGuruHtml(
               .join('')}
           </colgroup>
           <thead style="display: table-header-group; mso-yfti-tblheader: yes;">
-            <tr style="background: #f1f5f9; text-align: center; height: 21pt; mso-height-rule: exactly;" height="27">
+            <tr style="background: #f1f5f9; text-align: center; height: ${showKop ? '21pt' : '23pt'}; mso-height-rule: exactly;" height="${showKop ? 27 : 30}">
               <th rowspan="2" width="${noColPt}" style="width: ${noColPt}pt; padding: 2px 0; border: 1px solid #000; font-weight: bold; font-size: 7pt; text-align: center; vertical-align: middle;">No</th>
               <th rowspan="2" width="${dateColPt}" style="width: ${dateColPt}pt; padding: 2px 3px; border: 1px solid #000; font-weight: bold; text-align: left; font-size: 7pt; vertical-align: middle;">Hari / Tanggal</th>
               ${ptkSubList
@@ -1539,9 +1607,9 @@ export function buildAbsenGuruHtml(
                   (ptk, idx) => {
                     const globalIdx = (pageInfo ? (pageInfo.current - 1) * ptkPerPage : 0) + idx + 1;
                     return `
-                <th colspan="4" width="${ptkBlockPt}" style="width: ${ptkBlockPt}pt; height: 21pt; padding: 2px 2px; border: 1px solid #000; text-align: center; vertical-align: middle; background: #e2e8f0;">
-                  <strong style="font-size: 6.8pt; line-height: 1.15; display: block; color: #000;">${globalIdx}. ${ptk.nama}</strong>
-                  <span style="font-size: 5.8pt; font-weight: normal; color: #1e293b; line-height: 1.1; display: block; margin-top: 1.5px;">
+                <th colspan="4" width="${ptkBlockPt}" style="width: ${ptkBlockPt}pt; height: ${showKop ? '21pt' : '23pt'}; padding: 2px 2px; border: 1px solid #000; text-align: center; vertical-align: middle; background: #e2e8f0;">
+                  <strong style="font-size: 7pt; line-height: 1.15; display: block; color: #000;">${globalIdx}. ${ptk.nama}</strong>
+                  <span style="font-size: 6pt; font-weight: normal; color: #1e293b; line-height: 1.1; display: block; margin-top: 1.5px;">
                     ${ptk.nip && ptk.nip !== '-' ? 'NIP. ' + ptk.nip : (ptk.nuptk ? 'NUPTK. ' + ptk.nuptk : (ptk.jabatan || 'PTK'))}
                   </span>
                 </th>
@@ -1550,14 +1618,14 @@ export function buildAbsenGuruHtml(
                 )
                 .join('')}
             </tr>
-            <tr style="background: #f8fafc; text-align: center; font-size: 6pt; font-weight: bold; height: 10pt; mso-height-rule: exactly;" height="13">
+            <tr style="background: #f8fafc; text-align: center; font-size: 6.5pt; font-weight: bold; height: 11pt; mso-height-rule: exactly;" height="14">
               ${ptkSubList
                 .map(
                   () => `
-                <th width="${subPagiPt}" style="width: ${subPagiPt}pt; height: 10pt; padding: 0; border: 1px solid #000; font-size: 6pt; vertical-align: middle; text-align: center;">Pagi</th>
-                <th width="${subTtdPt}" style="width: ${subTtdPt}pt; height: 10pt; padding: 0; border: 1px solid #000; font-size: 6pt; vertical-align: middle; text-align: center;">TTD</th>
-                <th width="${subSorePt}" style="width: ${subSorePt}pt; height: 10pt; padding: 0; border: 1px solid #000; font-size: 6pt; vertical-align: middle; text-align: center;">Sore</th>
-                <th width="${subTtdSorePt}" style="width: ${subTtdSorePt}pt; height: 10pt; padding: 0; border: 1px solid #000; font-size: 6pt; vertical-align: middle; text-align: center;">TTD</th>
+                <th width="${subPagiPt}" style="width: ${subPagiPt}pt; height: 11pt; padding: 0; border: 1px solid #000; font-size: 6.5pt; vertical-align: middle; text-align: center;">Pagi</th>
+                <th width="${subTtdPt}" style="width: ${subTtdPt}pt; height: 11pt; padding: 0; border: 1px solid #000; font-size: 6.5pt; vertical-align: middle; text-align: center;">TTD</th>
+                <th width="${subSorePt}" style="width: ${subSorePt}pt; height: 11pt; padding: 0; border: 1px solid #000; font-size: 6.5pt; vertical-align: middle; text-align: center;">Sore</th>
+                <th width="${subTtdSorePt}" style="width: ${subTtdSorePt}pt; height: 11pt; padding: 0; border: 1px solid #000; font-size: 6.5pt; vertical-align: middle; text-align: center;">TTD</th>
               `
                 )
                 .join('')}
@@ -1577,12 +1645,12 @@ export function buildAbsenGuruHtml(
 
                 if (isHoliday) {
                   return `
-                    <tr style="background-color: #fef2f2; text-align: center; height: 10pt; mso-height-rule: exactly;" height="13">
-                      <td width="${noColPt}" style="width: ${noColPt}pt; height: 10pt; padding: 0; border: 1px solid #000; font-weight: bold; color: #b91c1c; text-align: center; font-size: 5.8pt; vertical-align: middle; line-height: 10pt;">${day}</td>
-                      <td width="${dateColPt}" style="width: ${dateColPt}pt; height: 10pt; padding: 0 3px; border: 1px solid #000; font-weight: bold; color: #b91c1c; text-align: left; white-space: nowrap; font-size: 5.8pt; vertical-align: middle; line-height: 10pt;">
+                    <tr style="background-color: #fef2f2; text-align: center; height: ${rowHeightPt}pt; mso-height-rule: exactly;" height="${rowHeightPx}">
+                      <td width="${noColPt}" style="width: ${noColPt}pt; height: ${rowHeightPt}pt; padding: 0; border: 1px solid #000; font-weight: bold; color: #b91c1c; text-align: center; font-size: 6pt; vertical-align: middle; line-height: ${rowHeightPt}pt;">${day}</td>
+                      <td width="${dateColPt}" style="width: ${dateColPt}pt; height: ${rowHeightPt}pt; padding: 0 3px; border: 1px solid #000; font-weight: bold; color: #b91c1c; text-align: left; white-space: nowrap; font-size: 6pt; vertical-align: middle; line-height: ${rowHeightPt}pt;">
                         ${tglString}
                       </td>
-                      <td colspan="${ptkSubList.length * 4}" width="${totalPtkColsPt}" style="width: ${totalPtkColsPt}pt; height: 10pt; padding: 0 3px; border: 1px solid #000; font-weight: bold; color: #b91c1c; background-color: #fee2e2; font-size: 5.8pt; text-align: center; vertical-align: middle; line-height: 10pt;">
+                      <td colspan="${ptkSubList.length * 4}" width="${totalPtkColsPt}" style="width: ${totalPtkColsPt}pt; height: ${rowHeightPt}pt; padding: 0 3px; border: 1px solid #000; font-weight: bold; color: #b91c1c; background-color: #fee2e2; font-size: 6pt; text-align: center; vertical-align: middle; line-height: ${rowHeightPt}pt;">
                         LIBUR - ${holidayNote.toUpperCase()}
                       </td>
                     </tr>
@@ -1590,16 +1658,16 @@ export function buildAbsenGuruHtml(
                 }
 
                 return `
-                  <tr style="height: 10pt; mso-height-rule: exactly;" height="13">
-                    <td width="${noColPt}" style="width: ${noColPt}pt; height: 10pt; padding: 0; border: 1px solid #000; text-align: center; font-size: 5.8pt; vertical-align: middle; line-height: 10pt;">${day}</td>
-                    <td width="${dateColPt}" style="width: ${dateColPt}pt; height: 10pt; padding: 0 3px; border: 1px solid #000; text-align: left; white-space: nowrap; font-size: 5.8pt; vertical-align: middle; line-height: 10pt;">${tglString}</td>
+                  <tr style="height: ${rowHeightPt}pt; mso-height-rule: exactly;" height="${rowHeightPx}">
+                    <td width="${noColPt}" style="width: ${noColPt}pt; height: ${rowHeightPt}pt; padding: 0; border: 1px solid #000; text-align: center; font-size: 6pt; vertical-align: middle; line-height: ${rowHeightPt}pt;">${day}</td>
+                    <td width="${dateColPt}" style="width: ${dateColPt}pt; height: ${rowHeightPt}pt; padding: 0 3px; border: 1px solid #000; text-align: left; white-space: nowrap; font-size: 6pt; vertical-align: middle; line-height: ${rowHeightPt}pt;">${tglString}</td>
                     ${ptkSubList
                       .map(
                         () => `
-                      <td width="${subPagiPt}" style="width: ${subPagiPt}pt; height: 10pt; border: 1px solid #000; text-align: center; font-size: 5.5pt; vertical-align: middle; padding: 0; line-height: 10pt;">&nbsp;</td>
-                      <td width="${subTtdPt}" style="width: ${subTtdPt}pt; height: 10pt; border: 1px solid #000; text-align: center; font-size: 5.5pt; vertical-align: middle; padding: 0; line-height: 10pt;">&nbsp;</td>
-                      <td width="${subSorePt}" style="width: ${subSorePt}pt; height: 10pt; border: 1px solid #000; text-align: center; font-size: 5.5pt; vertical-align: middle; padding: 0; line-height: 10pt;">&nbsp;</td>
-                      <td width="${subTtdSorePt}" style="width: ${subTtdSorePt}pt; height: 10pt; border: 1px solid #000; text-align: center; font-size: 5.5pt; vertical-align: middle; padding: 0; line-height: 10pt;">&nbsp;</td>
+                      <td width="${subPagiPt}" style="width: ${subPagiPt}pt; height: ${rowHeightPt}pt; border: 1px solid #000; text-align: center; font-size: 5.8pt; vertical-align: middle; padding: 0; line-height: ${rowHeightPt}pt;">&nbsp;</td>
+                      <td width="${subTtdPt}" style="width: ${subTtdPt}pt; height: ${rowHeightPt}pt; border: 1px solid #000; text-align: center; font-size: 5.8pt; vertical-align: middle; padding: 0; line-height: ${rowHeightPt}pt;">&nbsp;</td>
+                      <td width="${subSorePt}" style="width: ${subSorePt}pt; height: ${rowHeightPt}pt; border: 1px solid #000; text-align: center; font-size: 5.8pt; vertical-align: middle; padding: 0; line-height: ${rowHeightPt}pt;">&nbsp;</td>
+                      <td width="${subTtdSorePt}" style="width: ${subTtdSorePt}pt; height: ${rowHeightPt}pt; border: 1px solid #000; text-align: center; font-size: 5.8pt; vertical-align: middle; padding: 0; line-height: ${rowHeightPt}pt;">&nbsp;</td>
                     `
                       )
                       .join('')}
@@ -1634,8 +1702,7 @@ export function buildAbsenGuruHtml(
       </div>
       ${
         !isLast
-          ? `<div class="page-break" style="page-break-before: always; break-before: page; clear: both; mso-special-character: line-break;"></div>
-             <br clear="all" style="page-break-before: always; mso-break-type: section-break;" />`
+          ? `<div class="page-break" style="page-break-before: always; break-before: page; clear: both;"></div>`
           : ''
       }
     `;
@@ -1688,10 +1755,11 @@ export interface AbsenSiswaOptions {
   holidays?: Record<number, string>; // day -> reason
   semester?: string;
   tahunAjaran?: string;
+  showKop?: boolean;
 }
 
 /**
- * Builds printable Attendance Sheet for Siswa in Landscape format with Kop,
+ * Builds printable Attendance Sheet for Siswa in Landscape format,
  * Columns: No, Nama Siswa (with NISN/NIS, L/P), Tanggal (1..30/31 with highlighted holidays), and Recap
  */
 export function buildAbsenSiswaHtml(
@@ -1710,6 +1778,7 @@ export function buildAbsenSiswaHtml(
   let holidays: Record<number, string> = holidaysParam || {};
   let semester = 'Ganjil';
   let tahunAjaran = '2026/2027';
+  let showKop = false; // Default pilihan utama tanpa KOP
 
   if (typeof bulanOrOptions === 'object') {
     kelas = bulanOrOptions.kelas || kelas;
@@ -1719,6 +1788,7 @@ export function buildAbsenSiswaHtml(
     holidays = bulanOrOptions.holidays || {};
     semester = bulanOrOptions.semester || 'Ganjil';
     tahunAjaran = bulanOrOptions.tahunAjaran || '2026/2027';
+    showKop = bulanOrOptions.showKop ?? false;
   }
 
   const filtered = kelas && kelas !== 'Semua' ? siswaList.filter((s) => s.kelas === kelas) : siswaList;
@@ -1729,17 +1799,17 @@ export function buildAbsenSiswaHtml(
   const jmlL = filtered.filter((s) => s.jenisKelamin === 'L').length;
   const jmlP = filtered.filter((s) => s.jenisKelamin === 'P').length;
 
-  const kopHtml = buildOfficialKopHtml(sekolah, true);
+  const kopHtml = showKop ? buildOfficialKopHtml(sekolah, true) : '';
 
   return `
     <div class="absen-siswa-sheet" style="font-family: 'Times New Roman', serif; color: #000; width: 100%;">
       ${kopHtml}
 
-      <div style="text-align: center; margin-bottom: 12px;">
-        <h3 style="margin: 0; text-decoration: underline; font-size: 13pt; font-weight: bold; text-transform: uppercase;">
+      <div style="text-align: center; margin-top: ${showKop ? '1pt' : '4pt'}; margin-bottom: 10px;">
+        <h3 style="margin: 0; text-decoration: underline; font-size: 12.5pt; font-weight: bold; text-transform: uppercase;">
           DAFTAR HADIR / PRESENSI PESERTA DIDIK
         </h3>
-        <p style="margin: 3px 0 0 0; font-size: 10.5pt;">
+        <p style="margin: 2px 0 0 0; font-size: 10pt;">
           Kelas: <strong>${kelas || 'Semua Kelas'}</strong> &nbsp;|&nbsp;
           Bulan: <strong>${bulanNama}</strong> &nbsp;|&nbsp;
           Semester: <strong>${semester}</strong> &nbsp;|&nbsp;
@@ -1812,15 +1882,6 @@ export function buildAbsenSiswaHtml(
             .join('')}
         </tbody>
       </table>
-
-      <!-- Catatan, Rekapitulasi & Tanda Tangan -->
-      <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: flex-start; font-size: 9pt;">
-        <div style="line-height: 1.5;">
-          <strong>Keterangan Presensi:</strong><br/>
-          • <strong>H</strong> : Hadir &nbsp;|&nbsp; <strong>S</strong> : Sakit &nbsp;|&nbsp; <strong>I</strong> : Izin &nbsp;|&nbsp; <strong>A</strong> : Alpa (Tanpa Keterangan) &nbsp;|&nbsp; <span style="color: #b91c1c;"><strong>L</strong> : Libur</span><br/>
-          • Jumlah Siswa: <strong>L: ${jmlL}</strong>, <strong>P: ${jmlP}</strong>, <strong>Total: ${filtered.length} Orang</strong> &nbsp;|&nbsp;
-          • Hari Efektif Sekolah: <strong>${effectiveDays} Hari</strong> (${holidayCount} Hari Libur)
-        </div>
 
       <!-- Catatan, Rekapitulasi & Tanda Tangan Table (Kompatibel MS Word & Cetak) -->
       <table width="100%" border="0" cellpadding="0" cellspacing="0" style="width: 100%; margin-top: 10pt; border-collapse: collapse; border: none; font-size: 7.5pt; font-family: 'Times New Roman', serif;">

@@ -54,7 +54,7 @@ import {
   initialGuru,
   initialSiswa,
 } from './data/initialData';
-import { compareSuratKeluarDesc } from './utils/numberGenerator';
+import { compareSuratKeluarDesc, compareSuratMasukDesc } from './utils/numberGenerator';
 import { getActiveUserRole, logoutAdmin, setCachedAdminCredentials } from './utils/authUtils';
 import { BerandaView } from './components/BerandaView';
 import { SuratMasukView } from './components/SuratMasukView';
@@ -144,7 +144,9 @@ export default function App() {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          return Array.isArray(parsed) ? parsed.filter((s: any) => !DUMMY_IDS.has(s.id)) : [];
+          return Array.isArray(parsed)
+            ? parsed.filter((s: any) => !DUMMY_IDS.has(s.id)).sort(compareSuratMasukDesc)
+            : [];
         } catch {
           return [];
         }
@@ -152,7 +154,8 @@ export default function App() {
       return [];
     }
     const saved = localStorage.getItem('simas_surat_masuk');
-    return saved ? JSON.parse(saved) : initialSuratMasuk;
+    const items = saved ? JSON.parse(saved) : initialSuratMasuk;
+    return Array.isArray(items) ? [...items].sort(compareSuratMasukDesc) : [];
   });
 
   const [suratKeluarList, setSuratKeluarList] = useState<SuratKeluar[]>(() => {
@@ -278,7 +281,7 @@ export default function App() {
 
     // Real-time Firestore subscriptions: strictly display what is in Firestore (including empty [])
     const unsubSM = subscribeToCollection<SuratMasuk>('suratMasuk', (items) => {
-      setSuratMasukList(items);
+      setSuratMasukList([...items].sort(compareSuratMasukDesc));
     });
     const unsubSK = subscribeToCollection<SuratKeluar>('suratKeluar', (items) => {
       setSuratKeluarList([...items].sort(compareSuratKeluarDesc));
@@ -354,7 +357,7 @@ export default function App() {
   const handleAddSuratMasuk = async (newItem: Omit<SuratMasuk, 'id' | 'createdAt'>) => {
     const id = 'sm_' + Date.now();
     const created: SuratMasuk = { ...newItem, id, createdAt: new Date().toISOString() };
-    setSuratMasukList((prev) => [created, ...prev]);
+    setSuratMasukList((prev) => [created, ...prev].sort(compareSuratMasukDesc));
     const ok = await syncDocToFirestore('suratMasuk', created);
     if (ok) {
       showToast('Surat Masuk berhasil disimpan ke Cloud Firestore', 'success');
@@ -364,7 +367,7 @@ export default function App() {
   };
 
   const handleUpdateSuratMasuk = async (updated: SuratMasuk) => {
-    setSuratMasukList((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+    setSuratMasukList((prev) => prev.map((s) => (s.id === updated.id ? updated : s)).sort(compareSuratMasukDesc));
     const ok = await syncDocToFirestore('suratMasuk', updated);
     if (ok) {
       showToast('Perubahan Surat Masuk disimpan ke Cloud Firestore', 'success');

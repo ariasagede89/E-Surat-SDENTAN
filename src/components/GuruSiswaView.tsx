@@ -90,11 +90,13 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
   const [ptkFilterCetak, setPtkFilterCetak] = useState<'semua' | 'kepala_sekolah' | 'guru' | 'tu'>('semua');
   const [ptkPerPageCetak, setPtkPerPageCetak] = useState<number>(5);
   const [ptkPaperSizeCetak, setPtkPaperSizeCetak] = useState<PaperSize>('F4');
+  const [ptkShowKopCetak, setPtkShowKopCetak] = useState<boolean>(false); // Pilihan utama: Tanpa KOP
 
   // Opsi Cetak Siswa
   const [siswaKelasCetak, setSiswaKelasCetak] = useState<string>('6A');
   const [siswaSemesterCetak, setSiswaSemesterCetak] = useState<string>('Ganjil');
   const [siswaTahunAjaranCetak, setSiswaTahunAjaranCetak] = useState<string>('2026/2027');
+  const [siswaShowKopCetak, setSiswaShowKopCetak] = useState<boolean>(false); // Pilihan utama: Tanpa KOP
 
   const handleMonthChange = (newMonth: number) => {
     setAbsenMonth(newMonth);
@@ -159,6 +161,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
       mode: ptkCetakMode,
       ptkPerPage: ptkPerPageCetak,
       filterKategori: ptkFilterCetak,
+      showKop: ptkShowKopCetak,
     });
     printLandscapeHtml(
       html,
@@ -182,6 +185,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
         mode: ptkCetakMode,
         ptkPerPage: ptkPerPageCetak,
         filterKategori: ptkFilterCetak,
+        showKop: ptkShowKopCetak,
       },
       ptkPaperSizeCetak
     );
@@ -199,6 +203,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
       holidays: absenHolidays,
       semester: siswaSemesterCetak,
       tahunAjaran: siswaTahunAjaranCetak,
+      showKop: siswaShowKopCetak,
     });
     printLandscapeHtml(
       html,
@@ -1485,10 +1490,60 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                     </div>
                   </div>
 
+                  {/* Opsi Kop Surat (Pilihan Utama: Tanpa KOP) */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
+                      3. Pilihan Kop Surat
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPtkShowKopCetak(false)}
+                        className={`p-2.5 rounded-xl border text-left flex items-start gap-2 transition-all ${
+                          !ptkShowKopCetak
+                            ? 'bg-blue-50 border-blue-600 ring-1 ring-blue-600'
+                            : 'bg-white border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          !ptkShowKopCetak ? 'border-blue-900 bg-blue-900' : 'border-slate-400'
+                        }`}>
+                          {!ptkShowKopCetak && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 flex items-center gap-1">
+                            <span>Tanpa KOP</span>
+                            <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1 py-0.2 rounded font-semibold">Pilihan Utama</span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 mt-0.5">Tabel lebih lega & kolom leluasa</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPtkShowKopCetak(true)}
+                        className={`p-2.5 rounded-xl border text-left flex items-start gap-2 transition-all ${
+                          ptkShowKopCetak
+                            ? 'bg-blue-50 border-blue-600 ring-1 ring-blue-600'
+                            : 'bg-white border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          ptkShowKopCetak ? 'border-blue-900 bg-blue-900' : 'border-slate-400'
+                        }`}>
+                          {ptkShowKopCetak && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-slate-900">Dengan KOP Resmi</div>
+                          <div className="text-[11px] text-slate-500 mt-0.5">Kop Pemkab & Disdikpora</div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Opsi Ukuran Kertas & Orientasi */}
                   <div>
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-                      3. Ukuran Kertas (Orientasi Landscape)
+                      4. Ukuran Kertas (Orientasi Landscape)
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -1537,7 +1592,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
 
                   <div>
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
-                      4. Format Lembar Presensi
+                      5. Format Lembar Presensi
                     </label>
                     <div className="space-y-2">
                       {/* Opsi 1: Format Kolektif per Lembar (Rekomendasi Utama) */}
@@ -1643,7 +1698,9 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                     <div className="space-y-1 text-slate-600 text-[11.5px]">
                       <div className="flex justify-between">
                         <span>Kop Surat:</span>
-                        <span className="font-semibold text-slate-900">Resmi Kedinasan Pemkab Jembrana</span>
+                        <span className={`font-semibold ${!ptkShowKopCetak ? 'text-emerald-700' : 'text-slate-900'}`}>
+                          {!ptkShowKopCetak ? 'Tanpa KOP (Pilihan Utama)' : 'Resmi Kedinasan Pemkab Jembrana'}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span>Ukuran & Orientasi:</span>
@@ -1827,6 +1884,56 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                       </select>
                     </div>
 
+                    {/* Opsi Kop Surat Siswa (Pilihan Utama: Tanpa KOP) */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
+                        Pilihan Kop Surat:
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSiswaShowKopCetak(false)}
+                          className={`p-2 rounded-xl border text-left flex items-start gap-2 transition-all ${
+                            !siswaShowKopCetak
+                              ? 'bg-blue-50 border-blue-600 ring-1 ring-blue-600'
+                              : 'bg-white border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                            !siswaShowKopCetak ? 'border-blue-900 bg-blue-900' : 'border-slate-400'
+                          }`}>
+                            {!siswaShowKopCetak && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-slate-900 flex items-center gap-1">
+                              <span>Tanpa KOP</span>
+                              <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1 py-0.2 rounded font-semibold">Utama</span>
+                            </div>
+                            <div className="text-[10.5px] text-slate-500 mt-0.5">Tabel presensi maksimal</div>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSiswaShowKopCetak(true)}
+                          className={`p-2 rounded-xl border text-left flex items-start gap-2 transition-all ${
+                            siswaShowKopCetak
+                              ? 'bg-blue-50 border-blue-600 ring-1 ring-blue-600'
+                              : 'bg-white border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                            siswaShowKopCetak ? 'border-blue-900 bg-blue-900' : 'border-slate-400'
+                          }`}>
+                            {siswaShowKopCetak && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-slate-900">Dengan KOP</div>
+                            <div className="text-[10.5px] text-slate-500 mt-0.5">Kop Resmi Pemkab</div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
                     {/* Semester & Tahun Ajaran */}
                     <div className="grid grid-cols-2 gap-2">
                       <div>
@@ -1865,7 +1972,9 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                     <div className="space-y-1 text-slate-600 text-[11.5px]">
                       <div className="flex justify-between">
                         <span>Kop Surat:</span>
-                        <span className="font-semibold text-slate-900">Resmi Kedinasan Pemkab Jembrana</span>
+                        <span className={`font-semibold ${!siswaShowKopCetak ? 'text-emerald-700' : 'text-slate-900'}`}>
+                          {!siswaShowKopCetak ? 'Tanpa KOP (Pilihan Utama)' : 'Resmi Kedinasan Pemkab Jembrana'}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span>Format Halaman:</span>

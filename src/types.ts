@@ -20,6 +20,9 @@ export interface SuratMasuk {
   sifat: SifatSurat;
   status: StatusSuratMasuk;
   tglTindakLanjut: string;
+  petugasTindakLanjut?: string; // Nama orang/petugas yang menindaklanjuti
+  tglSelesaiTindakLanjut?: string; // Tanggal tindak lanjut dilaksanakan
+  catatanTindakLanjut?: string; // Keterangan hasil tindak lanjut
   disposisi: string;
   diteruskanKepada: string;
   catatan?: string;

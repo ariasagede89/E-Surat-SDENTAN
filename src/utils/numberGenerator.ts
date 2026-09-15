@@ -256,6 +256,84 @@ export function compareSuratKeluarDesc(
 }
 
 /**
+ * Membandingkan dua surat masuk agar surat dengan nomor urut / agenda terbaru berada di posisi paling atas (Descending).
+ * Mengutamakan nomor urut agenda (misal AG-2026/092 > AG-2026/091), tanggal terima, tanggal surat, dan waktu input.
+ */
+export function compareSuratMasukDesc(
+  a: { noAgenda?: string; noSurat?: string; tglTerima?: string; tglSurat?: string; createdAt?: string },
+  b: { noAgenda?: string; noSurat?: string; tglTerima?: string; tglSurat?: string; createdAt?: string }
+): number {
+  // 1. Ekstraksi nomor urut agenda (misal "AG-2026/092" -> 92)
+  const seqAgendaA = extractNomorUrut(a.noAgenda || '');
+  const seqAgendaB = extractNomorUrut(b.noAgenda || '');
+
+  // Ekstraksi tahun dari agenda atau tglTerima
+  const getYear = (item: { noAgenda?: string; tglTerima?: string; tglSurat?: string; createdAt?: string }): number => {
+    if (item.noAgenda) {
+      const match = item.noAgenda.match(/\b(20\d{2})\b/);
+      if (match) return parseInt(match[1], 10);
+    }
+    if (item.tglTerima) {
+      const y = new Date(item.tglTerima).getFullYear();
+      if (!isNaN(y) && y > 1900) return y;
+    }
+    if (item.tglSurat) {
+      const y = new Date(item.tglSurat).getFullYear();
+      if (!isNaN(y) && y > 1900) return y;
+    }
+    if (item.createdAt) {
+      const y = new Date(item.createdAt).getFullYear();
+      if (!isNaN(y) && y > 1900) return y;
+    }
+    return 0;
+  };
+
+  const yearA = getYear(a);
+  const yearB = getYear(b);
+  if (yearA > 0 && yearB > 0 && yearA !== yearB) {
+    return yearB - yearA; // Tahun lebih baru di atas
+  }
+
+  // Jika kedua agenda memiliki nomor urut valid dan berbeda: nomor urut lebih tinggi berada di atas
+  if (seqAgendaA !== null && seqAgendaB !== null && seqAgendaA !== seqAgendaB) {
+    return seqAgendaB - seqAgendaA;
+  }
+
+  // 2. Jika nomor agenda tidak membedakan, periksa nomor surat
+  const seqSuratA = extractNomorUrut(a.noSurat || '');
+  const seqSuratB = extractNomorUrut(b.noSurat || '');
+  if (seqSuratA !== null && seqSuratB !== null && seqSuratA !== seqSuratB) {
+    return seqSuratB - seqSuratA;
+  }
+
+  // 3. Bandingkan tanggal terima (terbaru di atas)
+  const dateTerimaA = a.tglTerima ? new Date(a.tglTerima).getTime() : 0;
+  const dateTerimaB = b.tglTerima ? new Date(b.tglTerima).getTime() : 0;
+  if (!isNaN(dateTerimaA) && !isNaN(dateTerimaB) && dateTerimaA !== dateTerimaB) {
+    return dateTerimaB - dateTerimaA;
+  }
+
+  // 4. Bandingkan tanggal surat
+  const dateSuratA = a.tglSurat ? new Date(a.tglSurat).getTime() : 0;
+  const dateSuratB = b.tglSurat ? new Date(b.tglSurat).getTime() : 0;
+  if (!isNaN(dateSuratA) && !isNaN(dateSuratB) && dateSuratA !== dateSuratB) {
+    return dateSuratB - dateSuratA;
+  }
+
+  // 5. Bandingkan timestamp pembuatan (createdAt)
+  const createA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+  const createB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+  if (!isNaN(createA) && !isNaN(createB) && createA !== createB) {
+    return createB - createA;
+  }
+
+  if (seqAgendaA !== null && seqAgendaB === null) return -1;
+  if (seqAgendaA === null && seqAgendaB !== null) return 1;
+
+  return 0;
+}
+
+/**
  * Membandingkan dua surat keluar atau arsip dari nomor urut terkecil / tanggal terlama (Ascending).
  */
 export function compareSuratKeluarAsc(

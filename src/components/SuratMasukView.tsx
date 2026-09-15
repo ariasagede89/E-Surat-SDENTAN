@@ -4,7 +4,6 @@ import {
   Search,
   Printer,
   Trash2,
-  Edit,
   Eye,
   X,
   FileText,
@@ -13,9 +12,13 @@ import {
   Clock,
   CheckCircle2,
   Filter,
+  CheckSquare,
+  UserCheck,
+  Edit,
 } from 'lucide-react';
 import { SuratMasuk, PengaturanSekolah, SifatSurat, StatusSuratMasuk } from '../types';
 import { formatTanggalIndonesia, buildLembarDisposisiHtml, printHtmlElement } from '../utils/exportUtils';
+import { compareSuratMasukDesc } from '../utils/numberGenerator';
 
 interface SuratMasukViewProps {
   suratMasukList: SuratMasuk[];
@@ -42,6 +45,12 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
   const [filterSifat, setFilterSifat] = useState<string>('Semua');
   const [filterStatus, setFilterStatus] = useState<string>('Semua');
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; noSurat: string } | null>(null);
+
+  // State untuk Modal Selesai Ditindaklanjuti
+  const [tindakLanjutModalItem, setTindakLanjutModalItem] = useState<SuratMasuk | null>(null);
+  const [petugasTL, setPetugasTL] = useState('');
+  const [tglSelesaiTL, setTglSelesaiTL] = useState(new Date().toISOString().slice(0, 10));
+  const [catatanTL, setCatatanTL] = useState('');
 
   // Form State
   const [formId, setFormId] = useState<string | null>(null);
@@ -76,6 +85,37 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
     setCatatan(sm.catatan || '');
     setLampiranNama(sm.lampiranNama || '');
     setShowFormModal(true);
+  };
+
+  // Buka modal selesai ditindaklanjuti
+  const openSelesaiTindakLanjut = (sm: SuratMasuk) => {
+    setTindakLanjutModalItem(sm);
+    setPetugasTL(sm.petugasTindakLanjut || sm.diteruskanKepada || '');
+    setTglSelesaiTL(sm.tglSelesaiTindakLanjut || new Date().toISOString().slice(0, 10));
+    setCatatanTL(sm.catatanTindakLanjut || '');
+  };
+
+  const handleSaveTindakLanjut = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tindakLanjutModalItem) return;
+    if (!petugasTL.trim()) {
+      alert('Mohon isi nama orang / petugas yang menindaklanjuti!');
+      return;
+    }
+    if (!tglSelesaiTL) {
+      alert('Mohon tentukan tanggal tindak lanjut!');
+      return;
+    }
+
+    onUpdateSuratMasuk({
+      ...tindakLanjutModalItem,
+      status: 'Selesai',
+      petugasTindakLanjut: petugasTL.trim(),
+      tglSelesaiTindakLanjut: tglSelesaiTL,
+      catatanTindakLanjut: catatanTL.trim(),
+    });
+
+    setTindakLanjutModalItem(null);
   };
 
   // Check if opened from outside with editingItem
@@ -178,18 +218,20 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
     }
   };
 
-  const filteredSurat = suratMasukList.filter((sm) => {
-    const matchesSearch =
-      sm.noSurat.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sm.noAgenda.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sm.pengirim.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sm.perihal.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredSurat = suratMasukList
+    .filter((sm) => {
+      const matchesSearch =
+        sm.noSurat.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        sm.noAgenda.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        sm.pengirim.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        sm.perihal.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesSifat = filterSifat === 'Semua' || sm.sifat === filterSifat;
-    const matchesStatus = filterStatus === 'Semua' || sm.status === filterStatus;
+      const matchesSifat = filterSifat === 'Semua' || sm.sifat === filterSifat;
+      const matchesStatus = filterStatus === 'Semua' || sm.status === filterStatus;
 
-    return matchesSearch && matchesSifat && matchesStatus;
-  });
+      return matchesSearch && matchesSifat && matchesStatus;
+    })
+    .sort(compareSuratMasukDesc);
 
   return (
     <div className="space-y-6">
@@ -271,7 +313,7 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                 <th className="py-3 px-4">Pengirim & Perihal</th>
                 <th className="py-3 px-4">Tgl Terima & TL</th>
                 <th className="py-3 px-4">Sifat / Status</th>
-                <th className="py-3 px-4 text-center w-36">Aksi</th>
+                <th className="py-3 px-4 text-center w-48">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -314,6 +356,12 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                         <span>Batas TL: {formatTanggalIndonesia(sm.tglTindakLanjut)}</span>
                       </div>
                     )}
+                    {sm.petugasTindakLanjut && (
+                      <div className="text-[10.5px] font-medium text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded mt-1 border border-emerald-200/60 flex items-center gap-1">
+                        <UserCheck className="w-3 h-3 shrink-0" />
+                        <span>TL: {sm.petugasTindakLanjut} ({formatTanggalIndonesia(sm.tglSelesaiTindakLanjut || '')})</span>
+                      </div>
+                    )}
                   </td>
                   <td className="py-3 px-4 whitespace-nowrap space-y-1">
                     <span
@@ -342,7 +390,31 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                     </span>
                   </td>
                   <td className="py-3 px-4 text-center whitespace-nowrap">
-                    <div className="flex items-center justify-center gap-1">
+                    <div className="flex items-center justify-center gap-1.5">
+                      {/* Tombol Selesai Ditindaklanjuti untuk status Menunggu Tindak Lanjut */}
+                      {sm.status === 'Menunggu Tindak Lanjut' && (
+                        <button
+                          onClick={() => openSelesaiTindakLanjut(sm)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs transition-colors"
+                          title="Selesai Ditindaklanjuti (isi orang & tanggal tindak lanjut)"
+                        >
+                          <CheckSquare className="w-3.5 h-3.5" />
+                          <span>Selesai Ditindaklanjuti</span>
+                        </button>
+                      )}
+
+                      {/* Info selesai jika status sudah selesai */}
+                      {sm.status === 'Selesai' && (
+                        <button
+                          onClick={() => openSelesaiTindakLanjut(sm)}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+                          title="Lihat / Perbarui Info Tindak Lanjut"
+                        >
+                          <UserCheck className="w-3 h-3 text-emerald-600" />
+                          <span>Tindak Lanjut</span>
+                        </button>
+                      )}
+
                       <button
                         onClick={() => handlePrintDisposisi(sm)}
                         className="p-1.5 text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
@@ -353,7 +425,7 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                       <button
                         onClick={() => openEdit(sm)}
                         className="p-1.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-                        title="Edit / Disposisi"
+                        title="Edit Surat Masuk"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
@@ -592,6 +664,131 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
           </div>
         </div>
       )}
+      {/* Modal Selesai Ditindaklanjuti */}
+      {tindakLanjutModalItem && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                  <CheckSquare className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold text-slate-900">
+                    Selesai Ditindaklanjuti
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Isi data petugas dan tanggal penyelesaian tindak lanjut surat
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTindakLanjutModalItem(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Informasi Surat Ringkas */}
+            <div className="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200/80 text-xs space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">No. Agenda:</span>
+                <span className="font-mono font-bold text-blue-950">{tindakLanjutModalItem.noAgenda}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">No. Surat:</span>
+                <span className="font-semibold text-slate-800">{tindakLanjutModalItem.noSurat}</span>
+              </div>
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-slate-500 font-medium shrink-0">Pengirim:</span>
+                <span className="font-semibold text-slate-800 text-right">{tindakLanjutModalItem.pengirim}</span>
+              </div>
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-slate-500 font-medium shrink-0">Perihal:</span>
+                <span className="text-slate-700 text-right line-clamp-2">{tindakLanjutModalItem.perihal}</span>
+              </div>
+              {tindakLanjutModalItem.disposisi && (
+                <div className="pt-1 border-t border-slate-200/60 text-amber-900 bg-amber-50/70 p-1.5 rounded">
+                  <span className="font-bold">Instruksi Disposisi: </span>
+                  <span>{tindakLanjutModalItem.disposisi}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Form Input Petugas dan Tanggal Tindak Lanjut */}
+            <form onSubmit={handleSaveTindakLanjut} className="mt-4 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
+                  1. Orang / Petugas yang Menindaklanjuti <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <UserCheck className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    required
+                    value={petugasTL}
+                    onChange={(e) => setPetugasTL(e.target.value)}
+                    placeholder="Contoh: I Wayan Sudarsana, S.Pd (Guru Olahraga)"
+                    className="w-full text-xs sm:text-sm pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-600 focus:outline-none font-medium text-slate-800"
+                  />
+                </div>
+                <p className="text-[10.5px] text-slate-500 mt-1">
+                  Nama guru, pegawai TU, atau penanggung jawab pelaksanaan tindak lanjut.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
+                  2. Tanggal Tindak Lanjut Dilaksanakan <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="date"
+                    required
+                    value={tglSelesaiTL}
+                    onChange={(e) => setTglSelesaiTL(e.target.value)}
+                    className="w-full text-xs sm:text-sm pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-600 focus:outline-none font-medium text-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
+                  3. Catatan / Hasil Tindak Lanjut (Opsional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={catatanTL}
+                  onChange={(e) => setCatatanTL(e.target.value)}
+                  placeholder="Contoh: Telah dihadiri dan laporan kegiatan telah diserahkan kepada Kepala Sekolah."
+                  className="w-full text-xs sm:text-sm p-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-600 focus:outline-none text-slate-800"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setTindakLanjutModalItem(null)}
+                  className="px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs sm:text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs flex items-center gap-1.5 transition-colors"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Simpan & Tandai Selesai</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Internal Delete Confirmation Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
