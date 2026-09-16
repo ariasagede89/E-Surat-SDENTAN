@@ -15,10 +15,13 @@ import {
   CheckSquare,
   UserCheck,
   Edit,
+  Upload,
+  Paperclip,
 } from 'lucide-react';
 import { SuratMasuk, PengaturanSekolah, SifatSurat, StatusSuratMasuk } from '../types';
 import { formatTanggalIndonesia, buildLembarDisposisiHtml, printHtmlElement } from '../utils/exportUtils';
 import { compareSuratMasukDesc } from '../utils/numberGenerator';
+import { readFileAsDataUrl, openOrDownloadDocument } from '../utils/fileUtils';
 
 interface SuratMasukViewProps {
   suratMasukList: SuratMasuk[];
@@ -67,6 +70,9 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
   const [diteruskanKepada, setDiteruskanKepada] = useState('');
   const [catatan, setCatatan] = useState('');
   const [lampiranNama, setLampiranNama] = useState('');
+  const [lampiranUrl, setLampiranUrl] = useState('');
+  const [lampiranUkuran, setLampiranUkuran] = useState('');
+  const [lampiranTipe, setLampiranTipe] = useState('');
 
   // Handle opening edit
   const openEdit = (sm: SuratMasuk) => {
@@ -84,6 +90,9 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
     setDiteruskanKepada(sm.diteruskanKepada || '');
     setCatatan(sm.catatan || '');
     setLampiranNama(sm.lampiranNama || '');
+    setLampiranUrl(sm.lampiranUrl || '');
+    setLampiranUkuran(sm.lampiranUkuran || '');
+    setLampiranTipe(sm.lampiranTipe || '');
     setShowFormModal(true);
   };
 
@@ -142,6 +151,9 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
     setDiteruskanKepada('');
     setCatatan('');
     setLampiranNama('');
+    setLampiranUrl('');
+    setLampiranUkuran('');
+    setLampiranTipe('');
     setShowFormModal(true);
   };
 
@@ -170,6 +182,9 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
           diteruskanKepada,
           catatan,
           lampiranNama,
+          lampiranUrl,
+          lampiranUkuran,
+          lampiranTipe,
         });
       }
     } else {
@@ -187,6 +202,9 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
         diteruskanKepada,
         catatan,
         lampiranNama,
+        lampiranUrl,
+        lampiranUkuran,
+        lampiranTipe,
       });
     }
 
@@ -344,6 +362,50 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                       <p className="text-[11px] text-amber-900 bg-amber-50 rounded px-1.5 py-0.5 mt-1 border border-amber-200/60 line-clamp-1 italic">
                         Disposisi: "{sm.disposisi}"
                       </p>
+                    )}
+
+                    {/* Berkas Dokumen Surat Masuk (Opsional) */}
+                    {sm.lampiranNama || sm.lampiranUrl ? (
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => openOrDownloadDocument(sm.lampiranNama || 'Dokumen_Surat_Masuk', sm.lampiranUrl)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-900 text-[11px] font-semibold rounded-md border border-blue-200 transition-colors shadow-2xs cursor-pointer"
+                          title="Klik untuk membuka atau mengunduh berkas dokumen"
+                        >
+                          <Paperclip className="w-3 h-3 text-blue-700 shrink-0" />
+                          <span className="truncate max-w-[130px] sm:max-w-[180px]">{sm.lampiranNama || 'Dokumen Terlampir'}</span>
+                          {sm.lampiranUkuran && <span className="text-[10px] text-blue-600 font-normal">({sm.lampiranUkuran})</span>}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-1">
+                        <label className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-blue-900 cursor-pointer font-medium transition-colors hover:underline">
+                          <Upload className="w-3 h-3 text-slate-400" />
+                          <span>+ Upload Dokumen (Opsional)</span>
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              try {
+                                const res = await readFileAsDataUrl(file);
+                                onUpdateSuratMasuk({
+                                  ...sm,
+                                  lampiranNama: res.name,
+                                  lampiranUrl: res.url,
+                                  lampiranUkuran: res.size,
+                                  lampiranTipe: res.type,
+                                });
+                              } catch (err: any) {
+                                alert(err.message || 'Gagal membaca file');
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
                     )}
                   </td>
                   <td className="py-3 px-4 whitespace-nowrap">
@@ -643,6 +705,111 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                   onChange={(e) => setCatatan(e.target.value)}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
+              </div>
+
+              {/* Upload Dokumen Surat Masuk (Opsional) */}
+              <div className="p-3.5 sm:p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                    <Paperclip className="w-4 h-4 text-blue-900" />
+                    <span>Upload Dokumen / Scan Surat Masuk</span>
+                  </label>
+                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-md">
+                    Opsional
+                  </span>
+                </div>
+
+                {lampiranUrl || lampiranNama ? (
+                  <div className="flex items-center justify-between p-3 bg-white border border-blue-200 rounded-xl shadow-2xs">
+                    <div className="flex items-center gap-2.5 overflow-hidden">
+                      <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-900 flex items-center justify-center shrink-0">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="text-xs font-bold text-slate-800 truncate max-w-[220px] sm:max-w-xs" title={lampiranNama}>
+                          {lampiranNama}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {lampiranUkuran || 'Dokumen Terlampir'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => openOrDownloadDocument(lampiranNama || 'Dokumen_Surat_Masuk', lampiranUrl)}
+                        className="px-2.5 py-1 text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-900 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                        title="Buka / Unduh Dokumen"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Lihat</span>
+                      </button>
+                      <label className="px-2.5 py-1 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer flex items-center gap-1">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Ganti</span>
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            try {
+                              const res = await readFileAsDataUrl(file);
+                              setLampiranNama(res.name);
+                              setLampiranUrl(res.url);
+                              setLampiranUkuran(res.size);
+                              setLampiranTipe(res.type);
+                            } catch (err: any) {
+                              alert(err.message || 'Gagal membaca file');
+                            }
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLampiranNama('');
+                          setLampiranUrl('');
+                          setLampiranUkuran('');
+                          setLampiranTipe('');
+                        }}
+                        className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
+                        title="Hapus Dokumen"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-300 hover:border-blue-600 rounded-xl bg-white hover:bg-blue-50/30 cursor-pointer transition-colors text-center">
+                    <Upload className="w-6 h-6 text-blue-900 mb-1" />
+                    <span className="text-xs font-bold text-slate-800">
+                      Pilih / Tarik Dokumen Surat Masuk (PDF, DOCX, Gambar)
+                    </span>
+                    <span className="text-[11px] text-slate-500 mt-0.5">
+                      Pengaturan bersifat opsional • Berkas fisik dapat disimpan tanpa upload
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          const res = await readFileAsDataUrl(file);
+                          setLampiranNama(res.name);
+                          setLampiranUrl(res.url);
+                          setLampiranUkuran(res.size);
+                          setLampiranTipe(res.type);
+                        } catch (err: any) {
+                          alert(err.message || 'Gagal membaca file');
+                        }
+                      }}
+                    />
+                  </label>
+                )}
               </div>
 
               <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2 -mx-5 -mb-5 sm:-mx-6 sm:-mb-6 rounded-b-2xl">

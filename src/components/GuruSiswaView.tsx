@@ -17,6 +17,10 @@ import {
   CalendarDays,
   FileText,
   Info,
+  RotateCcw,
+  Check,
+  Settings2,
+  ChevronDown,
 } from 'lucide-react';
 import { Guru, Siswa, PengaturanSekolah, KategoriPTK, PaperSize } from '../types';
 import {
@@ -28,6 +32,12 @@ import {
   printLandscapeHtml,
   exportAbsenPTKToWord,
 } from '../utils/exportUtils';
+import {
+  parseSiswaCsv,
+  parseGuruCsv,
+  downloadSiswaTemplateCsv,
+  downloadGuruTemplateCsv,
+} from '../utils/csvUtils';
 import { KalenderKecilLibur, NAMA_BULAN_INDONESIA } from './KalenderKecilLibur';
 
 interface GuruSiswaViewProps {
@@ -41,7 +51,9 @@ interface GuruSiswaViewProps {
   onAddSiswa: (siswa: Omit<Siswa, 'id'>) => void;
   onUpdateSiswa: (siswa: Siswa) => void;
   onDeleteSiswa: (id: string) => void;
-  onImportSiswa: (siswas: Omit<Siswa, 'id'>[]) => void;
+  onImportSiswa: (siswas: Omit<Siswa, 'id'>[], mode?: 'merge' | 'replace' | 'append') => void;
+  onClearAllSiswa?: () => void;
+  onResetSiswaDefault?: () => void;
 }
 
 export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
@@ -56,6 +68,8 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
   onUpdateSiswa,
   onDeleteSiswa,
   onImportSiswa,
+  onClearAllSiswa,
+  onResetSiswaDefault,
 }) => {
   const [activeTab, setActiveTab] = useState<'guru' | 'siswa'>('guru');
   const [searchTerm, setSearchTerm] = useState('');
@@ -249,6 +263,18 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
     nama: string;
   } | null>(null);
 
+  // Import Siswa Preview State & Options
+  const [importSiswaPreview, setImportSiswaPreview] = useState<{
+    filename: string;
+    data: Omit<Siswa, 'id'>[];
+    total: number;
+    detectedHeaders: string[];
+  } | null>(null);
+  const [importMode, setImportMode] = useState<'merge' | 'replace' | 'append'>('merge');
+  const [showDataOptionsDropdown, setShowDataOptionsDropdown] = useState(false);
+  const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
+  const [showClearConfirmModal, setShowClearConfirmModal] = useState(false);
+
   const fileInputGuruRef = useRef<HTMLInputElement>(null);
   const fileInputSiswaRef = useRef<HTMLInputElement>(null);
 
@@ -291,7 +317,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
     exportToCsv('Data_Siswa_SDN_1_Pekutatan', data);
   };
 
-  // Import PTK via CSV
+  // Import PTK via CSV (Header-aware & robust parser)
   const handleUploadGuruCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -299,49 +325,20 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
     const reader = new FileReader();
     reader.onload = (evt) => {
       const text = evt.target?.result as string;
-      const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-      if (lines.length <= 1) {
-        alert('File CSV kosong atau tidak memiliki data.');
+      const res = parseGuruCsv(text);
+      if (!res.success || res.data.length === 0) {
+        alert(res.errors.join('\n') || 'File CSV kosong atau format data PTK tidak sesuai.');
         return;
       }
 
-      // Skip header, parse comma or semicolon separated lines
-      const imported: Omit<Guru, 'id'>[] = [];
-      for (let i = 1; i < lines.length; i++) {
-        const row = lines[i].split(/[,;\t]/).map((c) => c.replace(/^"|"$/g, '').trim());
-        if (row.length >= 2) {
-          // Assume columns: NIP, Nama, JenisPTK/Status, Pangkat, Jabatan, Email, NoHp
-          const rawJenis = (row[2] || '').toLowerCase();
-          let jenisPtk: KategoriPTK = 'guru';
-          if (rawJenis.includes('kepala') || (row[4] && row[4].toLowerCase().includes('kepala sekolah'))) {
-            jenisPtk = 'kepala_sekolah';
-          } else if (rawJenis.includes('tu') || rawJenis.includes('tata usaha') || (row[4] && (row[4].toLowerCase().includes('tu') || row[4].toLowerCase().includes('administrasi')))) {
-            jenisPtk = 'tu';
-          }
-
-          imported.push({
-            nip: row[0] || '-',
-            nama: row[1] || 'Nama PTK',
-            jenisPtk,
-            status: 'PNS',
-            pangkatGol: row[3] || 'Penata Muda / III-a',
-            jabatan: row[4] || (jenisPtk === 'tu' ? 'Staf Tata Usaha' : 'Guru Kelas'),
-            email: row[5] || '',
-            noHp: row[6] || '',
-          });
-        }
-      }
-
-      if (imported.length > 0) {
-        onImportGuru(imported);
-        alert(`Berhasil mengimpor ${imported.length} data PTK!`);
-      }
+      onImportGuru(res.data);
+      alert(`Berhasil mengimpor ${res.data.length} data PTK!`);
     };
     reader.readAsText(file);
     if (fileInputGuruRef.current) fileInputGuruRef.current.value = '';
   };
 
-  // Import Siswa via CSV
+  // Import Siswa via CSV (Header-aware, respects export structure, opens interactive preview)
   const handleUploadSiswaCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -349,35 +346,20 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
     const reader = new FileReader();
     reader.onload = (evt) => {
       const text = evt.target?.result as string;
-      const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-      if (lines.length <= 1) {
-        alert('File CSV kosong atau tidak memiliki data.');
+      const res = parseSiswaCsv(text);
+      if (!res.success || res.data.length === 0) {
+        alert(res.errors.join('\n') || 'File CSV tidak memiliki baris data siswa yang valid.');
         return;
       }
 
-      const imported: Omit<Siswa, 'id'>[] = [];
-      for (let i = 1; i < lines.length; i++) {
-        const row = lines[i].split(/[,;\t]/).map((c) => c.replace(/^"|"$/g, '').trim());
-        if (row.length >= 3) {
-          // Columns: NIS, NISN, Nama, Kelas, JK, TempatLahir, TglLahir, NamaOrtu, Alamat
-          imported.push({
-            nis: row[0] || '1000',
-            nisn: row[1] || '0012345678',
-            nama: row[2] || 'Nama Siswa',
-            kelas: row[3] || '6A',
-            jenisKelamin: (row[4]?.toUpperCase() === 'P' ? 'P' : 'L') as 'L' | 'P',
-            tempatLahir: row[5] || 'Jembrana',
-            tglLahir: row[6] || '2014-01-01',
-            namaOrtu: row[7] || 'Orang Tua',
-            alamat: row[8] || 'Pekutatan',
-          });
-        }
-      }
-
-      if (imported.length > 0) {
-        onImportSiswa(imported);
-        alert(`Berhasil mengimpor ${imported.length} data siswa!`);
-      }
+      // Open preview modal with detected columns and data
+      setImportSiswaPreview({
+        filename: file.name,
+        data: res.data,
+        total: res.totalRows,
+        detectedHeaders: res.detectedHeaders,
+      });
+      setImportMode('merge');
     };
     reader.readAsText(file);
     if (fileInputSiswaRef.current) fileInputSiswaRef.current.value = '';
@@ -681,17 +663,27 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
               {/* Tombol Upload Data PTK */}
               <button
                 onClick={() => fileInputGuruRef.current?.click()}
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs sm:text-sm rounded-xl border border-slate-200 flex items-center gap-1.5 transition-colors"
-                title="Unggah CSV (Format: NIP, Nama, Jenis PTK, Pangkat, Jabatan, Email, NoHp)"
+                className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 font-semibold text-xs sm:text-sm rounded-xl border border-indigo-200 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                title="Unggah CSV (Otomatis membaca format ekspor & header)"
               >
-                <Upload className="w-4 h-4 text-slate-600" />
+                <Upload className="w-4 h-4 text-indigo-700" />
                 <span>Upload Data PTK</span>
+              </button>
+
+              {/* Tombol Unduh Format Template CSV PTK */}
+              <button
+                onClick={downloadGuruTemplateCsv}
+                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs sm:text-sm rounded-xl border border-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Unduh contoh format CSV PTK siap isi"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-slate-600" />
+                <span>Unduh Format PTK</span>
               </button>
 
               {/* Tombol Ekspor Data PTK */}
               <button
                 onClick={handleExportGuru}
-                className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-xs sm:text-sm rounded-xl border border-emerald-200 flex items-center gap-1.5 transition-colors"
+                className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-xs sm:text-sm rounded-xl border border-emerald-200 flex items-center gap-1.5 transition-colors cursor-pointer"
                 title="Ekspor CSV / Excel"
               >
                 <Download className="w-4 h-4 text-emerald-700" />
@@ -701,7 +693,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
               {/* Tombol Cetak & Unduh Presensi PTK (Landscape F4) */}
               <button
                 onClick={handlePrintAbsenGuru}
-                className="px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors"
+                className="px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
                 title="Cetak Format Lembar Presensi PTK Landscape F4 / Unduh Ms. Word"
               >
                 <Printer className="w-4 h-4" />
@@ -711,7 +703,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
               {/* Tambah Manual PTK */}
               <button
                 onClick={() => openGuruModal()}
-                className="px-3.5 py-2 bg-indigo-700 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors"
+                className="px-3.5 py-2 bg-indigo-700 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>+ Tambah PTK</span>
@@ -848,17 +840,27 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
               {/* Tombol Upload Data Siswa */}
               <button
                 onClick={() => fileInputSiswaRef.current?.click()}
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs sm:text-sm rounded-xl border border-slate-200 flex items-center gap-1.5 transition-colors"
-                title="Unggah CSV (Format: NIS, NISN, Nama, Kelas, JK, TempatLahir, TglLahir, NamaOrtu, Alamat)"
+                className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 font-semibold text-xs sm:text-sm rounded-xl border border-indigo-200 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                title="Unggah CSV (Otomatis membaca format ekspor & mencegah data berantakan)"
               >
-                <Upload className="w-4 h-4 text-slate-600" />
+                <Upload className="w-4 h-4 text-indigo-700" />
                 <span>Upload Data Siswa</span>
+              </button>
+
+              {/* Tombol Unduh Format Template CSV Siswa */}
+              <button
+                onClick={downloadSiswaTemplateCsv}
+                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs sm:text-sm rounded-xl border border-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Unduh contoh format CSV siap isi sesuai standar ekspor"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-slate-600" />
+                <span>Unduh Format CSV</span>
               </button>
 
               {/* Tombol Ekspor Data Siswa */}
               <button
                 onClick={handleExportSiswa}
-                className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-xs sm:text-sm rounded-xl border border-emerald-200 flex items-center gap-1.5 transition-colors"
+                className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-xs sm:text-sm rounded-xl border border-emerald-200 flex items-center gap-1.5 transition-colors cursor-pointer"
                 title="Ekspor CSV / Excel"
               >
                 <Download className="w-4 h-4 text-emerald-700" />
@@ -872,17 +874,59 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                     filterKelasSiswa !== 'Semua' ? filterKelasSiswa : (availableKelas[0] || '6A')
                   )
                 }
-                className="px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors"
+                className="px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
                 title="Cetak Presensi Siswa Bulanan (Format Landscape & Kostum Libur)"
               >
                 <Printer className="w-4 h-4" />
                 <span>Cetak Absen Siswa</span>
               </button>
 
+              {/* Tombol Opsi Data (Reset / Bersihkan) */}
+              {(onResetSiswaDefault || onClearAllSiswa) && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowDataOptionsDropdown(!showDataOptionsDropdown)}
+                    className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-200 flex items-center gap-1 transition-colors cursor-pointer"
+                    title="Opsi Pemulihan / Pembersihan Data Siswa"
+                  >
+                    <Settings2 className="w-4 h-4 text-slate-600" />
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                  </button>
+                  {showDataOptionsDropdown && (
+                    <div className="absolute right-0 mt-1.5 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-30">
+                      {onResetSiswaDefault && (
+                        <button
+                          onClick={() => {
+                            setShowDataOptionsDropdown(false);
+                            setShowResetConfirmModal(true);
+                          }}
+                          className="w-full text-left px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                        >
+                          <RotateCcw className="w-4 h-4 text-amber-600" />
+                          <span>Kembalikan Data Awal SDN 1</span>
+                        </button>
+                      )}
+                      {onClearAllSiswa && (
+                        <button
+                          onClick={() => {
+                            setShowDataOptionsDropdown(false);
+                            setShowClearConfirmModal(true);
+                          }}
+                          className="w-full text-left px-3.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer border-t border-slate-100"
+                        >
+                          <Trash2 className="w-4 h-4 text-rose-500" />
+                          <span>Kosongkan Seluruh Siswa</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Tambah Manual */}
               <button
                 onClick={() => openSiswaModal()}
-                className="px-3.5 py-2 bg-indigo-700 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors"
+                className="px-3.5 py-2 bg-indigo-700 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>Tambah Siswa</span>
@@ -2026,6 +2070,275 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
               >
                 <Printer className="w-4 h-4" />
                 <span>Cetak Presensi Siswa (Landscape)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Pratinjau & Konfirmasi Impor Data Siswa */}
+      {importSiswaPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl overflow-hidden flex flex-col my-auto max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="bg-indigo-950 px-6 py-4 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-800/80 border border-indigo-700 flex items-center justify-center text-indigo-200 shrink-0">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold">Pratinjau Impor Data Siswa</h2>
+                  <p className="text-xs text-indigo-200 mt-0.5">
+                    File: <span className="font-mono font-semibold text-white">{importSiswaPreview.filename}</span> • <span className="text-emerald-300 font-bold">{importSiswaPreview.total} siswa terdeteksi</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setImportSiswaPreview(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                title="Batalkan"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
+              {/* Status Verification Notice */}
+              <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                <div className="text-xs text-emerald-950 space-y-1">
+                  <p className="font-bold text-emerald-900">
+                    Format Kolom Berhasil Dipetakan Sesuai Standar Ekspor!
+                  </p>
+                  <p className="text-emerald-800 leading-relaxed">
+                    Sistem secara cerdas mendeteksi kolom NIS, NISN, Nama, Kelas, JK, Tempat/Tgl Lahir, Nama Ortu, dan Alamat. Posisi data tidak akan tertukar atau berantakan.
+                  </p>
+                </div>
+              </div>
+
+              {/* Import Mode Selection */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5">
+                <label className="text-xs font-bold text-slate-800 block">
+                  Pilih Cara Penyimpanan ke Sistem:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <label
+                    className={`p-3 rounded-xl border text-xs cursor-pointer transition-all flex flex-col justify-between ${
+                      importMode === 'merge'
+                        ? 'bg-indigo-50 border-indigo-400 ring-2 ring-indigo-300 text-indigo-950'
+                        : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-bold">1. Gabung / Perbarui</span>
+                      <input
+                        type="radio"
+                        name="siswaImportMode"
+                        checked={importMode === 'merge'}
+                        onChange={() => setImportMode('merge')}
+                        className="text-indigo-600 cursor-pointer"
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      Siswa dengan NIS sama diperbarui datanya, siswa baru langsung ditambahkan.
+                    </p>
+                  </label>
+
+                  <label
+                    className={`p-3 rounded-xl border text-xs cursor-pointer transition-all flex flex-col justify-between ${
+                      importMode === 'replace'
+                        ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-300 text-amber-950'
+                        : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-bold">2. Timpa Seluruh Data</span>
+                      <input
+                        type="radio"
+                        name="siswaImportMode"
+                        checked={importMode === 'replace'}
+                        onChange={() => setImportMode('replace')}
+                        className="text-amber-600 cursor-pointer"
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      Hapus data lama & ganti dengan file ini. Sangat tepat bila data siswa sebelumnya berantakan.
+                    </p>
+                  </label>
+
+                  <label
+                    className={`p-3 rounded-xl border text-xs cursor-pointer transition-all flex flex-col justify-between ${
+                      importMode === 'append'
+                        ? 'bg-indigo-50 border-indigo-400 ring-2 ring-indigo-300 text-indigo-950'
+                        : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-bold">3. Tambahkan Baru Saja</span>
+                      <input
+                        type="radio"
+                        name="siswaImportMode"
+                        checked={importMode === 'append'}
+                        onChange={() => setImportMode('append')}
+                        className="text-indigo-600 cursor-pointer"
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      Masukkan semua baris sebagai siswa baru tanpa memeriksa NIS yang sama.
+                    </p>
+                  </label>
+                </div>
+              </div>
+
+              {/* Table Preview */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-bold text-slate-700">
+                    Pratinjau {Math.min(10, importSiswaPreview.data.length)} dari {importSiswaPreview.total} Siswa Terbaca:
+                  </h4>
+                  <span className="text-[11px] text-slate-500">
+                    Pastikan kolom telah sesuai urutan
+                  </span>
+                </div>
+
+                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                  <div className="overflow-x-auto max-h-56">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold sticky top-0">
+                          <th className="py-2.5 px-3 text-center w-10">No</th>
+                          <th className="py-2.5 px-3">NIS</th>
+                          <th className="py-2.5 px-3">NISN</th>
+                          <th className="py-2.5 px-3">Nama Siswa</th>
+                          <th className="py-2.5 px-3 text-center">Kelas</th>
+                          <th className="py-2.5 px-3 text-center">L/P</th>
+                          <th className="py-2.5 px-3">Tempat Lahir</th>
+                          <th className="py-2.5 px-3">Tgl Lahir</th>
+                          <th className="py-2.5 px-3">Nama Ortu / Wali</th>
+                          <th className="py-2.5 px-3">Alamat</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {importSiswaPreview.data.slice(0, 10).map((row, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50">
+                            <td className="py-2 px-3 text-center text-slate-400">{idx + 1}</td>
+                            <td className="py-2 px-3 font-mono font-bold text-slate-800">{row.nis}</td>
+                            <td className="py-2 px-3 font-mono text-indigo-900">{row.nisn}</td>
+                            <td className="py-2 px-3 font-semibold text-slate-900">{row.nama}</td>
+                            <td className="py-2 px-3 text-center">
+                              <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold text-[11px]">
+                                {row.kelas}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 text-center font-bold">
+                              {row.jenisKelamin === 'L' ? (
+                                <span className="text-blue-700">L</span>
+                              ) : (
+                                <span className="text-rose-700">P</span>
+                              )}
+                            </td>
+                            <td className="py-2 px-3 text-slate-700">{row.tempatLahir}</td>
+                            <td className="py-2 px-3 text-slate-600 font-mono text-[11px]">{row.tglLahir}</td>
+                            <td className="py-2 px-3 text-slate-800">{row.namaOrtu}</td>
+                            <td className="py-2 px-3 text-slate-600 max-w-[180px] truncate" title={row.alamat}>
+                              {row.alamat}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
+              <button
+                type="button"
+                onClick={() => setImportSiswaPreview(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+              >
+                Batalkan
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onImportSiswa(importSiswaPreview.data, importMode);
+                  setImportSiswaPreview(null);
+                }}
+                className="px-5 py-2.5 text-xs font-bold bg-indigo-700 hover:bg-indigo-600 text-white rounded-xl shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
+              >
+                <Check className="w-4 h-4" />
+                <span>Simpan {importSiswaPreview.total} Data Siswa</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Kembalikan Data Awal Siswa */}
+      {showResetConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center gap-3 text-amber-600">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                <RotateCcw className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900">Kembalikan Data Siswa Awal?</h3>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Tindakan ini akan mengatur ulang data siswa ke data bawaan resmi SDN 1 Pekutatan (10 siswa sampel teruji) dan menghapus data siswa yang saat ini berantakan.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setShowResetConfirmModal(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => {
+                  setShowResetConfirmModal(false);
+                  if (onResetSiswaDefault) onResetSiswaDefault();
+                }}
+                className="px-4 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl transition-colors cursor-pointer shadow-xs"
+              >
+                Ya, Kembalikan Data Awal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Kosongkan Seluruh Data Siswa */}
+      {showClearConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900">Kosongkan Seluruh Data Siswa?</h3>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Semua data siswa di sistem akan dihapus. Anda dapat mengunggah file CSV baru yang bersih setelahnya.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setShowClearConfirmModal(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => {
+                  setShowClearConfirmModal(false);
+                  if (onClearAllSiswa) onClearAllSiswa();
+                }}
+                className="px-4 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition-colors cursor-pointer shadow-xs"
+              >
+                Ya, Kosongkan Data
               </button>
             </div>
           </div>

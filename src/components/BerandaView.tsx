@@ -63,17 +63,54 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
     .slice(0, 5);
 
   // d. Data untuk Diagram Batang Surat Masuk vs Surat Keluar
-  // Monthly distribution for last 6 months
-  const monthsData = [
-    { label: 'Apr', masuk: 14, keluar: 11 },
-    { label: 'Mei', masuk: 19, keluar: 15 },
-    { label: 'Jun', masuk: 22, keluar: 26 },
-    { label: 'Jul', masuk: 31, keluar: 28 },
-    { label: 'Agu', masuk: 18, keluar: 14 },
-    { label: 'Sep', masuk: suratMasukList.length, keluar: suratKeluarList.length },
-  ];
+  // Dihitung dinamis dari data log riil suratMasukList dan suratKeluarList selama 6 bulan terakhir
+  const namaBulanPendek = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
-  const maxVal = Math.max(...monthsData.flatMap((d) => [d.masuk, d.keluar]), 35);
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+
+  const last6Months = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(currentYear, currentMonth - (5 - i), 1);
+    return {
+      year: d.getFullYear(),
+      month: d.getMonth(),
+      label: namaBulanPendek[d.getMonth()],
+    };
+  });
+
+  const parseYearMonth = (dateStr?: string) => {
+    if (!dateStr) return null;
+    const match = String(dateStr).match(/^(\d{4})-(\d{1,2})/);
+    if (match) {
+      return { year: parseInt(match[1], 10), month: parseInt(match[2], 10) - 1 };
+    }
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      return { year: d.getFullYear(), month: d.getMonth() };
+    }
+    return null;
+  };
+
+  const monthsData = last6Months.map(({ year, month, label }) => {
+    const masukCount = suratMasukList.filter((s) => {
+      const ym = parseYearMonth(s.tglSurat || s.tglTerima || s.createdAt);
+      return ym && ym.year === year && ym.month === month;
+    }).length;
+
+    const keluarCount = suratKeluarList.filter((s) => {
+      const ym = parseYearMonth(s.tglSurat || s.createdAt);
+      return ym && ym.year === year && ym.month === month;
+    }).length;
+
+    return {
+      label,
+      masuk: masukCount,
+      keluar: keluarCount,
+    };
+  });
+
+  const maxVal = Math.max(...monthsData.flatMap((d) => [d.masuk, d.keluar]), 5);
 
   return (
     <div className="space-y-6">
@@ -223,22 +260,24 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
         <div className="pt-4 pb-2">
           <div className="grid grid-cols-6 gap-2 sm:gap-6 items-end h-52 sm:h-56 px-2">
             {monthsData.map((m, idx) => {
-              const hMasuk = Math.round((m.masuk / maxVal) * 100);
-              const hKeluar = Math.round((m.keluar / maxVal) * 100);
+              const hMasuk = m.masuk > 0 ? Math.max(Math.round((m.masuk / maxVal) * 100), 8) : 0;
+              const hKeluar = m.keluar > 0 ? Math.max(Math.round((m.keluar / maxVal) * 100), 8) : 0;
               const isCurrentMonth = idx === monthsData.length - 1;
 
               return (
-                <div key={m.label} className="flex flex-col items-center h-full justify-end group">
+                <div key={`${m.label}-${idx}`} className="flex flex-col items-center h-full justify-end group">
                   <div className="w-full flex justify-center items-end gap-1 sm:gap-2 h-44">
                     {/* Bar Masuk */}
                     <div className="flex-1 max-w-[28px] flex flex-col items-center justify-end h-full">
-                      <span className="text-[10px] font-bold text-blue-800 opacity-0 group-hover:opacity-100 transition-opacity mb-1">
+                      <span className={`text-[10px] font-bold text-blue-800 transition-opacity mb-1 ${m.masuk > 0 ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                         {m.masuk}
                       </span>
                       <div
-                        style={{ height: `${Math.max(hMasuk, 6)}%` }}
+                        style={{ height: m.masuk > 0 ? `${hMasuk}%` : '2px' }}
                         className={`w-full rounded-t-md transition-all duration-500 shadow-xs ${
-                          isCurrentMonth
+                          m.masuk === 0
+                            ? 'bg-slate-200'
+                            : isCurrentMonth
                             ? 'bg-blue-700 hover:bg-blue-800 ring-2 ring-blue-300'
                             : 'bg-blue-600/85 hover:bg-blue-700'
                         }`}
@@ -248,13 +287,15 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
 
                     {/* Bar Keluar */}
                     <div className="flex-1 max-w-[28px] flex flex-col items-center justify-end h-full">
-                      <span className="text-[10px] font-bold text-emerald-800 opacity-0 group-hover:opacity-100 transition-opacity mb-1">
+                      <span className={`text-[10px] font-bold text-emerald-800 transition-opacity mb-1 ${m.keluar > 0 ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                         {m.keluar}
                       </span>
                       <div
-                        style={{ height: `${Math.max(hKeluar, 6)}%` }}
+                        style={{ height: m.keluar > 0 ? `${hKeluar}%` : '2px' }}
                         className={`w-full rounded-t-md transition-all duration-500 shadow-xs ${
-                          isCurrentMonth
+                          m.keluar === 0
+                            ? 'bg-slate-200'
+                            : isCurrentMonth
                             ? 'bg-emerald-600 hover:bg-emerald-700 ring-2 ring-emerald-300'
                             : 'bg-emerald-500/85 hover:bg-emerald-600'
                         }`}

@@ -1,4 +1,5 @@
 import { Guru, Siswa, PengaturanSekolah, SuratKeluar, SuratMasuk, PaperSize } from '../types';
+import { formatDiktumLabel } from './diktumUtils';
 
 export function getNamaHariIndonesia(dateString: string): string {
   if (!dateString) return '';
@@ -62,31 +63,41 @@ export function exportToWord(
   const isF4 = paperSize === 'F4';
   const isLandscape = orientation === 'landscape';
 
-  const paperWidth = isLandscape
+  const isPresensiLandscape =
+    isLandscape ||
+    /absen|presensi/i.test(filename) ||
+    /absen|presensi/i.test(htmlContent);
+
+  const effectiveOrientation = isPresensiLandscape ? 'landscape' : orientation;
+  const isEffectiveLandscape = effectiveOrientation === 'landscape';
+
+  const paperWidth = isEffectiveLandscape
     ? (isF4 ? '33.0cm' : '29.7cm')
     : (isF4 ? '21.5cm' : '21.0cm');
-  const paperHeight = isLandscape
+  const paperHeight = isEffectiveLandscape
     ? (isF4 ? '21.5cm' : '21.0cm')
     : (isF4 ? '33.0cm' : '29.7cm');
 
-  const widthDxa = isLandscape ? (isF4 ? '18709' : '16838') : (isF4 ? '12189' : '11906');
-  const heightDxa = isLandscape ? (isF4 ? '12189' : '11906') : (isF4 ? '18709' : '16838');
-  const topDxa = isLandscape ? '227' : '850';
-  const rightDxa = isLandscape ? '397' : '850';
-  const bottomDxa = isLandscape ? '198' : '850';
-  const leftDxa = isLandscape ? '397' : '850';
+  const widthDxa = isEffectiveLandscape ? (isF4 ? '18709' : '16838') : (isF4 ? '12189' : '11906');
+  const heightDxa = isEffectiveLandscape ? (isF4 ? '12189' : '11906') : (isF4 ? '18709' : '16838');
+  const topDxa = isEffectiveLandscape ? '227' : '850';
+  const rightDxa = isEffectiveLandscape ? '397' : '850';
+  const bottomDxa = isEffectiveLandscape ? '198' : '850';
+  const leftDxa = isEffectiveLandscape ? '397' : '850';
 
-  const pageMarginCss = isLandscape
+  const pageMarginCss = isEffectiveLandscape
     ? '0.4cm 0.7cm 0.35cm 0.7cm'
     : '1.5cm 1.5cm 1.5cm 1.5cm';
 
   const sectPrXml = `<!--[if gte mso 9]>
-    <div style="mso-element:section-pr">
-      <w:SectPr>
-        <w:pgSz w:w="${widthDxa}" w:h="${heightDxa}" w:orient="${orientation}" />
-        <w:pgMar w:top="${topDxa}" w:right="${rightDxa}" w:bottom="${bottomDxa}" w:left="${leftDxa}" w:header="120" w:footer="120" w:gutter="0" />
-      </w:SectPr>
-    </div>
+    <p class="MsoNormal" style="margin: 0; line-height: 0; font-size: 1pt; mso-line-height-rule: exactly;">
+      <span style="mso-element:section-pr">
+        <w:SectPr>
+          <w:pgSz w:w="${widthDxa}" w:h="${heightDxa}" w:orient="${effectiveOrientation}" />
+          <w:pgMar w:top="${topDxa}" w:right="${rightDxa}" w:bottom="${bottomDxa}" w:left="${leftDxa}" w:header="120" w:footer="120" w:gutter="0" />
+        </w:SectPr>
+      </span>
+    </p>
     <![endif]-->`;
 
   // Pattern to detect multi-page attendance or document breaks
@@ -97,25 +108,28 @@ export function exportToWord(
     // If sections are already defined in HTML
     bodyContent = htmlContent;
   } else if (pageBreakPattern.test(htmlContent)) {
-    // Split into individual pages and wrap each with its own Section class and XML SectPr
+    // Split into individual pages and wrap all inside Section1 with Word page breaks so orientation is preserved across all pages
     const rawPages = htmlContent
       .split(pageBreakPattern)
       .map((p) => p.trim())
       .filter((p) => p.length > 0);
 
-    bodyContent = rawPages
-      .map((pageHtml, idx) => {
-        const secIndex = idx + 1;
-        const isLastPage = idx === rawPages.length - 1;
-        return `
-    <div class="Section${secIndex}">
-      ${pageHtml}
+    bodyContent = `
+    <div class="Section1">
+      ${rawPages
+        .map((pageHtml, idx) => {
+          const isFirst = idx === 0;
+          return `
+      ${!isFirst ? `<br clear="all" style="page-break-before: always; mso-special-character: line-break; clear: both;" />` : ''}
+      <div class="page-container" style="width: 100%; page-break-inside: avoid;">
+        ${pageHtml}
+      </div>
+          `;
+        })
+        .join('\n')}
       ${sectPrXml}
     </div>
-    ${!isLastPage ? `<br clear="all" style="page-break-before: always; mso-break-type: section-break;" />` : ''}
-        `;
-      })
-      .join('\n');
+    `;
   } else {
     // Single page document
     bodyContent = `
@@ -125,6 +139,18 @@ export function exportToWord(
     </div>
     `;
   }
+
+  const isSuratKeputusanDoc =
+    htmlContent.includes('is-surat-keputusan') ||
+    htmlContent.includes('Bookman') ||
+    filename.toLowerCase().includes('surat_keputusan');
+
+  const defaultWordFont = isSuratKeputusanDoc
+    ? "'Bookman Old Style', 'Bookman', 'URW Bookman L', serif"
+    : "'Times New Roman', Times, serif";
+  const defaultWordFontSize = isSuratKeputusanDoc
+    ? '12.0pt'
+    : (isPresensiLandscape ? '7.0pt' : '10.0pt');
 
   const wordDocHtml = `<!DOCTYPE html>
 <html xmlns:v="urn:schemas-microsoft-com:vml"
@@ -166,7 +192,7 @@ export function exportToWord(
     @page {
       size: ${paperWidth} ${paperHeight};
       margin: ${pageMarginCss};
-      mso-page-orientation: ${orientation};
+      mso-page-orientation: ${effectiveOrientation};
       mso-header-margin: 10pt;
       mso-footer-margin: 10pt;
       mso-paper-source: 0;
@@ -177,7 +203,7 @@ export function exportToWord(
     @page Section${s} {
       size: ${paperWidth} ${paperHeight};
       margin: ${pageMarginCss};
-      mso-page-orientation: ${orientation};
+      mso-page-orientation: ${effectiveOrientation};
       mso-header-margin: 10pt;
       mso-footer-margin: 10pt;
       mso-paper-source: 0;
@@ -189,7 +215,7 @@ export function exportToWord(
     @page WordSection${s} {
       size: ${paperWidth} ${paperHeight};
       margin: ${pageMarginCss};
-      mso-page-orientation: ${orientation};
+      mso-page-orientation: ${effectiveOrientation};
       mso-header-margin: 10pt;
       mso-footer-margin: 10pt;
       mso-paper-source: 0;
@@ -200,8 +226,8 @@ export function exportToWord(
     }`;
     }).join('\n')}
     body {
-      font-family: 'Times New Roman', Times, serif;
-      font-size: 10.0pt;
+      font-family: ${defaultWordFont};
+      font-size: ${defaultWordFontSize};
       line-height: 1.15;
       color: #000000;
       background-color: #ffffff;
@@ -211,14 +237,17 @@ export function exportToWord(
     p, p.MsoNormal, li.MsoNormal, div.MsoNormal {
       margin-top: 0pt;
       margin-bottom: 1pt;
-      font-family: 'Times New Roman', Times, serif;
-      font-size: 10.0pt;
+      font-family: ${defaultWordFont};
+      font-size: ${defaultWordFontSize};
       line-height: 1.15;
       color: #000000;
       mso-pagination: widow-orphan;
     }
+    .nomor-sk {
+      font-size: 10.0pt !important;
+    }
     h1, h2, h3, h4, h5, h6 {
-      font-family: 'Times New Roman', Times, serif;
+      font-family: ${defaultWordFont};
       color: #000000;
       margin-top: 0pt;
       margin-bottom: 1pt;
@@ -229,11 +258,11 @@ export function exportToWord(
       mso-table-rspace: 0pt;
       mso-table-bspace: 0pt;
       mso-table-tspace: 0pt;
-      font-family: 'Times New Roman', Times, serif;
+      font-family: ${defaultWordFont};
       mso-padding-alt: 0pt 1pt 0pt 1pt;
     }
     td, th {
-      font-family: 'Times New Roman', Times, serif;
+      font-family: ${defaultWordFont};
       vertical-align: middle;
       word-wrap: break-word;
     }
@@ -401,6 +430,15 @@ export function printHtmlElement(
     .text-justify { text-align: justify; }
     .font-bold { font-weight: bold; }
     .underline { text-decoration: underline; }
+    .is-surat-keputusan, .is-surat-keputusan * {
+      font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif !important;
+    }
+    .is-surat-keputusan {
+      font-size: 12pt !important;
+    }
+    .is-surat-keputusan .nomor-sk {
+      font-size: 10pt !important;
+    }
   </style>
 </head>
 <body>
@@ -416,6 +454,74 @@ export function printHtmlElement(
 </body>
 </html>`);
   printWindow.document.close();
+}
+
+/**
+ * Helper to render Menimbang, Mengingat, Memperhatikan in Surat Keputusan
+ * Supports array of items ({ id, poin, isi }) or multi-line string with hanging indent table
+ */
+function formatSkKonsideranHtml(
+  list?: Array<{ id?: string; poin?: string; isi?: string }>,
+  fallbackText?: string,
+  defaultPrefixType: 'alphabet' | 'number' = 'number'
+): string {
+  if (Array.isArray(list) && list.length > 0) {
+    const validItems = list.filter((item) => item && (item.isi?.trim() || item.poin?.trim()));
+    if (validItems.length > 0) {
+      return `
+        <table style="width: 100%; border: none; border-collapse: collapse; margin: 0; padding: 0; line-height: 1.45;" border="0" cellpadding="0" cellspacing="0">
+          ${validItems
+            .map((item, idx) => {
+              const defaultPoin =
+                defaultPrefixType === 'alphabet'
+                  ? `${String.fromCharCode(97 + idx)}.`
+                  : `${idx + 1}.`;
+              const poinStr = item.poin?.trim() ? item.poin : defaultPoin;
+              return `
+              <tr>
+                <td style="width: 22pt; vertical-align: top; border: none; padding: 1.5pt 0; font-family: inherit; font-size: 12pt;">${poinStr}</td>
+                <td style="text-align: justify; vertical-align: top; border: none; padding: 1.5pt 0; white-space: pre-line; font-family: inherit; font-size: 12pt;">${item.isi || ''}</td>
+              </tr>
+            `;
+            })
+            .join('')}
+        </table>
+      `;
+    }
+  }
+
+  if (fallbackText && fallbackText.trim()) {
+    const lines = fallbackText
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (lines.length > 1) {
+      return `
+        <table style="width: 100%; border: none; border-collapse: collapse; margin: 0; padding: 0; line-height: 1.45;" border="0" cellpadding="0" cellspacing="0">
+          ${lines
+            .map((line, idx) => {
+              const match = line.match(/^([a-z0-9]+[\.\)])\s*(.*)$/i);
+              const defaultPoin =
+                defaultPrefixType === 'alphabet'
+                  ? `${String.fromCharCode(97 + idx)}.`
+                  : `${idx + 1}.`;
+              const poinStr = match ? match[1] : defaultPoin;
+              const isiStr = match ? match[2] : line;
+              return `
+              <tr>
+                <td style="width: 22pt; vertical-align: top; border: none; padding: 1.5pt 0; font-family: inherit; font-size: 12pt;">${poinStr}</td>
+                <td style="text-align: justify; vertical-align: top; border: none; padding: 1.5pt 0; white-space: pre-line; font-family: inherit; font-size: 12pt;">${isiStr}</td>
+              </tr>
+            `;
+            })
+            .join('')}
+        </table>
+      `;
+    }
+    return `<div style="text-align: justify; white-space: pre-line; font-family: inherit; font-size: 12pt;">${fallbackText}</div>`;
+  }
+
+  return '';
 }
 
 /**
@@ -815,80 +921,98 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah): 
       const diktumItems: Array<{ label: string; isi: string }> = Array.isArray(data.diktumList) && data.diktumList.length > 0
         ? data.diktumList
         : [
-            { label: 'KESATU', isi: data.memutuskan || 'Menugaskan dan memberlakukan keputusan ini sebagaimana terlampir.' },
-            { label: 'KEDUA', isi: 'Segala biaya yang timbul akibat pelaksanaan keputusan ini dibebankan pada anggaran yang sesuai.' },
-            { label: 'KETIGA', isi: 'Keputusan ini berlaku sejak tanggal ditetapkan, dengan ketentuan apabila terdapat kekeliruan di kemudian hari akan diadakan perbaikan sebagaimana mestinya.' },
+            { label: 'Kesatu', isi: data.memutuskan || 'Menugaskan dan memberlakukan keputusan ini sebagaimana terlampir.' },
+            { label: 'Kedua', isi: 'Segala biaya yang timbul akibat pelaksanaan keputusan ini dibebankan pada anggaran yang sesuai.' },
+            { label: 'Ketiga', isi: 'Keputusan ini berlaku sejak tanggal ditetapkan, dengan ketentuan apabila terdapat kekeliruan di kemudian hari akan diadakan perbaikan sebagaimana mestinya.' },
           ];
 
+      const menimbangHtml = formatSkKonsideranHtml(
+        data.menimbangList,
+        data.menimbang || 'Bahwa demi kelancaran dan ketertiban administrasi serta mutu pendidikan di SDN 1 Pekutatan, dipandang perlu menetapkan keputusan ini.',
+        'alphabet'
+      );
+
+      const mengingatHtml = formatSkKonsideranHtml(
+        data.mengingatList,
+        data.mengingat || '1. Undang-Undang Nomor 20 Tahun 2003 tentang Sistem Pendidikan Nasional;\n2. Permendagri Nomor 83 Tahun 2022 tentang Kode Klasifikasi Arsip;\n3. Program Kerja SD Negeri 1 Pekutatan Tahun Ajaran 2026/2027.',
+        'number'
+      );
+
+      const memperhatikanHtml = formatSkKonsideranHtml(
+        data.memperhatikanList,
+        data.memperhatikan,
+        'number'
+      );
+
       badanSurat = `
-        <div style="text-align: center; margin: 12pt 0 16pt 0;">
-          <p style="margin: 0; text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px;">KEPUTUSAN KEPALA SEKOLAH DASAR NEGERI 1 PEKUTATAN</p>
-          <p style="margin: 2pt 0 0 0; text-align: center; font-size: 11pt;">Nomor: ${surat.noSurat}</p>
+        <div style="text-align: center; margin: 12pt 0 16pt 0; font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif;">
+          <p style="margin: 0; text-align: center; font-size: 12pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.3px;">KEPUTUSAN KEPALA SEKOLAH DASAR NEGERI 1 PEKUTATAN</p>
+          <p class="nomor-sk" style="margin: 2pt 0 0 0; text-align: center; font-size: 10pt; font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif; font-weight: normal;">Nomor: ${surat.noSurat}</p>
           <p style="margin: 8pt 0 0 0; text-align: center; font-size: 12pt; font-weight: bold; text-transform: uppercase;">
             TENTANG<br>${data.tentang || surat.perihal}
           </p>
         </div>
 
-        <p style="text-align: center; font-weight: bold; margin: 10pt 0;">
+        <p style="text-align: center; font-weight: bold; font-size: 12pt; margin: 10pt 0;">
           KEPALA SEKOLAH DASAR NEGERI 1 PEKUTATAN,
         </p>
 
-        <table style="width: 100%; margin-bottom: 10pt; border: none; border-collapse: collapse; line-height: 1.45;" border="0" cellpadding="0" cellspacing="0">
+        <table style="width: 100%; margin-bottom: 10pt; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
           <tr>
-            <td style="width: 110pt; font-weight: bold; vertical-align: top; padding: 2pt 0; border: none;">Menimbang</td>
-            <td style="width: 15pt; vertical-align: top; padding: 2pt 0; border: none;">:</td>
-            <td style="text-align: justify; vertical-align: top; padding: 2pt 0; border: none; white-space: pre-line;">${data.menimbang || 'Bahwa demi kelancaran dan ketertiban administrasi serta mutu pendidikan di SDN 1 Pekutatan, dipandang perlu menetapkan keputusan ini.'}</td>
+            <td style="width: 100pt; font-weight: bold; vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">Menimbang</td>
+            <td style="width: 14pt; vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">:</td>
+            <td style="vertical-align: top; padding: 2pt 0; border: none;">${menimbangHtml}</td>
           </tr>
           <tr>
-            <td style="font-weight: bold; vertical-align: top; padding: 2pt 0; border: none;">Mengingat</td>
-            <td style="vertical-align: top; padding: 2pt 0; border: none;">:</td>
-            <td style="text-align: justify; vertical-align: top; padding: 2pt 0; border: none; white-space: pre-line;">${data.mengingat || '1. Undang-Undang Nomor 20 Tahun 2003 tentang Sistem Pendidikan Nasional;\n2. Permendagri Nomor 83 Tahun 2022 tentang Kode Klasifikasi Arsip;\n3. Program Kerja SD Negeri 1 Pekutatan Tahun Ajaran 2026/2027.'}</td>
+            <td style="font-weight: bold; vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">Mengingat</td>
+            <td style="vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">:</td>
+            <td style="vertical-align: top; padding: 2pt 0; border: none;">${mengingatHtml}</td>
           </tr>
-          ${data.memperhatikan ? `
+          ${memperhatikanHtml ? `
           <tr>
-            <td style="font-weight: bold; vertical-align: top; padding: 2pt 0; border: none;">Memperhatikan</td>
-            <td style="vertical-align: top; padding: 2pt 0; border: none;">:</td>
-            <td style="text-align: justify; vertical-align: top; padding: 2pt 0; border: none; white-space: pre-line;">${data.memperhatikan}</td>
+            <td style="font-weight: bold; vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">Memperhatikan</td>
+            <td style="vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">:</td>
+            <td style="vertical-align: top; padding: 2pt 0; border: none;">${memperhatikanHtml}</td>
           </tr>
           ` : ''}
         </table>
 
-        <div style="text-align: center; font-weight: bold; margin: 12pt 0;">
+        <div style="text-align: center; font-weight: bold; font-size: 12pt; margin: 12pt 0;">
           MEMUTUSKAN:
         </div>
 
-        <table style="width: 100%; margin-bottom: 12pt; border: none; border-collapse: collapse; line-height: 1.45;" border="0" cellpadding="0" cellspacing="0">
+        <table style="width: 100%; margin-bottom: 12pt; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
           <tr>
-            <td style="width: 110pt; font-weight: bold; vertical-align: top; padding: 2pt 0; border: none;">Menetapkan</td>
-            <td style="width: 15pt; vertical-align: top; padding: 2pt 0; border: none;">:</td>
-            <td style="text-align: justify; font-weight: bold; vertical-align: top; padding: 2pt 0; border: none;">
+            <td style="width: 100pt; font-weight: bold; vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">Menetapkan</td>
+            <td style="width: 14pt; vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">:</td>
+            <td style="text-align: justify; font-weight: bold; vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">
               ${data.tentang || surat.perihal}
             </td>
           </tr>
-          ${diktumItems.map((d) => `
+          ${diktumItems.map((d, idx) => `
             <tr>
-              <td style="font-weight: bold; vertical-align: top; padding: 2pt 0; border: none;">${d.label}</td>
-              <td style="vertical-align: top; padding: 2pt 0; border: none;">:</td>
-              <td style="text-align: justify; vertical-align: top; padding: 2pt 0; border: none; white-space: pre-line;">${d.isi}</td>
+              <td style="font-weight: bold; vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">${formatDiktumLabel(d.label, idx)}</td>
+              <td style="vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">:</td>
+              <td style="text-align: justify; vertical-align: top; padding: 2pt 0; border: none; white-space: pre-line; font-size: 12pt;">${d.isi}</td>
             </tr>
           `).join('')}
         </table>
 
         <!-- Tempat dan Tanggal Penetapan SK (Sejajar di sisi kanan atas TTD) -->
-        <table style="width: 100%; margin-top: 14pt; border: none; border-collapse: collapse;" border="0" cellpadding="0" cellspacing="0">
+        <table style="width: 100%; margin-top: 14pt; border: none; border-collapse: collapse; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
           <tr>
             <td style="width: 52%; border: none;">&nbsp;</td>
             <td style="width: 48%; border: none; vertical-align: top;">
-              <table style="border: none; border-collapse: collapse; width: 100%;" border="0" cellpadding="0" cellspacing="0">
+              <table style="border: none; border-collapse: collapse; width: 100%; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="width: 85pt; padding: 1pt 0; border: none; font-size: 11pt;">Ditetapkan di</td>
-                  <td style="width: 12pt; padding: 1pt 0; border: none; font-size: 11pt;">:</td>
-                  <td style="padding: 1pt 0; border: none; font-size: 11pt; font-weight: 500;">${sekolah.desa || 'Pekutatan'}</td>
+                  <td style="width: 85pt; padding: 1pt 0; border: none; font-size: 12pt;">Ditetapkan di</td>
+                  <td style="width: 12pt; padding: 1pt 0; border: none; font-size: 12pt;">:</td>
+                  <td style="padding: 1pt 0; border: none; font-size: 12pt; font-weight: 500;">${sekolah.desa || 'Pekutatan'}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 1pt 0; border: none; font-size: 11pt;">Pada tanggal</td>
-                  <td style="padding: 1pt 0; border: none; font-size: 11pt;">:</td>
-                  <td style="padding: 1pt 0; border: none; font-size: 11pt; font-weight: 500;">${tglIndo}</td>
+                  <td style="padding: 1pt 0; border: none; font-size: 12pt;">Pada tanggal</td>
+                  <td style="padding: 1pt 0; border: none; font-size: 12pt;">:</td>
+                  <td style="padding: 1pt 0; border: none; font-size: 12pt; font-weight: 500;">${tglIndo}</td>
                 </tr>
               </table>
             </td>
@@ -1036,8 +1160,13 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah): 
     kopHtml = buildOfficialKopHtml(sekolah, false);
   }
 
+  const isSuratKeputusan = surat.jenisSurat === 'surat_keputusan';
+  const suratFontFamily = isSuratKeputusan
+    ? "'Bookman Old Style', 'Bookman', 'URW Bookman L', serif"
+    : "'Times New Roman', Times, serif";
+
   return `
-    <div class="surat-resmi" style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.35; color: #000000;">
+    <div class="surat-resmi ${isSuratKeputusan ? 'is-surat-keputusan' : ''}" style="font-family: ${suratFontFamily}; font-size: 12pt; line-height: 1.35; color: #000000;">
       ${kopHtml}
       <div class="surat-body">
         ${badanSurat}
@@ -1913,13 +2042,13 @@ export function buildAbsenSiswaHtml(
 }
 
 /**
- * Generic CSV exporter for tabular objects
+ * Generic CSV exporter for tabular objects with UTF-8 BOM and configurable delimiter
  */
-export function exportToCsv(filename: string, rows: Record<string, any>[]) {
+export function exportToCsv(filename: string, rows: Record<string, any>[], delimiter: string = ',') {
   if (rows.length === 0) return;
   const headers = Object.keys(rows[0]);
   const csvRows = [
-    headers.map((h) => `"${h}"`).join(','),
+    headers.map((h) => `"${h}"`).join(delimiter),
     ...rows.map((row) =>
       headers
         .map((header) => {
@@ -1927,10 +2056,10 @@ export function exportToCsv(filename: string, rows: Record<string, any>[]) {
           const escaped = String(val).replace(/"/g, '""');
           return `"${escaped}"`;
         })
-        .join(',')
+        .join(delimiter)
     ),
   ];
-  const csvContent = '\ufeff' + csvRows.join('\n');
+  const csvContent = '\ufeff' + csvRows.join('\r\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

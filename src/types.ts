@@ -27,6 +27,9 @@ export interface SuratMasuk {
   diteruskanKepada: string;
   catatan?: string;
   lampiranNama?: string;
+  lampiranUrl?: string;
+  lampiranUkuran?: string;
+  lampiranTipe?: string;
   createdAt: string;
 }
 
@@ -45,6 +48,10 @@ export interface SuratKeluar {
   penandatangan: string;
   nipPenandatangan: string;
   jabatanPenandatangan: string;
+  lampiranNama?: string;
+  lampiranUrl?: string;
+  lampiranUkuran?: string;
+  lampiranTipe?: string;
   createdAt: string;
 }
 
@@ -59,6 +66,10 @@ export interface ArsipSurat {
   lokasiFisik: string;
   kategori: string;
   keterangan: string;
+  lampiranNama?: string;
+  lampiranUrl?: string;
+  lampiranUkuran?: string;
+  lampiranTipe?: string;
 }
 
 export type KategoriPTK = 'kepala_sekolah' | 'guru' | 'tu';
@@ -135,6 +146,12 @@ export interface KlasifikasiMendagriItem {
 }
 
 export type PaperSize = 'A4' | 'F4';
+
+export interface SkPointItem {
+  id: string;
+  poin: string; // e.g. "a.", "b." atau "1.", "2."
+  isi: string;
+}
 
 export interface SubjekKeteranganItem {
   id: string;

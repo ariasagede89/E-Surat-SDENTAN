@@ -426,6 +426,14 @@ export default function App() {
     showToast('Dokumen arsip dihapus dari Cloud Firestore', 'info');
   };
 
+  const handleUpdateArsip = async (updated: ArsipSurat) => {
+    setArsipList((prev) => prev.map((a) => (a.id === updated.id ? updated : a)).sort(compareSuratKeluarDesc));
+    const ok = await syncDocToFirestore('arsipSurat', updated);
+    if (ok) {
+      showToast('Perubahan arsip disimpan ke Cloud Firestore', 'success');
+    }
+  };
+
   // Dedicated data cleaning and sync actions
   const handleClearSuratMasukFirestore = async () => {
     await clearFirestoreCollection('suratMasuk');
@@ -525,16 +533,89 @@ export default function App() {
     showToast('Data Siswa dihapus dari Cloud Firestore', 'info');
   };
 
-  const handleImportSiswa = async (imported: Omit<Siswa, 'id'>[]) => {
+  const handleImportSiswa = async (
+    imported: Omit<Siswa, 'id'>[],
+    mode: 'merge' | 'replace' | 'append' = 'merge'
+  ) => {
+    if (mode === 'replace') {
+      const withIds: Siswa[] = imported.map((s, idx) => ({ ...s, id: 'siswa-' + (idx + 1) }));
+      setSiswaList(withIds);
+      showToast(`Mengganti data dengan ${withIds.length} siswa baru...`, 'info');
+
+      await clearFirestoreCollection('siswa');
+      let successCount = 0;
+      for (const s of withIds) {
+        const ok = await syncDocToFirestore('siswa', s);
+        if (ok) successCount++;
+      }
+      showToast(`Berhasil memperbarui data dengan ${successCount} siswa`, 'success');
+      return;
+    }
+
+    if (mode === 'merge') {
+      const updatedList = [...siswaList];
+      const itemsToSync: Siswa[] = [];
+
+      imported.forEach((newItem, idx) => {
+        const matchIdx = updatedList.findIndex(
+          (existing) =>
+            (newItem.nis && existing.nis === newItem.nis) ||
+            (newItem.nisn && newItem.nisn !== '-' && existing.nisn === newItem.nisn)
+        );
+
+        if (matchIdx >= 0) {
+          const merged: Siswa = {
+            ...updatedList[matchIdx],
+            ...newItem,
+          };
+          updatedList[matchIdx] = merged;
+          itemsToSync.push(merged);
+        } else {
+          const created: Siswa = {
+            ...newItem,
+            id: 's_imp_' + Date.now() + '_' + idx,
+          };
+          updatedList.push(created);
+          itemsToSync.push(created);
+        }
+      });
+
+      setSiswaList(updatedList);
+      showToast(`Menyinkronkan ${itemsToSync.length} data siswa...`, 'info');
+      let successCount = 0;
+      for (const s of itemsToSync) {
+        const ok = await syncDocToFirestore('siswa', s);
+        if (ok) successCount++;
+      }
+      showToast(`Berhasil memperbarui / menambah ${successCount} data siswa`, 'success');
+      return;
+    }
+
+    // append mode
     const withIds: Siswa[] = imported.map((s, idx) => ({ ...s, id: 's_imp_' + Date.now() + '_' + idx }));
     setSiswaList((prev) => [...prev, ...withIds]);
-    showToast(`Menyimpan ${withIds.length} siswa ke Cloud Firestore...`, 'info');
+    showToast(`Menyimpan ${withIds.length} siswa ke basis data...`, 'info');
     let successCount = 0;
     for (const s of withIds) {
       const ok = await syncDocToFirestore('siswa', s);
       if (ok) successCount++;
     }
-    showToast(`Berhasil menyimpan ${successCount} dari ${withIds.length} siswa ke Cloud Firestore`, 'success');
+    showToast(`Berhasil menyimpan ${successCount} dari ${withIds.length} siswa`, 'success');
+  };
+
+  const handleClearAllSiswa = async () => {
+    setSiswaList([]);
+    await clearFirestoreCollection('siswa');
+    showToast('Seluruh data siswa berhasil dikosongkan', 'info');
+  };
+
+  const handleResetSiswaDefault = async () => {
+    setSiswaList(initialSiswa);
+    await clearFirestoreCollection('siswa');
+    for (const s of initialSiswa) {
+      await syncDocToFirestore('siswa', s);
+    }
+    showToast('Data siswa berhasil dikembalikan ke data awal SDN 1 Pekutatan', 'success');
   };
 
   // Handler for Pengaturan Sekolah with Firestore Sync
@@ -767,6 +848,7 @@ export default function App() {
             onUpdateSuratKeluar={handleUpdateSuratKeluar}
             onDeleteSuratKeluar={handleDeleteSuratKeluar}
             onAddArsip={handleAddArsip}
+            onUpdateArsip={handleUpdateArsip}
             onDeleteArsip={handleDeleteArsip}
             onOpenAutoNumberModal={handleOpenAutoNumber}
             onPreviewSurat={(sk) => setPreviewSuratKeluar(sk)}
@@ -788,6 +870,8 @@ export default function App() {
             onUpdateSiswa={handleUpdateSiswa}
             onDeleteSiswa={handleDeleteSiswa}
             onImportSiswa={handleImportSiswa}
+            onClearAllSiswa={handleClearAllSiswa}
+            onResetSiswaDefault={handleResetSiswaDefault}
           />
         )}
 

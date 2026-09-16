@@ -19,6 +19,8 @@ import {
   FileSpreadsheet,
   RefreshCw,
   ArrowUpDown,
+  Upload,
+  Paperclip,
 } from 'lucide-react';
 import {
   SuratKeluar,
@@ -30,6 +32,7 @@ import {
   Siswa,
   KlasifikasiMendagriItem,
   SubjekKeteranganItem,
+  SkPointItem,
 } from '../types';
 import { formatTanggalIndonesia, exportToWord, buildSuratHtml } from '../utils/exportUtils';
 import {
@@ -42,6 +45,8 @@ import {
   compareSuratKeluarDesc,
   compareSuratKeluarAsc,
 } from '../utils/numberGenerator';
+import { formatDiktumLabel, getIndonesianOrdinalWord } from '../utils/diktumUtils';
+import { readFileAsDataUrl, openOrDownloadDocument } from '../utils/fileUtils';
 
 interface SuratKeluarViewProps {
   suratKeluarList: SuratKeluar[];
@@ -53,12 +58,63 @@ interface SuratKeluarViewProps {
   onUpdateSuratKeluar: (surat: SuratKeluar) => void;
   onDeleteSuratKeluar: (id: string) => void;
   onAddArsip: (arsip: Omit<ArsipSurat, 'id'>) => void;
+  onUpdateArsip?: (arsip: ArsipSurat) => void;
   onDeleteArsip: (id: string) => void;
   onOpenAutoNumberModal: () => void;
   onPreviewSurat: (surat: SuratKeluar) => void;
   initialSelectedNumber?: { noSurat: string; klasifikasi: KlasifikasiMendagriItem } | null;
   onClearSelectedNumber?: () => void;
 }
+
+// Default konsideran SK
+const defaultSkMenimbangList: SkPointItem[] = [
+  {
+    id: '1',
+    poin: 'a.',
+    isi: 'bahwa dalam rangka memperlancar proses belajar mengajar dan ketertiban administrasi di SD Negeri 1 Pekutatan, dipandang perlu menetapkan pembagian tugas guru;',
+  },
+  {
+    id: '2',
+    poin: 'b.',
+    isi: 'bahwa berdasarkan pertimbangan sebagaimana dimaksud pada huruf a, perlu menetapkan Keputusan Kepala Sekolah.',
+  },
+];
+
+const defaultSkMengingatList: SkPointItem[] = [
+  {
+    id: '1',
+    poin: '1.',
+    isi: 'Undang-Undang Nomor 20 Tahun 2003 tentang Sistem Pendidikan Nasional;',
+  },
+  {
+    id: '2',
+    poin: '2.',
+    isi: 'Undang-Undang Nomor 14 Tahun 2005 tentang Guru dan Dosen;',
+  },
+  {
+    id: '3',
+    poin: '3.',
+    isi: 'Permendagri Nomor 83 Tahun 2022 tentang Kode Klasifikasi Arsip di Lingkungan Kementerian Dalam Negeri dan Pemerintah Daerah;',
+  },
+  {
+    id: '4',
+    poin: '4.',
+    isi: 'Program Kerja SD Negeri 1 Pekutatan Tahun Ajaran 2026/2027.',
+  },
+];
+
+const defaultSkMemperhatikanList: SkPointItem[] = [
+  {
+    id: '1',
+    poin: '1.',
+    isi: 'Hasil Rapat Dewan Guru SD Negeri 1 Pekutatan;',
+  },
+  {
+    id: '2',
+    poin: '2.',
+    isi: 'Kalender Pendidikan Provinsi Bali Tahun Ajaran 2026/2027.',
+  },
+];
 
 export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
   suratKeluarList,
@@ -70,6 +126,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
   onUpdateSuratKeluar,
   onDeleteSuratKeluar,
   onAddArsip,
+  onUpdateArsip,
   onDeleteArsip,
   onOpenAutoNumberModal,
   onPreviewSurat,
@@ -132,15 +189,13 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
 
   // Khusus: SK Kepala Sekolah
   const [skTentang, setSkTentang] = useState('');
-  const [skMenimbang, setSkMenimbang] = useState('');
-  const [skMengingat, setSkMengingat] = useState('');
-  const [skMemperhatikan, setSkMemperhatikan] = useState(
-    '1. Hasil Rapat Dewan Guru SDN 1 Pekutatan;\n2. Kalender Pendidikan Tahun Ajaran 2026/2027.'
-  );
+  const [skMenimbangList, setSkMenimbangList] = useState<SkPointItem[]>(defaultSkMenimbangList);
+  const [skMengingatList, setSkMengingatList] = useState<SkPointItem[]>(defaultSkMengingatList);
+  const [skMemperhatikanList, setSkMemperhatikanList] = useState<SkPointItem[]>(defaultSkMemperhatikanList);
   const [skDiktumList, setSkDiktumList] = useState<Array<{ id: string; label: string; isi: string }>>([
-    { id: '1', label: 'KESATU', isi: 'Menugaskan dan memberlakukan keputusan ini sebagaimana terlampir dalam lampiran keputusan ini.' },
-    { id: '2', label: 'KEDUA', isi: 'Segala biaya yang timbul akibat pelaksanaan keputusan ini dibebankan pada anggaran yang sesuai.' },
-    { id: '3', label: 'KETIGA', isi: 'Keputusan ini berlaku sejak tanggal ditetapkan, dengan ketentuan apabila terdapat kekeliruan di kemudian hari akan diadakan perbaikan sebagaimana mestinya.' },
+    { id: '1', label: 'Kesatu', isi: 'Menugaskan dan memberlakukan keputusan ini sebagaimana terlampir dalam lampiran keputusan ini.' },
+    { id: '2', label: 'Kedua', isi: 'Segala biaya yang timbul akibat pelaksanaan keputusan ini dibebankan pada anggaran yang sesuai.' },
+    { id: '3', label: 'Ketiga', isi: 'Keputusan ini berlaku sejak tanggal ditetapkan, dengan ketentuan apabila terdapat kekeliruan di kemudian hari akan diadakan perbaikan sebagaimana mestinya.' },
   ]);
 
   // Khusus: Surat Tugas
@@ -160,6 +215,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
   } | null>(null);
 
   // Arsip Form State
+  const [editingArsipId, setEditingArsipId] = useState<string | null>(null);
   const [arsipNoSurat, setArsipNoSurat] = useState('');
   const [arsipKode, setArsipKode] = useState('');
   const [arsipPerihal, setArsipPerihal] = useState('');
@@ -169,6 +225,11 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
   const [arsipLokasi, setArsipLokasi] = useState('Ordner 2026 / Lemari A');
   const [arsipKategori, setArsipKategori] = useState('Surat Keluar');
   const [arsipKeterangan, setArsipKeterangan] = useState('');
+  const [arsipLampiranNama, setArsipLampiranNama] = useState('');
+  const [arsipLampiranUrl, setArsipLampiranUrl] = useState('');
+  const [arsipLampiranUkuran, setArsipLampiranUkuran] = useState('');
+  const [arsipLampiranTipe, setArsipLampiranTipe] = useState('');
+  const [isUploadingArsipDoc, setIsUploadingArsipDoc] = useState(false);
 
   // Helper untuk generate nomor otomatis sesuai Permendagri No. 83 Tahun 2022
   const hitungNomorOtomatis = (jenis: JenisSuratKeluar, tglVal: string = tglSurat) => {
@@ -264,13 +325,13 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     setUndTujuanList(['Dewan Guru SDN 1 Pekutatan']);
 
     setSkTentang('PEMBAGIAN TUGAS GURU TAHUN AJARAN 2026/2027');
-    setSkMenimbang('Bahwa demi kelancaran proses pembelajaran di SDN 1 Pekutatan dipandang perlu menetapkan pembagian tugas guru.');
-    setSkMengingat('1. Undang-Undang Nomor 20 Tahun 2003 tentang Sisdiknas\n2. Permendagri Nomor 83 Tahun 2022 tentang Kode Klasifikasi');
-    setSkMemperhatikan('1. Hasil Rapat Dewan Guru SDN 1 Pekutatan;\n2. Kalender Pendidikan Tahun Ajaran 2026/2027.');
+    setSkMenimbangList(defaultSkMenimbangList);
+    setSkMengingatList(defaultSkMengingatList);
+    setSkMemperhatikanList(defaultSkMemperhatikanList);
     setSkDiktumList([
-      { id: '1', label: 'KESATU', isi: 'Menugaskan dan memberlakukan keputusan ini sebagaimana terlampir dalam lampiran keputusan ini.' },
-      { id: '2', label: 'KEDUA', isi: 'Segala biaya yang timbul akibat pelaksanaan keputusan ini dibebankan pada anggaran yang sesuai.' },
-      { id: '3', label: 'KETIGA', isi: 'Keputusan ini berlaku sejak tanggal ditetapkan, dengan ketentuan apabila terdapat kekeliruan di kemudian hari akan diadakan perbaikan sebagaimana mestinya.' },
+      { id: '1', label: 'Kesatu', isi: 'Menugaskan dan memberlakukan keputusan ini sebagaimana terlampir dalam lampiran keputusan ini.' },
+      { id: '2', label: 'Kedua', isi: 'Segala biaya yang timbul akibat pelaksanaan keputusan ini dibebankan pada anggaran yang sesuai.' },
+      { id: '3', label: 'Ketiga', isi: 'Keputusan ini berlaku sejak tanggal ditetapkan, dengan ketentuan apabila terdapat kekeliruan di kemudian hari akan diadakan perbaikan sebagaimana mestinya.' },
     ]);
 
     setSptDasar('Surat Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana');
@@ -360,18 +421,88 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       }
     } else if (sk.jenisSurat === 'surat_keputusan') {
       setSkTentang(d.tentang || '');
-      setSkMenimbang(d.menimbang || '');
-      setSkMengingat(d.mengingat || '');
-      setSkMemperhatikan(
-        d.memperhatikan || '1. Hasil Rapat Dewan Guru SDN 1 Pekutatan;\n2. Kalender Pendidikan Tahun Ajaran 2026/2027.'
-      );
+
+      // Menimbang
+      if (Array.isArray(d.menimbangList) && d.menimbangList.length > 0) {
+        setSkMenimbangList(d.menimbangList);
+      } else if (d.menimbang) {
+        const lines = d.menimbang.split('\n').map((l: string) => l.trim()).filter(Boolean);
+        if (lines.length > 0) {
+          setSkMenimbangList(
+            lines.map((l: string, i: number) => {
+              const m = l.match(/^([a-z0-9]+[\.\)])\s*(.*)$/i);
+              return {
+                id: String(Date.now() + i),
+                poin: m ? m[1] : `${String.fromCharCode(97 + i)}.`,
+                isi: m ? m[2] : l,
+              };
+            })
+          );
+        } else {
+          setSkMenimbangList(defaultSkMenimbangList);
+        }
+      } else {
+        setSkMenimbangList(defaultSkMenimbangList);
+      }
+
+      // Mengingat
+      if (Array.isArray(d.mengingatList) && d.mengingatList.length > 0) {
+        setSkMengingatList(d.mengingatList);
+      } else if (d.mengingat) {
+        const lines = d.mengingat.split('\n').map((l: string) => l.trim()).filter(Boolean);
+        if (lines.length > 0) {
+          setSkMengingatList(
+            lines.map((l: string, i: number) => {
+              const m = l.match(/^([a-z0-9]+[\.\)])\s*(.*)$/i);
+              return {
+                id: String(Date.now() + i + 10),
+                poin: m ? m[1] : `${i + 1}.`,
+                isi: m ? m[2] : l,
+              };
+            })
+          );
+        } else {
+          setSkMengingatList(defaultSkMengingatList);
+        }
+      } else {
+        setSkMengingatList(defaultSkMengingatList);
+      }
+
+      // Memperhatikan
+      if (Array.isArray(d.memperhatikanList) && d.memperhatikanList.length > 0) {
+        setSkMemperhatikanList(d.memperhatikanList);
+      } else if (d.memperhatikan) {
+        const lines = d.memperhatikan.split('\n').map((l: string) => l.trim()).filter(Boolean);
+        if (lines.length > 0) {
+          setSkMemperhatikanList(
+            lines.map((l: string, i: number) => {
+              const m = l.match(/^([a-z0-9]+[\.\)])\s*(.*)$/i);
+              return {
+                id: String(Date.now() + i + 20),
+                poin: m ? m[1] : `${i + 1}.`,
+                isi: m ? m[2] : l,
+              };
+            })
+          );
+        } else {
+          setSkMemperhatikanList(defaultSkMemperhatikanList);
+        }
+      } else {
+        setSkMemperhatikanList([]);
+      }
+
       if (Array.isArray(d.diktumList) && d.diktumList.length > 0) {
-        setSkDiktumList(d.diktumList);
+        setSkDiktumList(
+          d.diktumList.map((item: any, idx: number) => ({
+            ...item,
+            label: formatDiktumLabel(item.label, idx),
+          }))
+        );
       } else {
         setSkDiktumList([
-          { id: '1', label: 'KESATU', isi: d.memutuskan || 'Menugaskan dan memberlakukan keputusan ini sebagaimana terlampir dalam lampiran keputusan ini.' },
-          { id: '2', label: 'KEDUA', isi: 'Segala biaya yang timbul akibat pelaksanaan keputusan ini dibebankan pada anggaran yang sesuai.' },
-          { id: '3', label: 'KETIGA', isi: 'Keputusan ini berlaku sejak tanggal ditetapkan, dengan ketentuan apabila terdapat kekeliruan di kemudian hari akan diadakan perbaikan sebagaimana mestinya.' },
+          { id: '1', label: 'Kesatu', isi: d.memutuskan || 'Menugaskan dan memberlakukan keputusan ini sebagaimana terlampir dalam lampiran keputusan ini.' },
+          { id: '2', label: 'Kedua', isi: 'Segala biaya yang timbul akibat pelaksanaan keputusan ini dibebankan pada anggaran yang sesuai.' },
+          { id: '3', label: 'Ketiga', isi: 'Keputusan ini berlaku sejak tanggal ditetapkan, dengan ketentuan apabila terdapat kekeliruan di kemudian hari akan diadakan perbaikan sebagaimana mestinya.' },
         ]);
       }
     } else if (sk.jenisSurat === 'surat_tugas') {
@@ -454,14 +585,26 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       };
       finalTujuan = activeTujuanList.join(', ');
     } else if (jenisSurat === 'surat_keputusan') {
+      const menimbangText = skMenimbangList.map((item) => `${item.poin} ${item.isi}`).join('\n');
+      const mengingatText = skMengingatList.map((item) => `${item.poin} ${item.isi}`).join('\n');
+      const memperhatikanText = skMemperhatikanList.map((item) => `${item.poin} ${item.isi}`).join('\n');
+
+      const formattedDiktumList = skDiktumList.map((item, idx) => ({
+        ...item,
+        label: formatDiktumLabel(item.label, idx),
+      }));
+
       dataKhusus = {
         nomorSK: noSurat,
         tentang: skTentang,
-        menimbang: skMenimbang,
-        mengingat: skMengingat,
-        memperhatikan: skMemperhatikan,
-        diktumList: skDiktumList,
-        memutuskan: skDiktumList[0]?.isi || '',
+        menimbang: menimbangText,
+        menimbangList: skMenimbangList,
+        mengingat: mengingatText,
+        mengingatList: skMengingatList,
+        memperhatikan: memperhatikanText,
+        memperhatikanList: skMemperhatikanList,
+        diktumList: formattedDiktumList,
+        memutuskan: formattedDiktumList[0]?.isi || '',
       };
     } else if (jenisSurat === 'surat_tugas') {
       dataKhusus = {
@@ -514,17 +657,39 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     setShowFormModal(false);
   };
 
-  const handleOpenArsipModal = (sk?: SuratKeluar) => {
-    if (sk) {
+  const handleOpenArsipModal = (sk?: SuratKeluar, existingArsip?: ArsipSurat) => {
+    if (existingArsip) {
+      setEditingArsipId(existingArsip.id);
+      setArsipNoSurat(existingArsip.noSurat);
+      setArsipKode(existingArsip.kodeKlasifikasi);
+      setArsipPerihal(existingArsip.perihal);
+      setArsipTujuan(existingArsip.tujuan || '');
+      setArsipTglSurat(existingArsip.tglSurat);
+      setArsipTglArsip(existingArsip.tglArsip || new Date().toISOString().slice(0, 10));
+      setArsipKategori(existingArsip.kategori || 'Surat Keluar');
+      setArsipLokasi(existingArsip.lokasiFisik || 'Ordner 2026 / Lemari A');
+      setArsipKeterangan(existingArsip.keterangan || '');
+      setArsipLampiranNama(existingArsip.lampiranNama || '');
+      setArsipLampiranUrl(existingArsip.lampiranUrl || '');
+      setArsipLampiranUkuran(existingArsip.lampiranUkuran || '');
+      setArsipLampiranTipe(existingArsip.lampiranTipe || '');
+    } else if (sk) {
+      setEditingArsipId(null);
       setArsipNoSurat(sk.noSurat);
       setArsipKode(sk.kodeKlasifikasi);
       setArsipPerihal(sk.perihal);
       setArsipTujuan(sk.tujuan);
       setArsipTglSurat(sk.tglSurat);
+      setArsipTglArsip(new Date().toISOString().slice(0, 10));
       setArsipKategori(sk.jenisSurat.replace(/_/g, ' ').toUpperCase());
       setArsipLokasi('Ordner 2026 / Lemari A Rak 2');
       setArsipKeterangan('Arsip resmi salinan SDN 1 Pekutatan');
+      setArsipLampiranNama(sk.lampiranNama || '');
+      setArsipLampiranUrl(sk.lampiranUrl || '');
+      setArsipLampiranUkuran(sk.lampiranUkuran || '');
+      setArsipLampiranTipe(sk.lampiranTipe || '');
     } else {
+      setEditingArsipId(null);
       const nextSeq = getNextNomorUrut(suratKeluarList, arsipList);
       const defaultKode = '421.2';
       const today = new Date().toISOString().slice(0, 10);
@@ -534,9 +699,14 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       setArsipPerihal('');
       setArsipTujuan('');
       setArsipTglSurat(today);
+      setArsipTglArsip(today);
       setArsipKategori('Surat Keluar');
       setArsipLokasi('Ordner 2026 / Rak B');
       setArsipKeterangan('');
+      setArsipLampiranNama('');
+      setArsipLampiranUrl('');
+      setArsipLampiranUkuran('');
+      setArsipLampiranTipe('');
     }
     setShowArsipModal(true);
   };
@@ -548,17 +718,43 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       return;
     }
 
-    onAddArsip({
-      noSurat: arsipNoSurat,
-      kodeKlasifikasi: arsipKode,
-      perihal: arsipPerihal,
-      tujuan: arsipTujuan,
-      tglSurat: arsipTglSurat,
-      tglArsip: arsipTglArsip,
-      lokasiFisik: arsipLokasi,
-      kategori: arsipKategori,
-      keterangan: arsipKeterangan,
-    });
+    if (editingArsipId && onUpdateArsip) {
+      const existing = arsipList.find((a) => a.id === editingArsipId);
+      if (existing) {
+        onUpdateArsip({
+          ...existing,
+          noSurat: arsipNoSurat,
+          kodeKlasifikasi: arsipKode,
+          perihal: arsipPerihal,
+          tujuan: arsipTujuan,
+          tglSurat: arsipTglSurat,
+          tglArsip: arsipTglArsip,
+          lokasiFisik: arsipLokasi,
+          kategori: arsipKategori,
+          keterangan: arsipKeterangan,
+          lampiranNama: arsipLampiranNama || undefined,
+          lampiranUrl: arsipLampiranUrl || undefined,
+          lampiranUkuran: arsipLampiranUkuran || undefined,
+          lampiranTipe: arsipLampiranTipe || undefined,
+        });
+      }
+    } else {
+      onAddArsip({
+        noSurat: arsipNoSurat,
+        kodeKlasifikasi: arsipKode,
+        perihal: arsipPerihal,
+        tujuan: arsipTujuan,
+        tglSurat: arsipTglSurat,
+        tglArsip: arsipTglArsip,
+        lokasiFisik: arsipLokasi,
+        kategori: arsipKategori,
+        keterangan: arsipKeterangan,
+        lampiranNama: arsipLampiranNama || undefined,
+        lampiranUrl: arsipLampiranUrl || undefined,
+        lampiranUkuran: arsipLampiranUkuran || undefined,
+        lampiranTipe: arsipLampiranTipe || undefined,
+      });
+    }
 
     setShowArsipModal(false);
   };
@@ -960,6 +1156,49 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             {ar.keterangan}
                           </p>
                         )}
+                        {/* Dokumen Lampiran Arsip */}
+                        {ar.lampiranUrl ? (
+                          <div className="mt-2 flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => openOrDownloadDocument(ar.lampiranNama || 'Dokumen_Arsip', ar.lampiranUrl!)}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-900 text-[11px] font-semibold hover:bg-indigo-100 transition-colors cursor-pointer"
+                              title="Buka / Unduh Dokumen Arsip"
+                            >
+                              <Paperclip className="w-3 h-3 text-indigo-700" />
+                              <span className="truncate max-w-[140px] sm:max-w-[180px]">{ar.lampiranNama || 'Dokumen Terlampir'}</span>
+                              <Eye className="w-3 h-3 text-indigo-600" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="mt-1.5">
+                            <label className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-slate-600 hover:text-indigo-900 hover:border-indigo-300 hover:bg-indigo-50/50 text-[10px] font-medium transition-colors cursor-pointer">
+                              <Upload className="w-3 h-3 text-slate-400" />
+                              <span>Upload Dokumen (Opsional)</span>
+                              <input
+                                type="file"
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file || !onUpdateArsip) return;
+                                  try {
+                                    const res = await readFileAsDataUrl(file);
+                                    onUpdateArsip({
+                                      ...ar,
+                                      lampiranNama: res.name,
+                                      lampiranUrl: res.url,
+                                      lampiranUkuran: res.size,
+                                      lampiranTipe: res.type,
+                                    });
+                                  } catch (err: any) {
+                                    alert(err.message || 'Gagal membaca file');
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+                        )}
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap text-xs text-slate-600">
                         <div>Surat: {formatTanggalIndonesia(ar.tglSurat)}</div>
@@ -973,19 +1212,30 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center whitespace-nowrap">
-                        <button
-                          onClick={() => {
-                            setDeleteConfirm({
-                              type: 'arsip',
-                              id: ar.id,
-                              noSurat: ar.noSurat || ar.perihal,
-                            });
-                          }}
-                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                          title="Hapus Arsip"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenArsipModal(undefined, ar)}
+                            className="p-1.5 text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                            title="Edit Data Arsip"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDeleteConfirm({
+                                type: 'arsip',
+                                id: ar.id,
+                                noSurat: ar.noSurat || ar.perihal,
+                              });
+                            }}
+                            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            title="Hapus Arsip"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -2010,108 +2260,289 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
 
                 {/* 4. SURAT KEPUTUSAN (SK) */}
                 {jenisSurat === 'surat_keputusan' && (
-                  <div className="space-y-3">
-                    <h3 className="font-bold text-slate-900 text-xs uppercase flex items-center gap-1.5 text-emerald-800">
-                      <FileText className="w-4 h-4" />
-                      Detail Surat Keputusan (SK)
-                    </h3>
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-100 pb-2">
+                      <h3 className="font-bold text-slate-900 text-xs uppercase flex items-center gap-1.5 text-emerald-800">
+                        <FileText className="w-4 h-4" />
+                        Detail Surat Keputusan (SK)
+                      </h3>
+                      <span className="text-[11px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                        Style: <strong>Bookman Old Style</strong> 12pt (Nomor SK 10pt)
+                      </span>
+                    </div>
 
                     <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Tentang</label>
+                      <label className="block font-semibold text-slate-700 mb-1 text-xs">
+                        Tentang (Perihal Ketetapan SK)
+                      </label>
                       <input
                         type="text"
-                        placeholder="TENTANG PEMBAGIAN TUGAS GURU..."
+                        placeholder="PEMBAGIAN TUGAS GURU TAHUN AJARAN 2026/2027"
                         value={skTentang}
                         onChange={(e) => setSkTentang(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none font-bold"
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none font-bold text-sm"
                       />
                     </div>
 
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Konsideran Menimbang</label>
-                      <textarea
-                        rows={2}
-                        value={skMenimbang}
-                        onChange={(e) => setSkMenimbang(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Dasar Hukum Mengingat</label>
-                      <textarea
-                        rows={2}
-                        value={skMengingat}
-                        onChange={(e) => setSkMengingat(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Konsideran Memperhatikan</label>
-                      <textarea
-                        rows={2}
-                        placeholder="1. Hasil Rapat Dewan Guru..."
-                        value={skMemperhatikan}
-                        onChange={(e) => setSkMemperhatikan(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
+                    {/* Konsideran Menimbang */}
+                    <div className="space-y-2 bg-slate-50/80 p-3 rounded-lg border border-slate-200">
                       <div className="flex items-center justify-between">
-                        <label className="block font-semibold text-slate-700">Diktum Memutuskan (Fleksibel)</label>
+                        <label className="block font-semibold text-slate-800 text-xs flex items-center gap-1">
+                          <span>Konsideran Menimbang</span>
+                          <span className="text-[10px] text-slate-500 font-normal">({skMenimbangList.length} butir)</span>
+                        </label>
                         <button
                           type="button"
                           onClick={() => {
-                            const labels = ['KESATU', 'KEDUA', 'KETIGA', 'KEEMPAT', 'KELIMA', 'KEENAM'];
-                            const nextLabel = labels[skDiktumList.length] || `KE-${skDiktumList.length + 1}`;
+                            const nextPoin = `${String.fromCharCode(97 + skMenimbangList.length)}.`;
+                            setSkMenimbangList([
+                              ...skMenimbangList,
+                              { id: String(Date.now()), poin: nextPoin, isi: '' },
+                            ]);
+                          }}
+                          className="text-xs text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-1 bg-white hover:bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200 transition-colors shadow-2xs cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Tambah Menimbang</span>
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        {skMenimbangList.map((item, idx) => (
+                          <div key={item.id} className="flex gap-2 items-start bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">
+                            <input
+                              type="text"
+                              value={item.poin}
+                              onChange={(e) => {
+                                const updated = [...skMenimbangList];
+                                updated[idx].poin = e.target.value;
+                                setSkMenimbangList(updated);
+                              }}
+                              className="w-14 text-center font-bold text-xs border border-slate-300 rounded px-1 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-slate-50"
+                              title="Poin / Huruf (misal a., b.)"
+                            />
+                            <textarea
+                              rows={2}
+                              value={item.isi}
+                              onChange={(e) => {
+                                const updated = [...skMenimbangList];
+                                updated[idx].isi = e.target.value;
+                                setSkMenimbangList(updated);
+                              }}
+                              className="flex-1 text-xs border border-slate-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                              placeholder="bahwa dalam rangka memperlancar proses pembelajaran..."
+                            />
+                            {skMenimbangList.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => setSkMenimbangList(skMenimbangList.filter((_, i) => i !== idx))}
+                                className="text-slate-400 hover:text-rose-600 p-1 transition-colors cursor-pointer"
+                                title="Hapus Poin Menimbang"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Dasar Hukum Mengingat */}
+                    <div className="space-y-2 bg-slate-50/80 p-3 rounded-lg border border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <label className="block font-semibold text-slate-800 text-xs flex items-center gap-1">
+                          <span>Dasar Hukum Mengingat</span>
+                          <span className="text-[10px] text-slate-500 font-normal">({skMengingatList.length} butir)</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextPoin = `${skMengingatList.length + 1}.`;
+                            setSkMengingatList([
+                              ...skMengingatList,
+                              { id: String(Date.now()), poin: nextPoin, isi: '' },
+                            ]);
+                          }}
+                          className="text-xs text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-1 bg-white hover:bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200 transition-colors shadow-2xs cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Tambah Mengingat</span>
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        {skMengingatList.map((item, idx) => (
+                          <div key={item.id} className="flex gap-2 items-start bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">
+                            <input
+                              type="text"
+                              value={item.poin}
+                              onChange={(e) => {
+                                const updated = [...skMengingatList];
+                                updated[idx].poin = e.target.value;
+                                setSkMengingatList(updated);
+                              }}
+                              className="w-14 text-center font-bold text-xs border border-slate-300 rounded px-1 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-slate-50"
+                              title="Nomor Urut Dasar Hukum"
+                            />
+                            <textarea
+                              rows={2}
+                              value={item.isi}
+                              onChange={(e) => {
+                                const updated = [...skMengingatList];
+                                updated[idx].isi = e.target.value;
+                                setSkMengingatList(updated);
+                              }}
+                              className="flex-1 text-xs border border-slate-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                              placeholder="Undang-Undang / Peraturan terkait..."
+                            />
+                            {skMengingatList.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => setSkMengingatList(skMengingatList.filter((_, i) => i !== idx))}
+                                className="text-slate-400 hover:text-rose-600 p-1 transition-colors cursor-pointer"
+                                title="Hapus Poin Mengingat"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Konsideran Memperhatikan */}
+                    <div className="space-y-2 bg-slate-50/80 p-3 rounded-lg border border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <label className="block font-semibold text-slate-800 text-xs flex items-center gap-1">
+                          <span>Konsideran Memperhatikan</span>
+                          <span className="text-[10px] text-slate-500 font-normal">({skMemperhatikanList.length} butir)</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextPoin = `${skMemperhatikanList.length + 1}.`;
+                            setSkMemperhatikanList([
+                              ...skMemperhatikanList,
+                              { id: String(Date.now()), poin: nextPoin, isi: '' },
+                            ]);
+                          }}
+                          className="text-xs text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-1 bg-white hover:bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200 transition-colors shadow-2xs cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Tambah Memperhatikan</span>
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        {skMemperhatikanList.map((item, idx) => (
+                          <div key={item.id} className="flex gap-2 items-start bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">
+                            <input
+                              type="text"
+                              value={item.poin}
+                              onChange={(e) => {
+                                const updated = [...skMemperhatikanList];
+                                updated[idx].poin = e.target.value;
+                                setSkMemperhatikanList(updated);
+                              }}
+                              className="w-14 text-center font-bold text-xs border border-slate-300 rounded px-1 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-slate-50"
+                              title="Nomor Urut"
+                            />
+                            <textarea
+                              rows={2}
+                              value={item.isi}
+                              onChange={(e) => {
+                                const updated = [...skMemperhatikanList];
+                                updated[idx].isi = e.target.value;
+                                setSkMemperhatikanList(updated);
+                              }}
+                              className="flex-1 text-xs border border-slate-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                              placeholder="1. Hasil Rapat Dinas Dewan Guru..."
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setSkMemperhatikanList(skMemperhatikanList.filter((_, i) => i !== idx))}
+                              className="text-slate-400 hover:text-rose-600 p-1 transition-colors cursor-pointer"
+                              title="Hapus Poin Memperhatikan"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                        {skMemperhatikanList.length === 0 && (
+                          <p className="text-xs text-slate-500 italic p-2 text-center bg-white rounded border border-dashed border-slate-300">
+                            Belum ada konsideran memperhatikan. Klik tombol &quot;+ Tambah Memperhatikan&quot; di atas jika dibutuhkan.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Diktum Memutuskan */}
+                    <div className="space-y-2 bg-slate-50/80 p-3 rounded-lg border border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <label className="block font-semibold text-slate-800 text-xs flex items-center gap-1">
+                          <span>Diktum Memutuskan (Fleksibel)</span>
+                          <span className="text-[10px] text-slate-500 font-normal">({skDiktumList.length} diktum)</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextLabel = getIndonesianOrdinalWord(skDiktumList.length + 1);
                             setSkDiktumList([
                               ...skDiktumList,
                               { id: String(Date.now()), label: nextLabel, isi: '' },
                             ]);
                           }}
-                          className="text-xs text-emerald-700 hover:text-emerald-900 font-bold"
+                          className="text-xs text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-1 bg-white hover:bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200 transition-colors shadow-2xs cursor-pointer"
                         >
-                          + Tambah Diktum
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Tambah Diktum</span>
                         </button>
                       </div>
 
-                      {skDiktumList.map((diktum, idx) => (
-                        <div key={diktum.id} className="flex gap-2 items-start bg-white p-2.5 rounded-lg border border-slate-200">
-                          <input
-                            type="text"
-                            value={diktum.label}
-                            onChange={(e) => {
-                              const updated = [...skDiktumList];
-                              updated[idx].label = e.target.value;
-                              setSkDiktumList(updated);
-                            }}
-                            className="w-24 text-xs font-bold border border-slate-300 rounded px-2 py-1.5 focus:outline-none"
-                          />
-                          <textarea
-                            rows={2}
-                            value={diktum.isi}
-                            onChange={(e) => {
-                              const updated = [...skDiktumList];
-                              updated[idx].isi = e.target.value;
-                              setSkDiktumList(updated);
-                            }}
-                            className="flex-1 text-xs border border-slate-300 rounded px-2 py-1.5 focus:outline-none"
-                            placeholder="Isi ketetapan diktum..."
-                          />
-                          {skDiktumList.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => setSkDiktumList(skDiktumList.filter((_, i) => i !== idx))}
-                              className="text-rose-500 hover:text-rose-700 p-1"
-                              title="Hapus Diktum"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                      <div className="space-y-2">
+                        {skDiktumList.map((diktum, idx) => (
+                          <div key={diktum.id} className="flex gap-2 items-start bg-white p-2.5 rounded-lg border border-slate-200 shadow-2xs">
+                            <input
+                              type="text"
+                              value={diktum.label}
+                              onChange={(e) => {
+                                const updated = [...skDiktumList];
+                                updated[idx].label = e.target.value;
+                                setSkDiktumList(updated);
+                              }}
+                              onBlur={() => {
+                                const updated = [...skDiktumList];
+                                updated[idx].label = formatDiktumLabel(updated[idx].label, idx);
+                                setSkDiktumList(updated);
+                              }}
+                              placeholder="Keenam"
+                              className="w-28 text-xs font-bold border border-slate-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-slate-50"
+                              title="Penamaan Diktum (Contoh: Keenam)"
+                            />
+                            <textarea
+                              rows={2}
+                              value={diktum.isi}
+                              onChange={(e) => {
+                                const updated = [...skDiktumList];
+                                updated[idx].isi = e.target.value;
+                                setSkDiktumList(updated);
+                              }}
+                              className="flex-1 text-xs border border-slate-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                              placeholder="Isi ketetapan diktum..."
+                            />
+                            {skDiktumList.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => setSkDiktumList(skDiktumList.filter((_, i) => i !== idx))}
+                                className="text-slate-400 hover:text-rose-600 p-1 transition-colors cursor-pointer"
+                                title="Hapus Diktum"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2278,7 +2709,9 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
             <div className="bg-indigo-950 px-6 py-4 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Archive className="w-5 h-5 text-indigo-300" />
-                <h2 className="text-base font-bold">Arsipkan Surat Keluar</h2>
+                <h2 className="text-base font-bold">
+                  {editingArsipId ? 'Edit Arsip Surat Keluar' : 'Arsipkan Surat Keluar'}
+                </h2>
               </div>
               <button
                 onClick={() => setShowArsipModal(false)}
@@ -2440,6 +2873,117 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                 />
               </div>
 
+              {/* Upload Dokumen Arsip Surat Keluar (Opsional) */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                    <Paperclip className="w-4 h-4 text-indigo-900" />
+                    <span>Upload Berkas / Scan Surat Keluar</span>
+                  </label>
+                  <span className="text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 px-2 py-0.5 rounded-md">
+                    Opsional
+                  </span>
+                </div>
+
+                {arsipLampiranUrl || arsipLampiranNama ? (
+                  <div className="flex items-center justify-between p-3 bg-white border border-indigo-200 rounded-xl shadow-2xs">
+                    <div className="flex items-center gap-2.5 overflow-hidden">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-900 flex items-center justify-center shrink-0">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="text-xs font-bold text-slate-800 truncate max-w-[200px] sm:max-w-xs" title={arsipLampiranNama}>
+                          {arsipLampiranNama}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {arsipLampiranUkuran || 'Berkas Terlampir'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => openOrDownloadDocument(arsipLampiranNama || 'Dokumen_Arsip', arsipLampiranUrl)}
+                        className="px-2.5 py-1 text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-900 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                        title="Buka / Unduh Dokumen"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Lihat</span>
+                      </button>
+                      <label className="px-2.5 py-1 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer flex items-center gap-1">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Ganti</span>
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            try {
+                              setIsUploadingArsipDoc(true);
+                              const res = await readFileAsDataUrl(file);
+                              setArsipLampiranNama(res.name);
+                              setArsipLampiranUrl(res.url);
+                              setArsipLampiranUkuran(res.size);
+                              setArsipLampiranTipe(res.type);
+                            } catch (err: any) {
+                              alert(err.message || 'Gagal membaca file');
+                            } finally {
+                              setIsUploadingArsipDoc(false);
+                            }
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setArsipLampiranNama('');
+                          setArsipLampiranUrl('');
+                          setArsipLampiranUkuran('');
+                          setArsipLampiranTipe('');
+                        }}
+                        className="p-1 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        title="Hapus Lampiran"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/40 rounded-xl p-3.5 cursor-pointer transition-colors bg-white">
+                    <Upload className="w-5 h-5 text-slate-400 mb-1" />
+                    <span className="text-xs font-semibold text-indigo-950">
+                      {isUploadingArsipDoc ? 'Memproses berkas...' : 'Pilih atau Tarik Berkas Dokumen'}
+                    </span>
+                    <span className="text-[11px] text-slate-500 mt-0.5">
+                      PDF, Word (.doc/docx), atau Gambar / Foto (Opsional)
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          setIsUploadingArsipDoc(true);
+                          const res = await readFileAsDataUrl(file);
+                          setArsipLampiranNama(res.name);
+                          setArsipLampiranUrl(res.url);
+                          setArsipLampiranUkuran(res.size);
+                          setArsipLampiranTipe(res.type);
+                        } catch (err: any) {
+                          alert(err.message || 'Gagal membaca file');
+                        } finally {
+                          setIsUploadingArsipDoc(false);
+                        }
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+
               <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
                 <button
                   type="button"
@@ -2452,7 +2996,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                   type="submit"
                   className="px-5 py-2 font-semibold bg-indigo-800 hover:bg-indigo-700 text-white rounded-xl shadow-sm"
                 >
-                  Simpan Arsip
+                  {editingArsipId ? 'Simpan Perubahan' : 'Simpan Arsip'}
                 </button>
               </div>
             </form>
