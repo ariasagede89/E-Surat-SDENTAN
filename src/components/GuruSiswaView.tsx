@@ -37,6 +37,8 @@ import {
   parseGuruCsv,
   downloadSiswaTemplateCsv,
   downloadGuruTemplateCsv,
+  sortSiswa,
+  compareKelas,
 } from '../utils/csvUtils';
 import { KalenderKecilLibur, NAMA_BULAN_INDONESIA } from './KalenderKecilLibur';
 
@@ -302,7 +304,8 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
 
   // Export Data Siswa CSV
   const handleExportSiswa = () => {
-    const data = siswaList.map((s, idx) => ({
+    const sorted = sortSiswa<Siswa>(siswaList);
+    const data = sorted.map((s, idx) => ({
       No: idx + 1,
       NIS: s.nis,
       NISN: s.nisn,
@@ -523,16 +526,18 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
     return matchesSearch && matchesKategori;
   });
 
-  const filteredSiswa = siswaList.filter((s) => {
-    const matchesSearch =
-      s.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.nisn.includes(searchTerm) ||
-      s.nis.includes(searchTerm);
-    const matchesKelas = filterKelasSiswa === 'Semua' || s.kelas === filterKelasSiswa;
-    return matchesSearch && matchesKelas;
-  });
+  const filteredSiswa = sortSiswa<Siswa>(
+    siswaList.filter((s) => {
+      const matchesSearch =
+        s.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.nisn.includes(searchTerm) ||
+        s.nis.includes(searchTerm);
+      const matchesKelas = filterKelasSiswa === 'Semua' || s.kelas === filterKelasSiswa;
+      return matchesSearch && matchesKelas;
+    })
+  );
 
-  const availableKelas = Array.from(new Set(siswaList.map((s) => s.kelas))).sort();
+  const availableKelas = Array.from(new Set(siswaList.map((s) => s.kelas))).sort(compareKelas);
 
   return (
     <div className="space-y-6">
@@ -942,8 +947,22 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold">
                     <th className="py-3 px-4 w-12 text-center">No</th>
                     <th className="py-3 px-4">Nama Siswa & JK</th>
-                    <th className="py-3 px-4">NISN / NIS</th>
-                    <th className="py-3 px-4">Kelas</th>
+                    <th className="py-3 px-4">
+                      <div className="flex items-center gap-1.5">
+                        <span>NISN / NIS</span>
+                        <span className="text-[10px] font-normal bg-slate-200/70 text-slate-600 px-1 py-0.5 rounded" title="Diurutkan berdasarkan NIS (Kecil ke Besar)">
+                          NIS ↑
+                        </span>
+                      </div>
+                    </th>
+                    <th className="py-3 px-4">
+                      <div className="flex items-center gap-1.5">
+                        <span>Kelas</span>
+                        <span className="text-[10px] font-normal bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded" title="Diurutkan dari kelas terkecil ke terbesar">
+                          1 → 6
+                        </span>
+                      </div>
+                    </th>
                     <th className="py-3 px-4">Tempat, Tanggal Lahir</th>
                     <th className="py-3 px-4">Nama Orang Tua & Alamat</th>
                     <th className="py-3 px-4 text-center w-28">Aksi</th>

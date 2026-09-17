@@ -1,5 +1,6 @@
 import { Guru, Siswa, PengaturanSekolah, SuratKeluar, SuratMasuk, PaperSize } from '../types';
 import { formatDiktumLabel } from './diktumUtils';
+import { sortSiswa } from './csvUtils';
 
 export function getNamaHariIndonesia(dateString: string): string {
   if (!dateString) return '';
@@ -1920,7 +1921,7 @@ export function buildAbsenSiswaHtml(
     showKop = bulanOrOptions.showKop ?? false;
   }
 
-  const filtered = kelas && kelas !== 'Semua' ? siswaList.filter((s) => s.kelas === kelas) : siswaList;
+  const filtered = sortSiswa(kelas && kelas !== 'Semua' ? siswaList.filter((s) => s.kelas === kelas) : siswaList);
   const totalDays = new Date(year, month, 0).getDate();
   const holidayCount = Object.keys(holidays).length;
   const effectiveDays = Math.max(0, totalDays - holidayCount);

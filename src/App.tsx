@@ -55,6 +55,7 @@ import {
   initialSiswa,
 } from './data/initialData';
 import { compareSuratKeluarDesc, compareSuratMasukDesc } from './utils/numberGenerator';
+import { sortSiswa } from './utils/csvUtils';
 import { getActiveUserRole, logoutAdmin, setCachedAdminCredentials } from './utils/authUtils';
 import { BerandaView } from './components/BerandaView';
 import { SuratMasukView } from './components/SuratMasukView';
@@ -231,7 +232,7 @@ export default function App() {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          return Array.isArray(parsed) ? parsed : [];
+          return Array.isArray(parsed) ? sortSiswa(parsed) : [];
         } catch {
           return [];
         }
@@ -239,7 +240,7 @@ export default function App() {
       return [];
     }
     const saved = localStorage.getItem('simas_siswa');
-    return saved ? JSON.parse(saved) : initialSiswa;
+    return saved ? sortSiswa(JSON.parse(saved)) : sortSiswa(initialSiswa);
   });
 
   // Modals & Navigation Helpers
@@ -293,7 +294,7 @@ export default function App() {
       setGuruList(items.map(normalizePTK));
     });
     const unsubSiswa = subscribeToCollection<Siswa>('siswa', (items) => {
-      setSiswaList(items);
+      setSiswaList(sortSiswa(items));
     });
     const unsubSettings = subscribeToSettings((data) => {
       if (data && data.namaSekolah) {
@@ -510,7 +511,7 @@ export default function App() {
   const handleAddSiswa = async (item: Omit<Siswa, 'id'>) => {
     const id = 's_' + Date.now();
     const created = { ...item, id };
-    setSiswaList((prev) => [...prev, created]);
+    setSiswaList((prev) => sortSiswa([...prev, created]));
     const ok = await syncDocToFirestore('siswa', created);
     if (ok) {
       showToast(`Data Siswa ${created.nama} berhasil tersimpan ke Cloud Firestore!`, 'success');
@@ -520,7 +521,7 @@ export default function App() {
   };
 
   const handleUpdateSiswa = async (item: Siswa) => {
-    setSiswaList((prev) => prev.map((s) => (s.id === item.id ? item : s)));
+    setSiswaList((prev) => sortSiswa(prev.map((s) => (s.id === item.id ? item : s))));
     const ok = await syncDocToFirestore('siswa', item);
     if (ok) {
       showToast(`Data Siswa ${item.nama} berhasil diperbarui di Cloud Firestore!`, 'success');
@@ -538,7 +539,7 @@ export default function App() {
     mode: 'merge' | 'replace' | 'append' = 'merge'
   ) => {
     if (mode === 'replace') {
-      const withIds: Siswa[] = imported.map((s, idx) => ({ ...s, id: 'siswa-' + (idx + 1) }));
+      const withIds: Siswa[] = sortSiswa(imported.map((s, idx) => ({ ...s, id: 'siswa-' + (idx + 1) })));
       setSiswaList(withIds);
       showToast(`Mengganti data dengan ${withIds.length} siswa baru...`, 'info');
 
@@ -580,7 +581,7 @@ export default function App() {
         }
       });
 
-      setSiswaList(updatedList);
+      setSiswaList(sortSiswa(updatedList));
       showToast(`Menyinkronkan ${itemsToSync.length} data siswa...`, 'info');
       let successCount = 0;
       for (const s of itemsToSync) {
@@ -593,7 +594,7 @@ export default function App() {
 
     // append mode
     const withIds: Siswa[] = imported.map((s, idx) => ({ ...s, id: 's_imp_' + Date.now() + '_' + idx }));
-    setSiswaList((prev) => [...prev, ...withIds]);
+    setSiswaList((prev) => sortSiswa([...prev, ...withIds]));
     showToast(`Menyimpan ${withIds.length} siswa ke basis data...`, 'info');
     let successCount = 0;
     for (const s of withIds) {
@@ -610,7 +611,7 @@ export default function App() {
   };
 
   const handleResetSiswaDefault = async () => {
-    setSiswaList(initialSiswa);
+    setSiswaList(sortSiswa(initialSiswa));
     await clearFirestoreCollection('siswa');
     for (const s of initialSiswa) {
       await syncDocToFirestore('siswa', s);

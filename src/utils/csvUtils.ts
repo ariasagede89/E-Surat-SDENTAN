@@ -506,13 +506,103 @@ export function parseSiswaCsv(csvText: string): {
     });
   });
 
+  const sortedResult = sortSiswa(result);
+
   return {
-    success: result.length > 0,
-    data: result,
-    totalRows: result.length,
+    success: sortedResult.length > 0,
+    data: sortedResult,
+    totalRows: sortedResult.length,
     errors,
     detectedHeaders,
   };
+}
+
+/**
+ * Computes a numeric rank for school class names, supporting:
+ * - Pure digits: "1", "2", "3", "4", "5", "6"
+ * - Prefix: "Kelas 1", "Kls 1"
+ * - Suffix: "1A", "1B", "6C"
+ * - Roman numerals: "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"
+ */
+export function parseKelasRank(raw: string): number {
+  if (!raw) return 9999;
+  const str = String(raw).trim().toUpperCase();
+  const clean = str.replace(/^(KELAS|KLS)\s*/i, '').trim();
+
+  const romanMap: Record<string, number> = {
+    I: 1,
+    II: 2,
+    III: 3,
+    IV: 4,
+    V: 5,
+    VI: 6,
+    VII: 7,
+    VIII: 8,
+    IX: 9,
+    X: 10,
+    XI: 11,
+    XII: 12,
+  };
+
+  const matchRoman = clean.match(/^(XII|XI|X|IX|VIII|VII|VI|V|IV|III|II|I)([A-Z]?)$/);
+  if (matchRoman) {
+    const base = romanMap[matchRoman[1]] || 0;
+    const sub = matchRoman[2] ? (matchRoman[2].charCodeAt(0) - 64) * 0.01 : 0;
+    return base + sub;
+  }
+
+  const numMatch = clean.match(/^(\d+)(.*)$/);
+  if (numMatch) {
+    const base = parseInt(numMatch[1], 10);
+    const suffix = numMatch[2].trim();
+    const sub = suffix ? (suffix.charCodeAt(0) - 64) * 0.01 : 0;
+    return base + (isNaN(sub) ? 0 : sub);
+  }
+
+  return 9999;
+}
+
+/**
+ * Compares two class names in ascending order (1 to 6 / I to XII)
+ */
+export function compareKelas(a: string, b: string): number {
+  const rankA = parseKelasRank(a);
+  const rankB = parseKelasRank(b);
+  if (rankA !== rankB) {
+    return rankA - rankB;
+  }
+  if (rankA === 9999 && rankB === 9999) {
+    return String(a || '').localeCompare(String(b || ''), undefined, { numeric: true, sensitivity: 'base' });
+  }
+  return 0;
+}
+
+/**
+ * Compares two NIS strings naturally in ascending order
+ */
+export function compareNis(a: string, b: string): number {
+  const strA = String(a || '').trim();
+  const strB = String(b || '').trim();
+
+  const numA = Number(strA.replace(/[^0-9]/g, ''));
+  const numB = Number(strB.replace(/[^0-9]/g, ''));
+
+  if (!isNaN(numA) && !isNaN(numB) && strA.length > 0 && strB.length > 0 && numA !== numB) {
+    return numA - numB;
+  }
+
+  return strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' });
+}
+
+/**
+ * Sorts student records from smallest to largest by class, then by NIS
+ */
+export function sortSiswa<T extends { kelas: string; nis: string } = Siswa>(list: T[]): T[] {
+  return [...list].sort((a, b) => {
+    const kComp = compareKelas(a.kelas, b.kelas);
+    if (kComp !== 0) return kComp;
+    return compareNis(a.nis, b.nis);
+  });
 }
 
 /**
