@@ -1577,43 +1577,6 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
             </button>
           </div>
 
-          {/* Status Koneksi Penomoran Otomatis */}
-          <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-sm border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 bg-indigo-800/90 rounded-xl border border-indigo-700/60 shrink-0">
-                <Sparkles className="w-5 h-5 text-indigo-200" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-white">
-                    Sinkronisasi Nomor Urut Otomatis Terhubung
-                  </h3>
-                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold px-2 py-0.5 rounded-full border border-emerald-500/30">
-                    Aktif
-                  </span>
-                </div>
-                <p className="text-xs text-slate-300 mt-0.5 max-w-xl">
-                  Nomor surat arsip manual otomatis terhubung dengan sistem surat keluar. Nomor urut berjalan per tahun kalender (otomatis mulai dari 001 setiap tahun baru) sehingga tertib administrasi dan tidak tumpang tindih.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 shrink-0 bg-white/10 px-3.5 py-2 rounded-xl border border-white/10 text-xs">
-              <div>
-                <div className="text-[11px] text-slate-300">No. Urut Tertinggi ({new Date().getFullYear()}):</div>
-                <div className="font-mono font-bold text-white text-sm">
-                  #{formatNomorUrut(getHighestNomorUrut(suratKeluarList, arsipList, new Date().getFullYear()))}
-                </div>
-              </div>
-              <div className="h-6 w-px bg-white/20"></div>
-              <div>
-                <div className="text-[11px] text-emerald-300 font-medium">No. Urut Berikutnya ({new Date().getFullYear()}):</div>
-                <div className="font-mono font-bold text-emerald-300 text-sm">
-                  #{formatNomorUrut(getNextNomorUrut(suratKeluarList, arsipList, new Date().getFullYear()))}
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs sm:text-sm">
