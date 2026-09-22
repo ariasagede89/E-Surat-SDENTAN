@@ -277,6 +277,8 @@ export const FilterSuratView: React.FC<FilterSuratViewProps> = ({
               <option value="sk_surat_undangan">Surat Keluar: Undangan Dinas</option>
               <option value="sk_surat_keputusan">Surat Keluar: SK Kepala Sekolah</option>
               <option value="sk_surat_tugas">Surat Keluar: Surat Perintah Tugas (SPT)</option>
+              <option value="sk_surat_pengantar">Surat Keluar: Surat Pengantar</option>
+              <option value="sk_surat_rekomendasi">Surat Keluar: Surat Rekomendasi</option>
             </select>
           </div>
 

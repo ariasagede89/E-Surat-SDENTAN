@@ -19,6 +19,10 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+
     // Rules for Surat Masuk
     match /suratMasuk/{suratId} {
       allow read: if true;

@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
 import { X, Printer, FileText, FileSpreadsheet } from 'lucide-react';
-import { SuratKeluar, PengaturanSekolah, PaperSize } from '../types';
+import { SuratKeluar, PengaturanSekolah, PaperSize, Guru } from '../types';
 import { buildSuratHtml, exportToWord, printHtmlElement } from '../utils/exportUtils';
 
 interface SuratModalProps {
   surat: SuratKeluar | null;
   sekolah: PengaturanSekolah;
+  guruList?: Guru[];
   onClose: () => void;
 }
 
-export const SuratModal: React.FC<SuratModalProps> = ({ surat, sekolah, onClose }) => {
+export const SuratModal: React.FC<SuratModalProps> = ({ surat, sekolah, guruList, onClose }) => {
   const [paperSize, setPaperSize] = useState<PaperSize>('A4');
 
   if (!surat) return null;
 
-  const htmlContent = buildSuratHtml(surat, sekolah);
+  const htmlContent = buildSuratHtml(surat, sekolah, guruList);
 
   const handlePrint = () => {
     printHtmlElement(
@@ -127,7 +128,7 @@ export const SuratModal: React.FC<SuratModalProps> = ({ surat, sekolah, onClose 
 
         {/* Footer info */}
         <div className="px-6 py-2.5 bg-slate-100 border-t border-slate-200 text-xs text-slate-600 flex items-center justify-between">
-          <span>Format: Kertas {paperSize} {paperSize === 'F4' ? '(Folio)' : ''} Portrait, margin rapi, TTD dilindungi dari pemotongan halaman</span>
+          <span>Format: Kertas {paperSize} {paperSize === 'F4' ? '(Folio)' : ''} Portrait, Margin: Kiri 3cm, Kanan 2cm, Atas 1cm, Bawah 2cm</span>
           <button
             onClick={onClose}
             className="text-slate-600 hover:text-slate-900 font-medium text-xs"

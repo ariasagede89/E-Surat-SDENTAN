@@ -5,7 +5,9 @@ export type JenisSuratKeluar =
   | 'surat_keterangan'
   | 'surat_undangan'
   | 'surat_keputusan'
-  | 'surat_tugas';
+  | 'surat_tugas'
+  | 'surat_pengantar'
+  | 'surat_rekomendasi';
 
 export type StatusSuratKeluar = 'Konsep' | 'Disetujui' | 'Terkirim' | 'Diarsipkan';
 
@@ -161,6 +163,26 @@ export interface SubjekKeteranganItem {
   tempatTglLahir?: string;
   namaOrtu?: string;
   alamat?: string;
+}
+
+export interface RekomendasiSiswaItem {
+  id: string;
+  nama: string;
+  nisn: string;
+  kelas: string;
+  tempatTglLahir?: string;
+  namaOrtu?: string;
+  alamat?: string;
+}
+
+export interface RekomendasiPtkItem {
+  id: string;
+  nama: string;
+  nip: string;
+  nuptk?: string;
+  pangkatGol: string;
+  jabatan: string;
+  unitKerja?: string;
 }
 
 export type UserRole = 'guru' | 'admin';

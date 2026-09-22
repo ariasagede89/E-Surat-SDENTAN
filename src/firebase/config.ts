@@ -1,7 +1,25 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getFirestore, Firestore, doc, getDocFromServer, collection, getDocs, setDoc } from 'firebase/firestore';
+import {
+  getFirestore,
+  initializeFirestore,
+  setLogLevel,
+  Firestore,
+  doc,
+  getDoc,
+  getDocFromServer,
+  collection,
+  getDocs,
+  setDoc,
+} from 'firebase/firestore';
 import defaultConfig from '../../firebase-applet-config.json';
 import { FirebaseAppConfig } from '../types';
+
+// Set Firebase Firestore log level to error to avoid noisy offline/reconnect warnings
+try {
+  setLogLevel('error');
+} catch {
+  // ignore if not supported in environment
+}
 
 const STORAGE_KEY_FIREBASE_CONFIG = 'simas_firebase_custom_config';
 
@@ -52,12 +70,37 @@ export function getFirebaseInstance(): { app: FirebaseApp | null; db: Firestore 
       cachedApp = existingApps.length > 0 ? existingApps[0] : initializeApp(config);
     }
     if (!cachedDb && cachedApp) {
-      cachedDb = getFirestore(cachedApp, config.firestoreDatabaseId || '(default)');
+      try {
+        cachedDb = initializeFirestore(
+          cachedApp,
+          {
+            experimentalForceLongPolling: true,
+          },
+          config.firestoreDatabaseId || '(default)'
+        );
+      } catch {
+        cachedDb = getFirestore(cachedApp, config.firestoreDatabaseId || '(default)');
+      }
     }
     return { app: cachedApp, db: cachedDb, isOnline: true };
   } catch (err) {
     console.error('Failed to initialize Firebase:', err);
     return { app: null, db: null, isOnline: false };
+  }
+}
+
+let hasValidatedBoot = false;
+export async function validateFirestoreConnectionOnBoot(): Promise<void> {
+  if (hasValidatedBoot) return;
+  hasValidatedBoot = true;
+  const { db } = getFirebaseInstance();
+  if (!db) return;
+  try {
+    // Gunakan getDoc biasa yang didukung cache offline tanpa melempar error network
+    await getDoc(doc(db, '_system_health', 'connection_probe'));
+  } catch (error) {
+    // Silent ignore during boot so offline mode continues seamlessly
+    console.info('[Firestore] Berjalan dengan mode cache/offline lokal.');
   }
 }
 
@@ -79,7 +122,19 @@ export async function testFirestoreConnection(configToTest?: FirebaseAppConfig):
       tempApp = initializeApp(config, 'test-conn');
     }
 
-    const testDb = getFirestore(tempApp, config.firestoreDatabaseId || '(default)');
+    let testDb: Firestore;
+    try {
+      testDb = initializeFirestore(
+        tempApp,
+        {
+          experimentalForceLongPolling: true,
+        },
+        config.firestoreDatabaseId || '(default)'
+      );
+    } catch {
+      testDb = getFirestore(tempApp, config.firestoreDatabaseId || '(default)');
+    }
+
     // Attempt write and read to a test probe document
     const testDocRef = doc(testDb, '_system_health', 'connection_probe');
     await setDoc(testDocRef, {
@@ -105,7 +160,7 @@ export async function testFirestoreConnection(configToTest?: FirebaseAppConfig):
     let msg = error?.message || String(error);
     if (msg.includes('permission-denied') || msg.includes('insufficient permissions')) {
       msg = 'Izin ditolak (Permission Denied). Pastikan file firestore.rules di Firebase Console sudah disetel allow read, write.';
-    } else if (msg.includes('offline') || msg.includes('network')) {
+    } else if (msg.includes('offline') || msg.includes('network') || msg.includes('unavailable')) {
       msg = 'Gagal terhubung ke server Firebase. Periksa koneksi internet atau Project ID.';
     }
     return {

@@ -30,7 +30,9 @@ import {
   buildAbsenSiswaHtml,
   printHtmlElement,
   printLandscapeHtml,
+  printPortraitHtml,
   exportAbsenPTKToWord,
+  exportAbsenSiswaToWord,
 } from '../utils/exportUtils';
 import {
   parseSiswaCsv,
@@ -110,6 +112,8 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
 
   // Opsi Cetak Siswa
   const [siswaKelasCetak, setSiswaKelasCetak] = useState<string>('6A');
+  const [siswaOrientationCetak, setSiswaOrientationCetak] = useState<'portrait' | 'landscape'>('portrait'); // Pilihan utama: Potret
+  const [siswaPaperSizeCetak, setSiswaPaperSizeCetak] = useState<PaperSize>('F4');
   const [siswaSemesterCetak, setSiswaSemesterCetak] = useState<string>('Ganjil');
   const [siswaTahunAjaranCetak, setSiswaTahunAjaranCetak] = useState<string>('2026/2027');
   const [siswaShowKopCetak, setSiswaShowKopCetak] = useState<boolean>(false); // Pilihan utama: Tanpa KOP
@@ -220,10 +224,45 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
       semester: siswaSemesterCetak,
       tahunAjaran: siswaTahunAjaranCetak,
       showKop: siswaShowKopCetak,
+      orientation: siswaOrientationCetak,
+      paperSize: siswaPaperSizeCetak,
     });
-    printLandscapeHtml(
-      html,
-      `Presensi Siswa Kelas ${siswaKelasCetak} - ${bulanNama}`
+
+    if (siswaOrientationCetak === 'portrait') {
+      printPortraitHtml(
+        html,
+        `Presensi Siswa Kelas ${siswaKelasCetak} - ${bulanNama} (Potret ${siswaPaperSizeCetak})`,
+        siswaPaperSizeCetak
+      );
+    } else {
+      printLandscapeHtml(
+        html,
+        `Presensi Siswa Kelas ${siswaKelasCetak} - ${bulanNama} (Lanskap ${siswaPaperSizeCetak})`,
+        siswaPaperSizeCetak
+      );
+    }
+  };
+
+  const doExportWordAbsenSiswa = () => {
+    exportAbsenSiswaToWord(
+      siswaList,
+      siswaKelasCetak,
+      sekolah,
+      {
+        siswaList,
+        kelas: siswaKelasCetak,
+        sekolah,
+        year: absenYear,
+        month: absenMonth,
+        holidays: absenHolidays,
+        semester: siswaSemesterCetak,
+        tahunAjaran: siswaTahunAjaranCetak,
+        showKop: siswaShowKopCetak,
+        orientation: siswaOrientationCetak,
+        paperSize: siswaPaperSizeCetak,
+      },
+      siswaPaperSizeCetak,
+      siswaOrientationCetak
     );
   };
 
@@ -880,7 +919,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                   )
                 }
                 className="px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                title="Cetak Presensi Siswa Bulanan (Format Landscape & Kostum Libur)"
+                title="Cetak Presensi Siswa Bulanan (Format Potret Pilihan Utama / Lanskap & Kostum Libur)"
               >
                 <Printer className="w-4 h-4" />
                 <span>Cetak Absen Siswa</span>
@@ -1862,18 +1901,24 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
             {/* Header Modal */}
             <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-900 text-white flex items-center justify-center font-bold shadow-xs">
+                <div className={`w-10 h-10 rounded-xl text-white flex items-center justify-center font-bold shadow-xs ${
+                  siswaOrientationCetak === 'portrait' ? 'bg-emerald-700' : 'bg-blue-900'
+                }`}>
                   <Printer className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                     <span>Cetak Presensi Peserta Didik Bulanan</span>
-                    <span className="px-2 py-0.5 text-[11px] font-semibold bg-blue-100 text-blue-900 rounded-full border border-blue-200">
-                      Landscape A4
+                    <span className={`px-2 py-0.5 text-[11px] font-bold rounded-full border ${
+                      siswaOrientationCetak === 'portrait'
+                        ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                        : 'bg-blue-100 text-blue-900 border-blue-200'
+                    }`}>
+                      {siswaOrientationCetak === 'portrait' ? 'Potret (Pilihan Utama)' : 'Lanskap'} • {siswaPaperSizeCetak}
                     </span>
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Format baris: No, Nama Siswa (NISN/NIS, L/P), Tanggal (1..30/31), Rekapitulasi (S, I, A, Jml), dan Tanda Tangan Resmi
+                    Format baris: No, NISN/NIS, Nama Siswa, L/P, Tanggal (1..30/31), Rekapitulasi (S, I, A, Jml), dan Pengesahan
                   </p>
                 </div>
               </div>
@@ -1921,12 +1966,83 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                   </div>
                 </div>
 
-                {/* Kolom Kanan: Pengaturan Kelas & Semester */}
+                {/* Kolom Kanan: Pengaturan Dokumen Presensi */}
                 <div className="lg:col-span-5 space-y-4">
                   <div className="space-y-3">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                      2. Pengaturan Presensi Kelas
+                      2. Pengaturan Dokumen Presensi
                     </span>
+
+                    {/* Pilihan Orientasi Cetak (Pilihan Utama: Potret) */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                          Orientasi Cetak:
+                        </label>
+                        <span className="text-[10.5px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          Potret: Pilihan Utama
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSiswaOrientationCetak('portrait')}
+                          className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition-all ${
+                            siswaOrientationCetak === 'portrait'
+                              ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-600/30'
+                              : 'bg-white border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                            siswaOrientationCetak === 'portrait' ? 'border-emerald-700 bg-emerald-700' : 'border-slate-400'
+                          }`}>
+                            {siswaOrientationCetak === 'portrait' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                              <span>Potret</span>
+                              <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded-full font-bold">Utama</span>
+                            </div>
+                            <div className="text-[10.5px] text-slate-500 mt-0.5 leading-tight">Standar buku absen tegak, pas 1 lembar</div>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSiswaOrientationCetak('landscape')}
+                          className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition-all ${
+                            siswaOrientationCetak === 'landscape'
+                              ? 'bg-blue-50 border-blue-600 ring-2 ring-blue-600/30'
+                              : 'bg-white border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                            siswaOrientationCetak === 'landscape' ? 'border-blue-900 bg-blue-900' : 'border-slate-400'
+                          }`}>
+                            {siswaOrientationCetak === 'landscape' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-slate-900">Lanskap</div>
+                            <div className="text-[10.5px] text-slate-500 mt-0.5 leading-tight">Kolom tanggal lebih lebar memanjang</div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Ukuran Kertas */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Ukuran Kertas:
+                      </label>
+                      <select
+                        value={siswaPaperSizeCetak}
+                        onChange={(e) => setSiswaPaperSizeCetak(e.target.value as PaperSize)}
+                        className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-2 font-medium text-slate-800 focus:outline-none"
+                      >
+                        <option value="F4">F4 / Folio (215 × 330 mm) - Standar Kedinasan</option>
+                        <option value="A4">A4 (210 × 297 mm)</option>
+                      </select>
+                    </div>
 
                     {/* Pilih Kelas */}
                     <div>
@@ -2034,14 +2150,22 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                     </span>
                     <div className="space-y-1 text-slate-600 text-[11.5px]">
                       <div className="flex justify-between">
+                        <span>Orientasi:</span>
+                        <span className={`font-bold ${siswaOrientationCetak === 'portrait' ? 'text-emerald-700' : 'text-blue-900'}`}>
+                          {siswaOrientationCetak === 'portrait' ? 'Potret (Tegak) - Pilihan Utama' : 'Lanskap (Melebar)'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Ukuran Kertas:</span>
+                        <span className="font-semibold text-slate-900">
+                          {siswaPaperSizeCetak === 'F4' ? 'F4 / Folio (215 × 330 mm)' : 'A4 (210 × 297 mm)'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
                         <span>Kop Surat:</span>
                         <span className={`font-semibold ${!siswaShowKopCetak ? 'text-emerald-700' : 'text-slate-900'}`}>
                           {!siswaShowKopCetak ? 'Tanpa KOP (Pilihan Utama)' : 'Resmi Kedinasan Pemkab Jembrana'}
                         </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Format Halaman:</span>
-                        <span className="font-semibold text-slate-900">A4 Landscape (Memanjang)</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Kelas Dicetak:</span>
@@ -2064,7 +2188,13 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                       <div className="flex justify-between">
                         <span>Format Kolom:</span>
                         <span className="font-semibold text-slate-900">
-                          No, Nama Siswa, Tanggal (1..{new Date(absenYear, absenMonth, 0).getDate()}), S, I, A, Jml
+                          No, NISN/NIS, Nama Siswa, L/P, Tanggal (1..{new Date(absenYear, absenMonth, 0).getDate()}), S, I, A, Jml
+                        </span>
+                      </div>
+                      <div className="flex justify-between pt-1 border-t border-slate-200/80">
+                        <span>Margin Dokumen (Word & PDF):</span>
+                        <span className="font-bold text-slate-800">
+                          Kiri 3cm, Kanan 1cm, Atas 1cm, Bawah 2cm
                         </span>
                       </div>
                     </div>
@@ -2074,7 +2204,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
             </div>
 
             {/* Footer Modal */}
-            <div className="px-5 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+            <div className="px-5 py-3 border-t border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => setShowCetakAbsenSiswaModal(false)}
@@ -2082,14 +2212,28 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
               >
                 Tutup
               </button>
-              <button
-                type="button"
-                onClick={doPrintAbsenSiswa}
-                className="px-5 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-sm flex items-center gap-2 transition-all hover:shadow"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Cetak Presensi Siswa (Landscape)</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={doExportWordAbsenSiswa}
+                  className="px-4 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-2 transition-all hover:border-slate-400"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-blue-600" />
+                  <span>Unduh Word ({siswaOrientationCetak === 'portrait' ? 'Potret' : 'Lanskap'})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={doPrintAbsenSiswa}
+                  className={`px-5 py-2.5 text-white font-bold text-xs sm:text-sm rounded-xl shadow-sm flex items-center gap-2 transition-all hover:shadow ${
+                    siswaOrientationCetak === 'portrait'
+                      ? 'bg-emerald-700 hover:bg-emerald-800'
+                      : 'bg-blue-900 hover:bg-blue-800'
+                  }`}
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Cetak Presensi Siswa ({siswaOrientationCetak === 'portrait' ? 'Potret' : 'Lanskap'})</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

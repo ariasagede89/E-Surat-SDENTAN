@@ -24,6 +24,7 @@ import {
 import {
   isFirebaseConfigured,
   getStoredFirebaseConfig,
+  validateFirestoreConnectionOnBoot,
 } from './firebase/config';
 import {
   subscribeToCollection,
@@ -277,6 +278,9 @@ export default function App() {
     }
     setFirebaseActive(true);
 
+    // Validate connection to Firestore on boot
+    validateFirestoreConnectionOnBoot().catch(() => {});
+
     // Purge any lingering dummy template documents from Firestore
     purgeDummyDocsFromFirestore().catch(() => {});
 
@@ -487,6 +491,18 @@ export default function App() {
     if (ok) {
       showToast(`Data PTK ${item.nama} berhasil diperbarui di Cloud Firestore!`, 'success');
     }
+
+    // Jika PTK yang diperbarui adalah Kepala Sekolah, sinkronkan langsung ke Pengaturan Sekolah
+    if (item.jenisPtk === 'kepala_sekolah' || /kepala\s+sekolah/i.test(item.jabatan || '')) {
+      const updatedSekolah: PengaturanSekolah = {
+        ...sekolah,
+        kepalaSekolah: item.nama,
+        nipKepalaSekolah: item.nip,
+        pangkatKepalaSekolah: item.pangkatGol || sekolah.pangkatKepalaSekolah,
+      };
+      setSekolah(updatedSekolah);
+      syncSettingsToFirestore(updatedSekolah);
+    }
   };
 
   const handleDeleteGuru = async (id: string) => {
@@ -627,6 +643,22 @@ export default function App() {
       showToast('Identitas dan Pengaturan Sekolah berhasil disimpan ke Cloud Firestore!', 'success');
     } else {
       showToast('Pengaturan disimpan di penyimpanan lokal browser', 'info');
+    }
+
+    // Sinkronkan data kepala sekolah ke PTK Kepala Sekolah
+    const kepsekIndex = guruList.findIndex(
+      (g) => g.jenisPtk === 'kepala_sekolah' || /kepala\s+sekolah/i.test(g.jabatan || '')
+    );
+    if (kepsekIndex >= 0) {
+      const kepsekGuru = guruList[kepsekIndex];
+      const updatedGuru: Guru = {
+        ...kepsekGuru,
+        nama: updated.kepalaSekolah || kepsekGuru.nama,
+        nip: updated.nipKepalaSekolah || kepsekGuru.nip,
+        pangkatGol: updated.pangkatKepalaSekolah || kepsekGuru.pangkatGol,
+      };
+      setGuruList((prev) => prev.map((g, idx) => (idx === kepsekIndex ? updatedGuru : g)));
+      syncDocToFirestore('guru', updatedGuru);
     }
   };
 
@@ -1031,6 +1063,7 @@ export default function App() {
       <SuratModal
         surat={previewSuratKeluar}
         sekolah={sekolah}
+        guruList={guruList}
         onClose={() => setPreviewSuratKeluar(null)}
       />
 

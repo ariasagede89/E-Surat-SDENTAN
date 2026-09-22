@@ -22,7 +22,9 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
   arsipList = [],
   onSelectNumber,
 }) => {
-  const [activeKategori, setActiveKategori] = useState<'Semua' | 'Pendidikan Dasar' | 'Kepegawaian'>('Semua');
+  const [activeKategori, setActiveKategori] = useState<
+    'Semua' | 'Pendidikan Dasar' | 'Kepegawaian' | 'Tata Usaha & Pertemuan'
+  >('Semua');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItem, setSelectedItem] = useState<KlasifikasiMendagriItem>(() => {
     return cariKlasifikasi('', 'Pendidikan Dasar')[0];
@@ -176,7 +178,7 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
             </div>
 
             {/* Filter Buttons */}
-            <div className="flex gap-1.5 p-1 bg-slate-100 rounded-xl mb-3">
+            <div className="flex flex-wrap sm:flex-nowrap gap-1.5 p-1 bg-slate-100 rounded-xl mb-3">
               <button
                 onClick={() => setActiveKategori('Semua')}
                 className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg transition-all ${
@@ -196,7 +198,7 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
-                Pendidikan Dasar (SD)
+                Pendidikan Dasar (400.3)
               </button>
               <button
                 onClick={() => setActiveKategori('Kepegawaian')}
@@ -209,6 +211,16 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                 <UserCheck className="w-3.5 h-3.5" />
                 Kepegawaian (800)
               </button>
+              <button
+                onClick={() => setActiveKategori('Tata Usaha & Pertemuan')}
+                className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg transition-all ${
+                  activeKategori === 'Tata Usaha & Pertemuan'
+                    ? 'bg-white text-blue-950 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Tata Usaha (000)
+              </button>
             </div>
 
             {/* Search Input */}
@@ -218,7 +230,7 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Cari kode (mis: 421.2, 824, 893) atau kata (cuti, tugas, mutasi, kurikulum)..."
+                placeholder="Cari kode (mis: 400.3.5, 400.3.10, 400.3.12, 800.1.11.1) atau uraian..."
                 className="w-full text-xs sm:text-sm pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-none"
               />
             </div>

@@ -105,6 +105,12 @@ export function subscribeToCollection<T extends { id: string }>(
       onUpdate(sanitized);
     },
     (error) => {
+      const errMsg = error?.message || String(error);
+      const isUnavailable = errMsg.includes('unavailable') || errMsg.includes('offline') || errMsg.includes('Could not reach Cloud Firestore');
+      if (isUnavailable) {
+        console.warn(`[Firestore Offline Cache] ${collectionName}: Beroperasi dengan cache lokal selagi mencoba menyambung ke server.`);
+        return;
+      }
       handleFirestoreError(error, OperationType.GET, collectionName);
       if (onError) onError(error);
     }

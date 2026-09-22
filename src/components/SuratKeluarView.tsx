@@ -21,6 +21,10 @@ import {
   ArrowUpDown,
   Upload,
   Paperclip,
+  Copy,
+  ChevronUp,
+  ChevronDown,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   SuratKeluar,
@@ -33,8 +37,16 @@ import {
   KlasifikasiMendagriItem,
   SubjekKeteranganItem,
   SkPointItem,
+  RekomendasiSiswaItem,
+  RekomendasiPtkItem,
 } from '../types';
-import { formatTanggalIndonesia, exportToWord, buildSuratHtml } from '../utils/exportUtils';
+import {
+  formatTanggalIndonesia,
+  exportToWord,
+  buildSuratHtml,
+  formatNamaSekolahIsi,
+  resolveKepalaSekolahData,
+} from '../utils/exportUtils';
 import {
   generateNomorSurat,
   refreshNomorUrut,
@@ -44,6 +56,7 @@ import {
   formatNomorUrut,
   compareSuratKeluarDesc,
   compareSuratKeluarAsc,
+  getKodeDefaultByJenis,
 } from '../utils/numberGenerator';
 import { formatDiktumLabel, getIndonesianOrdinalWord } from '../utils/diktumUtils';
 import { readFileAsDataUrl, openOrDownloadDocument } from '../utils/fileUtils';
@@ -113,6 +126,137 @@ const defaultSkMemperhatikanList: SkPointItem[] = [
     id: '2',
     poin: '2.',
     isi: 'Kalender Pendidikan Provinsi Bali Tahun Ajaran 2026/2027.',
+  },
+];
+
+export interface SpDokumenItem {
+  id: string;
+  uraian: string;
+  namaBerkas?: string;
+  jumlah: string;
+  keterangan: string;
+}
+
+export const TEMPLATE_SURAT_PENGANTAR_DOKUMEN = [
+  {
+    id: 'bosp',
+    nama: 'LPJ BOSP (Dana BOS)',
+    badge: 'Keuangan',
+    perihal: 'Surat Pengantar Laporan Pertanggungjawaban (LPJ) BOSP Tahap I',
+    tujuan: 'Kepala Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana',
+    kalimatPengantar: 'Bersama ini kami kirimkan dengan hormat berkas Laporan Pertanggungjawaban (LPJ) Bantuan Operasional Satuan Pendidikan (BOSP) sebagaimana daftar di bawah ini:',
+    items: [
+      {
+        uraian: 'Laporan Pertanggungjawaban (LPJ) Bantuan Operasional Satuan Pendidikan (BOSP) Tahap I Tahun 2026',
+        jumlah: '1 (satu) Berkas',
+        keterangan: 'Disampaikan dengan hormat untuk diverifikasi dan disahkan.',
+      },
+      {
+        uraian: 'Buku Kas Umum (BKU), Buku Pembantu Kas, dan Buku Pembantu Bank Bulan Januari s.d. Juni 2026',
+        jumlah: '1 (satu) Gabung',
+        keterangan: 'Sebagai bukti fisik pembukuan keuangan.',
+      },
+      {
+        uraian: 'Rekening Koran Bank dan Surat Pernyataan Tanggung Jawab Mutlak (SPTJM)',
+        jumlah: '1 (satu) Set',
+        keterangan: 'Lampiran kelengkapan berkas LPJ.',
+      },
+    ],
+  },
+  {
+    id: 'kgb_pangkat',
+    nama: 'Usulan Kenaikan Pangkat / KGB',
+    badge: 'Kepegawaian',
+    perihal: 'Surat Pengantar Usulan Berkas Kenaikan Pangkat / KGB Guru',
+    tujuan: 'Kepala Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana',
+    kalimatPengantar: 'Bersama ini kami sampaikan dengan hormat berkas usulan administrasi kepegawaian Pendidik dan Tenaga Kependidikan sebagaimana daftar di bawah ini:',
+    items: [
+      {
+        uraian: 'Berkas Usulan Kenaikan Pangkat Pendidik dan Tenaga Kependidikan (PTK) Periode 2026',
+        jumlah: '1 (satu) Berkas',
+        keterangan: 'Disampaikan dengan hormat untuk diproses sesuai ketentuan yang berlaku.',
+      },
+      {
+        uraian: 'Salinan Penilaian Kinerja Guru (PKG) dan SK Pangkat Terakhir yang telah dilegalisir',
+        jumlah: '1 (satu) Rangkap',
+        keterangan: 'Sebagai lampiran persyaratan administrasi kepegawaian.',
+      },
+    ],
+  },
+  {
+    id: 'laporan_bulanan',
+    nama: 'Laporan Bulanan Keadaan Sekolah',
+    badge: 'Rutin',
+    perihal: 'Surat Pengantar Laporan Bulanan Keadaan Sekolah',
+    tujuan: 'Koordinator Wilayah (Korwil) Bidang Pendidikan Kecamatan Pekutatan',
+    kalimatPengantar: 'Bersama ini kami kirimkan dengan hormat laporan berkala keadaan sekolah bulan berjalan sebagaimana daftar di bawah ini:',
+    items: [
+      {
+        uraian: 'Laporan Bulanan Keadaan Sekolah (Rekapitulasi PTK, Peserta Didik, dan Sarana Prasarana)',
+        jumlah: '1 (satu) Eksemplar',
+        keterangan: 'Disampaikan dengan hormat sebagai laporan rutin bulanan sekolah.',
+      },
+      {
+        uraian: 'Rekapitulasi Kehadiran / Presensi Pendidik dan Tenaga Kependidikan Bulan Berjalan',
+        jumlah: '1 (satu) Gabung',
+        keterangan: 'Untuk menjadi periksa.',
+      },
+    ],
+  },
+  {
+    id: 'blanko_ijazah',
+    nama: 'Blanko Ijazah / Mutasi Siswa',
+    badge: 'Kesiswaan',
+    perihal: 'Surat Pengantar Permohonan Blanko Ijazah Tambahan/Pengganti',
+    tujuan: 'Kepala Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana',
+    kalimatPengantar: 'Bersama ini kami ajukan dengan hormat berkas permohonan blanko ijazah peserta didik sebagaimana daftar di bawah ini:',
+    items: [
+      {
+        uraian: 'Surat Permohonan dan Berita Acara Kerusakan / Penggantian Blanko Ijazah',
+        jumlah: '1 (satu) Berkas',
+        keterangan: 'Disampaikan untuk mendapatkan penerbitan blanko pengganti.',
+      },
+      {
+        uraian: 'Fisik Blanko Ijazah Rusak beserta Fotokopi Akta Kelahiran dan Kartu Keluarga',
+        jumlah: '1 (satu) Set',
+        keterangan: 'Lampiran bukti fisik pendukung permohonan.',
+      },
+    ],
+  },
+  {
+    id: 'pip',
+    nama: 'Usulan PIP Peserta Didik',
+    badge: 'Kesiswaan',
+    perihal: 'Surat Pengantar Usulan Peserta Didik Penerima Program Indonesia Pintar (PIP)',
+    tujuan: 'Kepala Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana',
+    kalimatPengantar: 'Bersama ini kami kirimkan dengan hormat data usulan peserta didik calon penerima PIP tahun berjalan sebagaimana daftar di bawah ini:',
+    items: [
+      {
+        uraian: 'Daftar Nominasi Usulan Peserta Didik Penerima Program Indonesia Pintar (PIP) Tahun 2026',
+        jumlah: '1 (satu) Berkas',
+        keterangan: 'Disampaikan dengan hormat untuk diproses dalam SK Nominasi PIP.',
+      },
+      {
+        uraian: 'Fotokopi KIP/KKS/PKH atau Surat Keterangan Tidak Mampu (SKTM) dari Desa',
+        jumlah: '1 (satu) Bundel',
+        keterangan: 'Berkas lampiran dokumen pendukung yang diusulkan.',
+      },
+    ],
+  },
+  {
+    id: 'umum',
+    nama: 'Pengantar Dokumen Kedinasan Umum',
+    badge: 'Umum',
+    perihal: 'Surat Pengantar Pengiriman Berkas Kedinasan',
+    tujuan: 'Kepala Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana',
+    kalimatPengantar: 'Bersama ini kami kirimkan dengan hormat berkas / dokumen sebagaimana daftar di bawah ini:',
+    items: [
+      {
+        uraian: 'Berkas Dokumen Laporan Kedinasan Satuan Pendidikan',
+        jumlah: '1 (satu) Berkas',
+        keterangan: 'Disampaikan dengan hormat untuk diketahui dan ditindaklanjuti.',
+      },
+    ],
   },
 ];
 
@@ -199,6 +343,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
   ]);
 
   // Khusus: Surat Tugas
+  const [sptFormatPembuka, setSptFormatPembuka] = useState<'ttd_kepsek' | 'dasar'>('ttd_kepsek');
   const [sptDasar, setSptDasar] = useState('');
   const [sptKeperluan, setSptKeperluan] = useState('');
   const [sptTempat, setSptTempat] = useState('');
@@ -206,6 +351,66 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
   const [sptTglSelesai, setSptTglSelesai] = useState('');
   const [sptWaktu, setSptWaktu] = useState('');
   const [sptPegawai, setSptPegawai] = useState<any[]>([]);
+
+  // Khusus: Surat Pengantar
+  const [spSubJenis, setSpSubJenis] = useState<'dokumen' | 'siswa' | 'ptk'>('dokumen');
+  const [spTempatTujuan, setSpTempatTujuan] = useState('Tempat');
+  const [spTembusan, setSpTembusan] = useState('1. Yang bersangkutan\n2. Arsip');
+  const [spKalimatPengantar, setSpKalimatPengantar] = useState('');
+  const [spDaftarDokumen, setSpDaftarDokumen] = useState<SpDokumenItem[]>([
+    {
+      id: '1',
+      uraian: 'Berkas Pengajuan Beasiswa S2 Guru a.n\n1. SITI SWAIBATUN, S.Pd.\nNIP. 19860203 201001 2 011',
+      namaBerkas: 'Berkas Pengajuan Beasiswa S2 Guru',
+      jumlah: '1 bendel',
+      keterangan: 'Disampaikan dengan hormat sebagai permohonan dan atas perhatiannya disampaikan terima kasih',
+    },
+  ]);
+  const [spKeperluanSiswa, setSpKeperluanSiswa] = useState(
+    'Mengikuti Festival dan Lomba Seni Siswa Nasional (FLS2N) SD Tingkat Kecamatan Pekutatan Tahun 2026'
+  );
+  const [spTempatKegiatanSiswa, setSpTempatKegiatanSiswa] = useState('Aula Korwil Kecamatan Pekutatan');
+  const [spTglKegiatanSiswa, setSpTglKegiatanSiswa] = useState(new Date().toISOString().slice(0, 10));
+  const [spGuruPendamping, setSpGuruPendamping] = useState('');
+  const [spDaftarSiswa, setSpDaftarSiswa] = useState<
+    Array<{ id: string; nama: string; nisn: string; kelas: string; jk: string; keterangan: string }>
+  >([]);
+  const [spKeperluanPtk, setSpKeperluanPtk] = useState('Pengusulan Berkas Kenaikan Pangkat Pendidik Periode Oktober 2026');
+  const [spDaftarPtk, setSpDaftarPtk] = useState<
+    Array<{ id: string; nama: string; nip: string; pangkatGol: string; jabatan: string; berkasKeterangan: string }>
+  >([]);
+
+  // Khusus: Surat Rekomendasi
+  const [rekSubJenis, setRekSubJenis] = useState<'siswa' | 'ptk'>('siswa');
+  // Daftar Siswa & PTK (Multi Subjek)
+  const [rekDaftarSiswa, setRekDaftarSiswa] = useState<RekomendasiSiswaItem[]>([]);
+  const [rekDaftarPtk, setRekDaftarPtk] = useState<RekomendasiPtkItem[]>([]);
+  // Siswa
+  const [rekSiswaNama, setRekSiswaNama] = useState('');
+  const [rekSiswaNisn, setRekSiswaNisn] = useState('');
+  const [rekSiswaKelas, setRekSiswaKelas] = useState('');
+  const [rekSiswaTtl, setRekSiswaTtl] = useState('');
+  const [rekSiswaOrtu, setRekSiswaOrtu] = useState('');
+  const [rekSiswaAlamat, setRekSiswaAlamat] = useState('');
+  const [rekSiswaKeperluan, setRekSiswaKeperluan] = useState(
+    'Penerimaan Bantuan Beasiswa Program Indonesia Pintar (PIP) Tahun 2026'
+  );
+  const [rekSiswaPertimbangan, setRekSiswaPertimbangan] = useState(
+    'Bahwa peserta didik tersebut di atas berkelakuan baik, berprestasi, aktif dalam kegiatan pembelajaran di sekolah, dan layak diberikan rekomendasi.'
+  );
+  // PTK
+  const [rekPtkNama, setRekPtkNama] = useState('');
+  const [rekPtkNip, setRekPtkNip] = useState('');
+  const [rekPtkNuptk, setRekPtkNuptk] = useState('');
+  const [rekPtkPangkatGol, setRekPtkPangkatGol] = useState('');
+  const [rekPtkJabatan, setRekPtkJabatan] = useState('');
+  const [rekPtkUnitKerja, setRekPtkUnitKerja] = useState('SD Negeri 1 Pekutatan');
+  const [rekPtkKeperluan, setRekPtkKeperluan] = useState(
+    'Mengikuti Seleksi Program Pendidikan Profesi Guru (PPG) Guru Tertentu / Calon Guru Penggerak'
+  );
+  const [rekPtkPertimbangan, setRekPtkPertimbangan] = useState(
+    'Bahwa yang bersangkutan memiliki loyalitas, integritas, kedisiplinan yang tinggi, serta rekam jejak kinerja yang sangat baik dan tidak sedang menjalani sanksi hukuman disiplin kedinasan.'
+  );
 
   // Delete Confirmation Modal State
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -236,24 +441,14 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     if (jenis === 'surat_ijin_guru') {
       return {
         nomor: '-',
-        kode: '800.1.11.4',
-        nama: 'Permohonan Izin / Cuti Guru (Permendagri 83/2022)',
+        kode: '800.1.11.5',
+        nama: 'Cuti Alasan Penting / Permohonan Izin Tidak Masuk Sekolah',
       };
     }
 
-    let kode = '800.1.11.1';
-    let nama = 'Surat Perintah Tugas (SPT) (Permendagri 83/2022)';
-
-    if (jenis === 'surat_keterangan') {
-      kode = '400.3.12.1';
-      nama = 'Surat Keterangan Peserta Didik / GTK (Permendagri 83/2022)';
-    } else if (jenis === 'surat_undangan') {
-      kode = '000.1.5';
-      nama = 'Undangan Rapat / Pertemuan Dinas (Permendagri 83/2022)';
-    } else if (jenis === 'surat_keputusan') {
-      kode = '400.3.10';
-      nama = 'SK Pembagian Tugas PTK / Kurikulum (Permendagri 83/2022)';
-    }
+    const def = getKodeDefaultByJenis(jenis);
+    const kode = def.kode;
+    const nama = def.nama;
 
     // Hitung nomor urut berikutnya dari data yang ada (Terkoneksi dengan Arsip Surat Keluar)
     const nextSeq = getNextNomorUrut(suratKeluarList, arsipList);
@@ -334,6 +529,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       { id: '3', label: 'Ketiga', isi: 'Keputusan ini berlaku sejak tanggal ditetapkan, dengan ketentuan apabila terdapat kekeliruan di kemudian hari akan diadakan perbaikan sebagaimana mestinya.' },
     ]);
 
+    setSptFormatPembuka('ttd_kepsek');
     setSptDasar('Surat Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana');
     setSptKeperluan('Mengikuti Workshop Peningkatan Mutu Pembelajaran');
     setSptTempat('Kecamatan Pekutatan');
@@ -345,6 +541,114 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
         ? [{ nama: guruList[0].nama, nip: guruList[0].nip, pangkatGol: guruList[0].pangkatGol, jabatan: guruList[0].jabatan }]
         : []
     );
+
+    // Default Surat Pengantar
+    setSpSubJenis('dokumen');
+    setSpTempatTujuan('Tempat');
+    setSpTembusan('1. Yang bersangkutan\n2. Arsip');
+    setSpKalimatPengantar('');
+    setSpDaftarDokumen([
+      {
+        id: '1',
+        uraian: 'Berkas Pengajuan Beasiswa S2 Guru a.n\n1. SITI SWAIBATUN, S.Pd.\nNIP. 19860203 201001 2 011',
+        namaBerkas: 'Berkas Pengajuan Beasiswa S2 Guru',
+        jumlah: '1 bendel',
+        keterangan: 'Disampaikan dengan hormat sebagai permohonan dan atas perhatiannya disampaikan terima kasih',
+      },
+    ]);
+    setSpKeperluanSiswa('Mengikuti Festival dan Lomba Seni Siswa Nasional (FLS2N) SD Tingkat Kecamatan Pekutatan Tahun 2026');
+    setSpTempatKegiatanSiswa('Aula Korwil Kecamatan Pekutatan');
+    setSpTglKegiatanSiswa(todayStr);
+    setSpGuruPendamping(guruList[0]?.nama ? `${guruList[0].nama} (Guru Pembina)` : 'Guru Pembina SDN 1 Pekutatan');
+    setSpDaftarSiswa(
+      siswaList.length > 0
+        ? [
+            {
+              id: '1',
+              nama: siswaList[0].nama,
+              nisn: siswaList[0].nisn || siswaList[0].nis || '-',
+              kelas: siswaList[0].kelas || 'Kelas IV',
+              jk: siswaList[0].jenisKelamin === 'Perempuan' ? 'P' : 'L',
+              keterangan: 'Peserta Lomba Seni Tari',
+            },
+          ]
+        : []
+    );
+    setSpKeperluanPtk('Pengusulan Berkas Kenaikan Pangkat Pendidik Periode Oktober 2026');
+    setSpDaftarPtk(
+      guruList.length > 0
+        ? [
+            {
+              id: '1',
+              nama: guruList[0].nama,
+              nip: guruList[0].nip || guruList[0].nuptk || '-',
+              pangkatGol: guruList[0].pangkatGol || '-',
+              jabatan: guruList[0].jabatan || 'Guru Kelas',
+              berkasKeterangan: '1 Berkas Portofolio Lengkap',
+            },
+          ]
+        : []
+    );
+
+    // Default Surat Rekomendasi
+    setRekSubJenis('siswa');
+    const initSiswaItem: RekomendasiSiswaItem = siswaList.length > 0
+      ? {
+          id: '1',
+          nama: siswaList[0].nama,
+          nisn: siswaList[0].nisn || siswaList[0].nis || '',
+          kelas: siswaList[0].kelas || 'Kelas IV',
+          tempatTglLahir: (siswaList[0] as any).tempatTanggalLahir || (siswaList[0].tempatLahir ? `${siswaList[0].tempatLahir}, ${siswaList[0].tglLahir}` : 'Pekutatan, 12 Mei 2015'),
+          namaOrtu: siswaList[0].namaOrtu || (siswaList[0] as any).namaOrangTua || 'I Wayan Sudarta',
+          alamat: siswaList[0].alamat || 'Desa Pekutatan, Jembrana',
+        }
+      : {
+          id: '1',
+          nama: '',
+          nisn: '',
+          kelas: 'Kelas IV',
+          tempatTglLahir: '',
+          namaOrtu: '',
+          alamat: '',
+        };
+    setRekDaftarSiswa([initSiswaItem]);
+    setRekSiswaNama(initSiswaItem.nama);
+    setRekSiswaNisn(initSiswaItem.nisn);
+    setRekSiswaKelas(initSiswaItem.kelas);
+    setRekSiswaTtl(initSiswaItem.tempatTglLahir || '');
+    setRekSiswaOrtu(initSiswaItem.namaOrtu || '');
+    setRekSiswaAlamat(initSiswaItem.alamat || '');
+    setRekSiswaKeperluan('Penerimaan Bantuan Beasiswa Program Indonesia Pintar (PIP) Tahun 2026');
+    setRekSiswaPertimbangan('');
+
+    const initPtkItem: RekomendasiPtkItem = guruList.length > 0
+      ? {
+          id: '1',
+          nama: guruList[0].nama,
+          nip: guruList[0].nip || guruList[0].nuptk || '-',
+          nuptk: guruList[0].nuptk || '-',
+          pangkatGol: guruList[0].pangkatGol || '-',
+          jabatan: guruList[0].jabatan || 'Guru Kelas',
+          unitKerja: 'SD Negeri 1 Pekutatan',
+        }
+      : {
+          id: '1',
+          nama: '',
+          nip: '',
+          nuptk: '',
+          pangkatGol: '',
+          jabatan: 'Guru Kelas',
+          unitKerja: 'SD Negeri 1 Pekutatan',
+        };
+    setRekDaftarPtk([initPtkItem]);
+    setRekPtkNama(initPtkItem.nama);
+    setRekPtkNip(initPtkItem.nip);
+    setRekPtkNuptk(initPtkItem.nuptk || '-');
+    setRekPtkPangkatGol(initPtkItem.pangkatGol);
+    setRekPtkJabatan(initPtkItem.jabatan);
+    setRekPtkUnitKerja(initPtkItem.unitKerja || 'SD Negeri 1 Pekutatan');
+    setRekPtkKeperluan('Mengikuti Seleksi Program Pendidikan Profesi Guru (PPG) Guru Tertentu / Calon Guru Penggerak');
+    setRekPtkPertimbangan('');
 
     setShowFormModal(true);
   };
@@ -506,6 +810,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
         ]);
       }
     } else if (sk.jenisSurat === 'surat_tugas') {
+      setSptFormatPembuka(d.formatPembuka || (d.dasarTugas ? 'dasar' : 'ttd_kepsek'));
       setSptDasar(d.dasarTugas || '');
       setSptKeperluan(d.tujuanTugas || '');
       setSptTempat(d.tempatTugas || '');
@@ -513,6 +818,86 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       setSptTglSelesai(d.tglSelesai || '');
       setSptWaktu(d.waktu || '');
       setSptPegawai(d.pegawaiDitugaskan || []);
+    } else if (sk.jenisSurat === 'surat_pengantar') {
+      setSpSubJenis(d.subJenisPengantar || 'dokumen');
+      setSpTempatTujuan(d.tempatTujuan || 'Tempat');
+      setSpTembusan(d.tembusan !== undefined ? d.tembusan : '1. Yang bersangkutan\n2. Arsip');
+      setSpKalimatPengantar(d.kalimatPengantar || '');
+      setSpDaftarDokumen(
+        Array.isArray(d.daftarDokumen) && d.daftarDokumen.length > 0
+          ? d.daftarDokumen.map((doc: any, i: number) => ({
+              id: doc.id || String(i + 1),
+              uraian: doc.uraian || doc.namaBerkas || '',
+              namaBerkas: doc.uraian || doc.namaBerkas || '',
+              jumlah: doc.jumlah || '1 bendel',
+              keterangan: doc.keterangan || 'Disampaikan dengan hormat sebagai permohonan dan atas perhatiannya disampaikan terima kasih',
+            }))
+          : [
+              {
+                id: '1',
+                uraian: sk.perihal || 'Berkas Pengajuan Kedinasan',
+                namaBerkas: sk.perihal || 'Berkas Pengajuan Kedinasan',
+                jumlah: '1 bendel',
+                keterangan: 'Disampaikan dengan hormat sebagai permohonan dan atas perhatiannya disampaikan terima kasih',
+              },
+            ]
+      );
+      setSpKeperluanSiswa(d.keperluan || '');
+      setSpTempatKegiatanSiswa(d.tempatKegiatan || '');
+      setSpTglKegiatanSiswa(d.tglKegiatan || '');
+      setSpGuruPendamping(d.guruPendamping || '');
+      setSpDaftarSiswa(Array.isArray(d.daftarSiswa) ? d.daftarSiswa : []);
+      setSpKeperluanPtk(d.keperluan || '');
+      setSpDaftarPtk(Array.isArray(d.daftarPtk) ? d.daftarPtk : []);
+    } else if (sk.jenisSurat === 'surat_rekomendasi') {
+      setRekSubJenis(d.subJenisRekomendasi || 'siswa');
+      if (d.subJenisRekomendasi === 'ptk') {
+        const loadedPtkList: RekomendasiPtkItem[] = Array.isArray(d.daftarPtk) && d.daftarPtk.length > 0
+          ? d.daftarPtk
+          : [
+              {
+                id: '1',
+                nama: d.nama || '',
+                nip: d.nip || '',
+                nuptk: d.nuptk || '',
+                pangkatGol: d.pangkatGol || '',
+                jabatan: d.jabatan || '',
+                unitKerja: d.unitKerja || 'SD Negeri 1 Pekutatan',
+              },
+            ];
+        setRekDaftarPtk(loadedPtkList);
+        setRekPtkNama(d.nama || loadedPtkList[0]?.nama || '');
+        setRekPtkNip(d.nip || loadedPtkList[0]?.nip || '');
+        setRekPtkNuptk(d.nuptk || loadedPtkList[0]?.nuptk || '');
+        setRekPtkPangkatGol(d.pangkatGol || loadedPtkList[0]?.pangkatGol || '');
+        setRekPtkJabatan(d.jabatan || loadedPtkList[0]?.jabatan || '');
+        setRekPtkUnitKerja(d.unitKerja || loadedPtkList[0]?.unitKerja || 'SD Negeri 1 Pekutatan');
+        setRekPtkKeperluan(d.keperluanRekomendasi || sk.perihal || '');
+        setRekPtkPertimbangan(d.dasarPertimbangan || '');
+      } else {
+        const loadedSiswaList: RekomendasiSiswaItem[] = Array.isArray(d.daftarSiswa) && d.daftarSiswa.length > 0
+          ? d.daftarSiswa
+          : [
+              {
+                id: '1',
+                nama: d.nama || '',
+                nisn: d.nisn || '',
+                kelas: d.kelas || '',
+                tempatTglLahir: d.tempatTglLahir || '',
+                namaOrtu: d.namaOrtu || '',
+                alamat: d.alamat || '',
+              },
+            ];
+        setRekDaftarSiswa(loadedSiswaList);
+        setRekSiswaNama(d.nama || loadedSiswaList[0]?.nama || '');
+        setRekSiswaNisn(d.nisn || loadedSiswaList[0]?.nisn || '');
+        setRekSiswaKelas(d.kelas || loadedSiswaList[0]?.kelas || '');
+        setRekSiswaTtl(d.tempatTglLahir || loadedSiswaList[0]?.tempatTglLahir || '');
+        setRekSiswaOrtu(d.namaOrtu || loadedSiswaList[0]?.namaOrtu || '');
+        setRekSiswaAlamat(d.alamat || loadedSiswaList[0]?.alamat || '');
+        setRekSiswaKeperluan(d.keperluanRekomendasi || sk.perihal || '');
+        setRekSiswaPertimbangan(d.dasarPertimbangan || '');
+      }
     }
 
     setShowFormModal(true);
@@ -522,6 +907,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     e.preventDefault();
 
     let finalTujuan = tujuan;
+    let finalPerihal = perihal;
     let dataKhusus: any = {};
 
     if (jenisSurat === 'surat_ijin_guru') {
@@ -534,9 +920,10 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
         alasan: ijinAlasan,
         tglMulai: ijinTglMulai,
         tglSelesai: finalTglSelesai,
-        guruPengganti: ijinGuruPengganti,
+        guruPengganti: (ijinGuruPengganti || '').trim(),
       };
-      finalTujuan = 'Kepala SDN 1 Pekutatan';
+      finalTujuan = tujuan?.trim() || `Kepala ${formatNamaSekolahIsi(sekolah.namaSekolah)}`;
+      finalPerihal = 'Permohonan Izin Tidak Masuk Sekolah';
     } else if (jenisSurat === 'surat_keterangan') {
       const activeSubjekList =
         ketSubjekList.length > 0
@@ -608,6 +995,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       };
     } else if (jenisSurat === 'surat_tugas') {
       dataKhusus = {
+        formatPembuka: sptFormatPembuka,
         dasarTugas: sptDasar,
         tujuanTugas: sptKeperluan,
         tempatTugas: sptTempat,
@@ -616,7 +1004,128 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
         waktu: sptWaktu,
         pegawaiDitugaskan: sptPegawai,
       };
+    } else if (jenisSurat === 'surat_pengantar') {
+      if (spSubJenis === 'dokumen') {
+        const doc0 = spDaftarDokumen[0] || {
+          id: '1',
+          uraian: perihal || 'Berkas Pengajuan Kedinasan',
+          namaBerkas: perihal || 'Berkas Pengajuan Kedinasan',
+          jumlah: '1 bendel',
+          keterangan: 'Disampaikan dengan hormat sebagai permohonan dan atas perhatiannya disampaikan terima kasih',
+        };
+        const rawUraian = (doc0.uraian || doc0.namaBerkas || perihal || 'Berkas Pengajuan Kedinasan').trim();
+        const docs = [
+          {
+            id: '1',
+            uraian: rawUraian,
+            namaBerkas: rawUraian,
+            jumlah: (doc0.jumlah || '1 bendel').trim(),
+            keterangan: (doc0.keterangan || 'Disampaikan dengan hormat sebagai permohonan dan atas perhatiannya disampaikan terima kasih').trim(),
+          },
+        ];
+        dataKhusus = {
+          subJenisPengantar: 'dokumen',
+          tempatTujuan: spTempatTujuan || 'Tempat',
+          tembusan: spTembusan || '1. Yang bersangkutan\n2. Arsip',
+          kalimatPengantar: spKalimatPengantar || '',
+          daftarDokumen: docs,
+        };
+      } else if (spSubJenis === 'siswa') {
+        dataKhusus = {
+          subJenisPengantar: 'siswa',
+          keperluan: spKeperluanSiswa,
+          tempatKegiatan: spTempatKegiatanSiswa,
+          tglKegiatan: spTglKegiatanSiswa,
+          guruPendamping: spGuruPendamping,
+          daftarSiswa: spDaftarSiswa,
+        };
+      } else {
+        dataKhusus = {
+          subJenisPengantar: 'ptk',
+          keperluan: spKeperluanPtk,
+          daftarPtk: spDaftarPtk,
+        };
+      }
+    } else if (jenisSurat === 'surat_rekomendasi') {
+      if (rekSubJenis === 'siswa') {
+        const cleanSiswaList = rekDaftarSiswa.filter((s) => s.nama && s.nama.trim() !== '');
+        const finalSiswaList: RekomendasiSiswaItem[] =
+          cleanSiswaList.length > 0
+            ? cleanSiswaList
+            : [
+                {
+                  id: '1',
+                  nama: rekSiswaNama,
+                  nisn: rekSiswaNisn,
+                  kelas: rekSiswaKelas,
+                  tempatTglLahir: rekSiswaTtl,
+                  namaOrtu: rekSiswaOrtu,
+                  alamat: rekSiswaAlamat,
+                },
+              ];
+
+        dataKhusus = {
+          subJenisRekomendasi: 'siswa',
+          nama: finalSiswaList[0]?.nama || rekSiswaNama,
+          nisn: finalSiswaList[0]?.nisn || rekSiswaNisn,
+          kelas: finalSiswaList[0]?.kelas || rekSiswaKelas,
+          tempatTglLahir: finalSiswaList[0]?.tempatTglLahir || rekSiswaTtl,
+          namaOrtu: finalSiswaList[0]?.namaOrtu || rekSiswaOrtu,
+          alamat: finalSiswaList[0]?.alamat || rekSiswaAlamat,
+          keperluanRekomendasi: rekSiswaKeperluan,
+          dasarPertimbangan: rekSiswaPertimbangan,
+          daftarSiswa: finalSiswaList,
+        };
+
+        if (finalSiswaList.length > 1) {
+          finalTujuan = finalSiswaList.map((s) => s.nama).join(', ');
+        } else if (finalSiswaList[0]?.nama) {
+          finalTujuan = finalSiswaList[0].nama;
+        }
+      } else {
+        const cleanPtkList = rekDaftarPtk.filter((p) => p.nama && p.nama.trim() !== '');
+        const finalPtkList: RekomendasiPtkItem[] =
+          cleanPtkList.length > 0
+            ? cleanPtkList
+            : [
+                {
+                  id: '1',
+                  nama: rekPtkNama,
+                  nip: rekPtkNip,
+                  nuptk: rekPtkNuptk,
+                  pangkatGol: rekPtkPangkatGol,
+                  jabatan: rekPtkJabatan,
+                  unitKerja: rekPtkUnitKerja,
+                },
+              ];
+
+        dataKhusus = {
+          subJenisRekomendasi: 'ptk',
+          nama: finalPtkList[0]?.nama || rekPtkNama,
+          nip: finalPtkList[0]?.nip || rekPtkNip,
+          nuptk: finalPtkList[0]?.nuptk || rekPtkNuptk,
+          pangkatGol: finalPtkList[0]?.pangkatGol || rekPtkPangkatGol,
+          jabatan: finalPtkList[0]?.jabatan || rekPtkJabatan,
+          unitKerja: finalPtkList[0]?.unitKerja || rekPtkUnitKerja,
+          keperluanRekomendasi: rekPtkKeperluan,
+          dasarPertimbangan: rekPtkPertimbangan,
+          daftarPtk: finalPtkList,
+        };
+
+        if (finalPtkList.length > 1) {
+          finalTujuan = finalPtkList.map((p) => p.nama).join(', ');
+        } else if (finalPtkList[0]?.nama) {
+          finalTujuan = finalPtkList[0].nama;
+        }
+      }
     }
+
+    const resolvedKepsek = resolveKepalaSekolahData(sekolah, guruList);
+    const finalDataKhusus = {
+      ...dataKhusus,
+      pangkatPenandatangan: resolvedKepsek.pangkat,
+      pangkatKepalaSekolah: resolvedKepsek.pangkat,
+    };
 
     if (editingId) {
       const existing = suratKeluarList.find((s) => s.id === editingId);
@@ -629,12 +1138,12 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
           namaKlasifikasi,
           tglSurat,
           tujuan: finalTujuan,
-          perihal,
-          dataKhusus,
+          perihal: finalPerihal,
+          dataKhusus: finalDataKhusus,
           status,
-          penandatangan: sekolah.kepalaSekolah,
-          nipPenandatangan: sekolah.nipKepalaSekolah,
-          jabatanPenandatangan: 'Kepala Sekolah',
+          penandatangan: resolvedKepsek.nama,
+          nipPenandatangan: resolvedKepsek.nip,
+          jabatanPenandatangan: resolvedKepsek.jabatan,
         });
       }
     } else {
@@ -645,12 +1154,12 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
         namaKlasifikasi,
         tglSurat,
         tujuan: finalTujuan,
-        perihal,
-        dataKhusus,
+        perihal: finalPerihal,
+        dataKhusus: finalDataKhusus,
         status,
-        penandatangan: sekolah.kepalaSekolah,
-        nipPenandatangan: sekolah.nipKepalaSekolah,
-        jabatanPenandatangan: 'Kepala Sekolah',
+        penandatangan: resolvedKepsek.nama,
+        nipPenandatangan: resolvedKepsek.nip,
+        jabatanPenandatangan: resolvedKepsek.jabatan,
       });
     }
 
@@ -691,7 +1200,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     } else {
       setEditingArsipId(null);
       const nextSeq = getNextNomorUrut(suratKeluarList, arsipList);
-      const defaultKode = '421.2';
+      const defaultKode = '400.3.5';
       const today = new Date().toISOString().slice(0, 10);
       const autoNo = generateNomorSurat(defaultKode, nextSeq, sekolah.kodeSuratSekolah || 'SDN1PKT', new Date());
       setArsipNoSurat(autoNo);
@@ -844,6 +1353,8 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                 <option value="surat_undangan">Surat Undangan Dinas</option>
                 <option value="surat_keputusan">Surat Keputusan (SK)</option>
                 <option value="surat_tugas">Surat Tugas (SPT)</option>
+                <option value="surat_pengantar">Surat Pengantar</option>
+                <option value="surat_rekomendasi">Surat Rekomendasi</option>
               </select>
 
               <button
@@ -920,6 +1431,8 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       surat_undangan: 'Surat Undangan Dinas',
                       surat_keputusan: 'Surat Keputusan (SK)',
                       surat_tugas: 'Surat Tugas (SPT)',
+                      surat_pengantar: 'Surat Pengantar',
+                      surat_rekomendasi: 'Surat Rekomendasi',
                     };
 
                     return (
@@ -978,7 +1491,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             {/* Tombol Export MS Word */}
                             <button
                               onClick={() => {
-                                const html = buildSuratHtml(sk, sekolah);
+                                const html = buildSuratHtml(sk, sekolah, guruList);
                                 exportToWord(`Surat_${sk.jenisSurat}_${sk.noSurat.replace(/\//g, '_')}`, html);
                               }}
                               className="p-1.5 text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
@@ -1293,6 +1806,8 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                     { id: 'surat_undangan', label: '3. Surat Undangan Dinas' },
                     { id: 'surat_keputusan', label: '4. Surat Keputusan (SK)' },
                     { id: 'surat_tugas', label: '5. Surat Perintah Tugas (SPT)' },
+                    { id: 'surat_pengantar', label: '6. Surat Pengantar' },
+                    { id: 'surat_rekomendasi', label: '7. Surat Rekomendasi' },
                   ].map((fmt) => (
                     <button
                       type="button"
@@ -1317,6 +1832,25 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                           setPerihal('Keputusan Kepala Sekolah tentang Pembagian Tugas Mengajar');
                         } else if (newJenis === 'surat_tugas') {
                           setPerihal('Surat Perintah Tugas Mengikuti Kegiatan Kedinasan');
+                        } else if (newJenis === 'surat_pengantar') {
+                          if (spSubJenis === 'dokumen') {
+                            setPerihal('Surat Pengantar Pengiriman Berkas Laporan BOSP');
+                            setTujuan('Kepala Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana');
+                          } else if (spSubJenis === 'siswa') {
+                            setPerihal('Surat Pengantar Peserta Lomba Siswa');
+                            setTujuan('Panitia Pelaksana Kegiatan');
+                          } else {
+                            setPerihal('Surat Pengantar Usulan Berkas PTK');
+                            setTujuan('Kepala Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana');
+                          }
+                        } else if (newJenis === 'surat_rekomendasi') {
+                          if (rekSubJenis === 'siswa') {
+                            setPerihal('Surat Rekomendasi Peserta Didik');
+                            setTujuan(rekSiswaNama || 'Peserta Didik');
+                          } else {
+                            setPerihal('Surat Rekomendasi Pendidik dan Tenaga Kependidikan');
+                            setTujuan(rekPtkNama || 'PTK');
+                          }
                         }
                       }}
                       className={`py-2 px-2.5 text-xs font-semibold rounded-lg text-left transition-all border ${
@@ -1345,14 +1879,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                           onClick={() => {
                             const nextSeq = getNextNomorUrut(suratKeluarList, arsipList);
                             const dateObj = tglSurat ? new Date(tglSurat) : new Date();
-                            const defaultKode =
-                              jenisSurat === 'surat_undangan'
-                                ? '000.1.5'
-                                : jenisSurat === 'surat_keterangan'
-                                ? '400.3.12.1'
-                                : jenisSurat === 'surat_keputusan'
-                                ? '400.3.10'
-                                : '800.1.11.1';
+                            const defaultKode = getKodeDefaultByJenis(jenisSurat).kode;
                             const refreshed = refreshNomorUrut(
                               noSurat,
                               kodeKlasifikasi || defaultKode,
@@ -1418,12 +1945,12 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
-                    Tujuan / Penerima Surat *
+                    {jenisSurat === 'surat_ijin_guru' ? 'Tujuan Permohonan Izin *' : 'Tujuan / Penerima Surat *'}
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="Contoh: Kepala Dinas / Nama Siswa / Bapak/Ibu Wali Murid"
+                    placeholder={jenisSurat === 'surat_ijin_guru' ? `Kepala ${formatNamaSekolahIsi(sekolah.namaSekolah)}` : 'Contoh: Kepala Dinas / Nama Siswa / Bapak/Ibu Wali Murid'}
                     value={tujuan}
                     onChange={(e) => setTujuan(e.target.value)}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
@@ -1447,18 +1974,20 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">
-                  Perihal Surat *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={perihal}
-                  onChange={(e) => setPerihal(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
-                />
-              </div>
+              {jenisSurat !== 'surat_ijin_guru' && (
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Perihal Surat *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={perihal}
+                    onChange={(e) => setPerihal(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  />
+                </div>
+              )}
 
               {/* ISIAN KHUSUS BERDASARKAN JENIS SURAT */}
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
@@ -1632,10 +2161,17 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                     </div>
 
                     <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Guru Pengganti (Dari Database)</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block font-semibold text-slate-700">Guru Pengganti (Opsional)</label>
+                        <span className="text-[11px] text-slate-500 italic">Kosongkan jika tidak ada rekan guru pengganti</span>
+                      </div>
                       <select
                         value={guruList.find((g) => g.nama === ijinGuruPengganti)?.id || ''}
                         onChange={(e) => {
+                          if (!e.target.value) {
+                            setIjinGuruPengganti('');
+                            return;
+                          }
                           const gp = guruList.find((g) => g.id === e.target.value);
                           if (gp) {
                             setIjinGuruPengganti(gp.nama);
@@ -1643,20 +2179,37 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                         }}
                         className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none mb-2"
                       >
-                        <option value="">-- Pilih Guru Pengganti dari Database --</option>
-                        {guruList.map((g) => (
-                          <option key={g.id} value={g.id}>
-                            {g.nama} ({g.jabatan})
-                          </option>
-                        ))}
+                        <option value="">-- Tanpa Guru Pengganti (Tidak Ada) --</option>
+                        {guruList
+                          .filter((g) => g.nama !== ijinNamaGuru)
+                          .map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.nama} ({g.jabatan})
+                            </option>
+                          ))}
                       </select>
-                      <input
-                        type="text"
-                        placeholder="Atau ketik nama guru pengganti / pelimpahan tugas"
-                        value={ijinGuruPengganti}
-                        onChange={(e) => setIjinGuruPengganti(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none text-xs"
-                      />
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="Atau ketik nama guru pengganti (kosongkan jika tanpa guru pengganti)"
+                          value={ijinGuruPengganti}
+                          onChange={(e) => setIjinGuruPengganti(e.target.value)}
+                          className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none text-xs"
+                        />
+                        {ijinGuruPengganti && (
+                          <button
+                            type="button"
+                            onClick={() => setIjinGuruPengganti('')}
+                            className="px-2.5 py-2 text-xs text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-colors whitespace-nowrap"
+                            title="Hapus Guru Pengganti"
+                          >
+                            Hapus
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Jika dikosongkan, bagian keterangan pelimpahan tugas kepada guru pengganti tidak akan ditampilkan pada surat izin.
+                      </p>
                     </div>
                   </div>
                 )}
@@ -2555,16 +3108,59 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       Detail Surat Perintah Tugas (SPT)
                     </h3>
 
+                    {/* Pilihan Model Pembuka Surat Tugas */}
                     <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Dasar Surat / Instruksi Tugas</label>
-                      <input
-                        type="text"
-                        placeholder="Contoh: Surat Undangan dari Dinas Dikpora Kab. Jembrana No: ..."
-                        value={sptDasar}
-                        onChange={(e) => setSptDasar(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
-                      />
+                      <label className="block font-semibold text-slate-700 mb-1.5">Model Format Pembuka Surat Tugas</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSptFormatPembuka('ttd_kepsek')}
+                          className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-left text-xs transition-all ${
+                            sptFormatPembuka === 'ttd_kepsek'
+                              ? 'bg-emerald-50 border-emerald-600 text-emerald-900 shadow-xs ring-1 ring-emerald-600'
+                              : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span className={`w-4 h-4 rounded-full border flex-shrink-0 mt-0.5 flex items-center justify-center ${sptFormatPembuka === 'ttd_kepsek' ? 'border-emerald-600' : 'border-slate-400'}`}>
+                            {sptFormatPembuka === 'ttd_kepsek' && <span className="w-2 h-2 rounded-full bg-emerald-600" />}
+                          </span>
+                          <div>
+                            <p className="font-bold text-slate-900">Format Kepala Sekolah Langsung</p>
+                            <p className="text-slate-500 text-[11px] mt-0.5">&quot;Yang bertanda tangan dibawah ini Kepala SD Negeri 1 Pekutatan, Kecamatan Pekutatan, Kabupaten Jembrana-Bali menugaskan kepada :&quot;</p>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSptFormatPembuka('dasar')}
+                          className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-left text-xs transition-all ${
+                            sptFormatPembuka === 'dasar'
+                              ? 'bg-emerald-50 border-emerald-600 text-emerald-900 shadow-xs ring-1 ring-emerald-600'
+                              : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span className={`w-4 h-4 rounded-full border flex-shrink-0 mt-0.5 flex items-center justify-center ${sptFormatPembuka === 'dasar' ? 'border-emerald-600' : 'border-slate-400'}`}>
+                            {sptFormatPembuka === 'dasar' && <span className="w-2 h-2 rounded-full bg-emerald-600" />}
+                          </span>
+                          <div>
+                            <p className="font-bold text-slate-900">Format Berdasarkan Surat (Dasar)</p>
+                            <p className="text-slate-500 text-[11px] mt-0.5">&quot;Dasar: Surat Edaran / Disposisi Dinas Dikpora...&quot;</p>
+                          </div>
+                        </button>
+                      </div>
                     </div>
+
+                    {sptFormatPembuka === 'dasar' && (
+                      <div>
+                        <label className="block font-semibold text-slate-700 mb-1">Dasar Surat / Instruksi Tugas *</label>
+                        <input
+                          type="text"
+                          placeholder="Contoh: Surat Undangan dari Dinas Dikpora Kab. Jembrana No: 400.3.12/..."
+                          value={sptDasar}
+                          onChange={(e) => setSptDasar(e.target.value)}
+                          className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none text-xs sm:text-sm"
+                        />
+                      </div>
+                    )}
 
                     <div>
                       <label className="block font-semibold text-slate-700 mb-1">Untuk Keperluan / Menghadiri</label>
@@ -2622,61 +3218,1607 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                     </div>
 
                     {/* Pegawai yang ditugaskan */}
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="font-semibold text-slate-700">Daftar Guru yang Ditugaskan:</label>
+                    <div className="border-t border-slate-200 pt-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <label className="font-bold text-slate-800 text-xs sm:text-sm">Daftar Guru yang Ditugaskan:</label>
+                          <p className="text-[11px] text-slate-500">Lengkapi identitas: Nama, NIP/NIPPPK, Pangkat/Golongan, dan Jabatan.</p>
+                        </div>
                         <button
                           type="button"
                           onClick={() => {
-                            if (guruList.length > 0) {
-                              setSptPegawai([...sptPegawai, { nama: guruList[0].nama, nip: guruList[0].nip, pangkatGol: guruList[0].pangkatGol, jabatan: guruList[0].jabatan }]);
-                            }
+                            const defaultGuru = guruList[0];
+                            setSptPegawai([
+                              ...sptPegawai,
+                              {
+                                nama: defaultGuru?.nama || '',
+                                nip: defaultGuru?.nip || defaultGuru?.nuptk || '-',
+                                pangkatGol: defaultGuru?.pangkatGol || '-',
+                                jabatan: defaultGuru?.jabatan || 'Guru SD Negeri 1 Pekutatan',
+                              },
+                            ]);
                           }}
-                          className="text-xs text-emerald-700 hover:text-emerald-900 font-bold"
+                          className="px-2.5 py-1 text-xs bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 rounded-lg font-bold transition-all shadow-2xs"
                         >
                           + Tambah Guru
                         </button>
                       </div>
 
-                      <div className="space-y-2">
-                        {sptPegawai.map((p, idx) => (
-                          <div key={idx} className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200">
-                            <select
-                              value={guruList.find((g) => g.nama === p.nama)?.id || ''}
+                      {sptPegawai.length === 0 ? (
+                        <div className="p-3 text-center bg-slate-50 border border-dashed border-slate-300 rounded-xl text-slate-500 text-xs">
+                          Belum ada guru yang ditugaskan. Silakan klik <strong>+ Tambah Guru</strong>.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {sptPegawai.map((p, idx) => (
+                            <div key={idx} className="bg-slate-50/70 p-3 rounded-xl border border-slate-200 space-y-2.5">
+                              <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
+                                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                                  <span className="w-5 h-5 rounded-full bg-emerald-800 text-white flex items-center justify-center text-[11px] font-bold">
+                                    {idx + 1}
+                                  </span>
+                                  Guru / Pegawai #{idx + 1}
+                                </span>
+
+                                <div className="flex items-center gap-2">
+                                  <select
+                                    value=""
+                                    onChange={(e) => {
+                                      const selected = guruList.find((g) => g.id === e.target.value);
+                                      if (selected) {
+                                        const updated = [...sptPegawai];
+                                        updated[idx] = {
+                                          nama: selected.nama,
+                                          nip: selected.nip || selected.nuptk || '-',
+                                          pangkatGol: selected.pangkatGol || '-',
+                                          jabatan: selected.jabatan || 'Guru SD Negeri 1 Pekutatan',
+                                        };
+                                        setSptPegawai(updated);
+                                      }
+                                    }}
+                                    className="text-[11px] bg-white border border-slate-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-600 text-slate-600"
+                                  >
+                                    <option value="">-- Pilih dari Data Guru --</option>
+                                    {guruList.map((g) => (
+                                      <option key={g.id} value={g.id}>
+                                        {g.nama} ({g.nip ? `NIP. ${g.nip}` : g.jabatan})
+                                      </option>
+                                    ))}
+                                  </select>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSptPegawai(sptPegawai.filter((_, i) => i !== idx));
+                                    }}
+                                    className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded transition-colors"
+                                    title="Hapus Guru"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Nama & Gelar *</label>
+                                  <input
+                                    type="text"
+                                    value={p.nama || ''}
+                                    placeholder="Nama Lengkap dan Gelar"
+                                    onChange={(e) => {
+                                      const updated = [...sptPegawai];
+                                      updated[idx] = { ...updated[idx], nama: e.target.value };
+                                      setSptPegawai(updated);
+                                    }}
+                                    className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">NIP / NIPPPK *</label>
+                                  <input
+                                    type="text"
+                                    value={p.nip || ''}
+                                    placeholder="NIP / NIPPPK atau tanda -"
+                                    onChange={(e) => {
+                                      const updated = [...sptPegawai];
+                                      updated[idx] = { ...updated[idx], nip: e.target.value };
+                                      setSptPegawai(updated);
+                                    }}
+                                    className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Pangkat / Golongan *</label>
+                                  <input
+                                    type="text"
+                                    value={p.pangkatGol || ''}
+                                    placeholder="Contoh: Pembina / IV/a atau IX atau -"
+                                    onChange={(e) => {
+                                      const updated = [...sptPegawai];
+                                      updated[idx] = { ...updated[idx], pangkatGol: e.target.value };
+                                      setSptPegawai(updated);
+                                    }}
+                                    className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Jabatan *</label>
+                                  <input
+                                    type="text"
+                                    value={p.jabatan || ''}
+                                    placeholder="Contoh: Guru Kelas IV / Guru PJOK"
+                                    onChange={(e) => {
+                                      const updated = [...sptPegawai];
+                                      updated[idx] = { ...updated[idx], jabatan: e.target.value };
+                                      setSptPegawai(updated);
+                                    }}
+                                    className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* FORM KHUSUS: SURAT PENGANTAR */}
+                {jenisSurat === 'surat_pengantar' && (
+                  <div className="p-4 bg-teal-50/70 border border-teal-200 rounded-xl space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2 border-b border-teal-200/80 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <Send className="w-4 h-4 text-teal-700" />
+                        <span className="font-bold text-teal-950 text-xs sm:text-sm">
+                          Isian Khusus: Surat Pengantar Dinas
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-teal-200">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSpSubJenis('dokumen');
+                            if (!perihal || perihal.includes('Siswa') || perihal.includes('PTK')) {
+                              setPerihal('Surat Pengantar Pengiriman Berkas Laporan BOSP');
+                            }
+                            if (!tujuan || tujuan === 'Panitia Pelaksana Kegiatan') {
+                              setTujuan('Kepala Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana');
+                            }
+                          }}
+                          className={`px-2.5 py-1 text-xs font-semibold rounded transition-colors ${
+                            spSubJenis === 'dokumen'
+                              ? 'bg-teal-700 text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Pengantar Dokumen / Berkas
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSpSubJenis('siswa');
+                            if (!perihal || perihal.includes('Laporan') || perihal.includes('PTK')) {
+                              setPerihal('Surat Pengantar Peserta Lomba Siswa');
+                            }
+                            if (!tujuan || tujuan.includes('Dinas')) {
+                              setTujuan('Panitia Pelaksana Kegiatan');
+                            }
+                            if (spDaftarSiswa.length === 0 && siswaList.length > 0) {
+                              setSpDaftarSiswa([
+                                {
+                                  id: '1',
+                                  nama: siswaList[0].nama,
+                                  nisn: siswaList[0].nisn || siswaList[0].nis || '-',
+                                  kelas: siswaList[0].kelas || 'Kelas IV',
+                                  jk: siswaList[0].jenisKelamin === 'Perempuan' ? 'P' : 'L',
+                                  keterangan: 'Peserta Lomba',
+                                },
+                              ]);
+                            }
+                          }}
+                          className={`px-2.5 py-1 text-xs font-semibold rounded transition-colors ${
+                            spSubJenis === 'siswa'
+                              ? 'bg-teal-700 text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Pengantar Siswa
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSpSubJenis('ptk');
+                            if (!perihal || perihal.includes('Laporan') || perihal.includes('Siswa')) {
+                              setPerihal('Surat Pengantar Usulan Berkas PTK');
+                            }
+                            if (!tujuan || tujuan === 'Panitia Pelaksana Kegiatan') {
+                              setTujuan('Kepala Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana');
+                            }
+                            if (spDaftarPtk.length === 0 && guruList.length > 0) {
+                              setSpDaftarPtk([
+                                {
+                                  id: '1',
+                                  nama: guruList[0].nama,
+                                  nip: guruList[0].nip || guruList[0].nuptk || '-',
+                                  pangkatGol: guruList[0].pangkatGol || '-',
+                                  jabatan: guruList[0].jabatan || 'Guru Kelas',
+                                  berkasKeterangan: '1 Berkas Portofolio Lengkap',
+                                },
+                              ]);
+                            }
+                          }}
+                          className={`px-2.5 py-1 text-xs font-semibold rounded transition-colors ${
+                            spSubJenis === 'ptk'
+                              ? 'bg-teal-700 text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Pengantar PTK
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 1. Pengantar Dokumen / Berkas */}
+                    {spSubJenis === 'dokumen' && (
+                      <div className="space-y-4">
+                        {/* Tempat Tujuan Surat (di - Tempat / Kota) */}
+                        <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-xs space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <span>Alamat / Tempat Tujuan (Di - ...)</span>
+                              <span className="text-[10px] font-normal text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
+                                Rata Kiri
+                              </span>
+                            </label>
+                            <span className="text-[11px] text-slate-400 italic">
+                              Tampil di bawah "Kepada Yth."
+                            </span>
+                          </div>
+                          <input
+                            type="text"
+                            value={spTempatTujuan}
+                            onChange={(e) => setSpTempatTujuan(e.target.value)}
+                            placeholder="Contoh: Tempat atau Kraksaan atau Jembrana"
+                            className="w-full bg-white border border-slate-300 rounded-lg p-2.5 focus:ring-1 focus:ring-teal-600 focus:outline-none text-xs font-medium"
+                          />
+                          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                            <span className="text-[10px] text-slate-400 font-medium">Pilihan Cepat:</span>
+                            {['Tempat', 'di Tempat', 'Pekutatan', 'Jembrana'].map((opt) => (
+                              <button
+                                key={opt}
+                                type="button"
+                                onClick={() => setSpTempatTujuan(opt)}
+                                className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 hover:bg-teal-100 hover:text-teal-800 transition-colors font-medium border border-slate-200"
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Isian Inti Surat Pengantar: Uraian, Jumlah, Keterangan (Hapus tombol tambah baris) */}
+                        <div className="p-3.5 bg-white border border-slate-200 rounded-xl shadow-xs space-y-3">
+                          <div className="border-b border-slate-100 pb-2">
+                            <label className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                              <span>Isian Inti Tabel Surat Pengantar</span>
+                            </label>
+                            <p className="text-[11px] text-slate-500 mt-0.5">
+                              Tabel naskah dinas terdiri dari kolom: No, Uraian, Jumlah, dan Keterangan.
+                            </p>
+                          </div>
+
+                          {/* 1. Uraian */}
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-[11px] font-bold text-slate-700">
+                                Uraian Berkas / Naskah Dinas <span className="text-rose-500">*</span>
+                              </label>
+                              <span className="text-[10px] text-slate-400">
+                                Nama berkas / rincian penerima (dapat multi-baris)
+                              </span>
+                            </div>
+                            <textarea
+                              value={spDaftarDokumen[0]?.uraian ?? ''}
                               onChange={(e) => {
-                                const selected = guruList.find((g) => g.id === e.target.value);
-                                if (selected) {
-                                  const updated = [...sptPegawai];
-                                  updated[idx] = {
-                                    nama: selected.nama,
-                                    nip: selected.nip,
-                                    pangkatGol: selected.pangkatGol,
-                                    jabatan: selected.jabatan,
+                                const val = e.target.value;
+                                setSpDaftarDokumen((prev) => {
+                                  const base = prev[0] || {
+                                    id: '1',
+                                    uraian: '',
+                                    namaBerkas: '',
+                                    jumlah: '1 bendel',
+                                    keterangan: 'Disampaikan dengan hormat sebagai permohonan dan atas perhatiannya disampaikan terima kasih',
                                   };
-                                  setSptPegawai(updated);
-                                }
+                                  return [{ ...base, uraian: val, namaBerkas: val }];
+                                });
                               }}
-                              className="flex-1 text-xs border border-slate-300 rounded px-2 py-1.5 focus:outline-none"
-                            >
-                              {guruList.map((g) => (
-                                <option key={g.id} value={g.id}>
-                                  {g.nama} - {g.jabatan}
-                                </option>
+                              rows={4}
+                              placeholder={`Contoh:\nBerkas Pengajuan Beasiswa S2 Guru a.n\n1. SITI SWAIBATUN, S.Pd.\nNIP. 19860203 201001 2 011`}
+                              className="w-full bg-white border border-slate-300 rounded-lg p-2.5 focus:ring-1 focus:ring-teal-600 focus:outline-none text-xs font-mono leading-relaxed"
+                            />
+                          </div>
+
+                          {/* 2. Jumlah */}
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-[11px] font-bold text-slate-700">
+                                Jumlah Berkas <span className="text-rose-500">*</span>
+                              </label>
+                              <span className="text-[10px] text-slate-400">
+                                Satuan berkas / dokumen
+                              </span>
+                            </div>
+                            <input
+                              type="text"
+                              value={spDaftarDokumen[0]?.jumlah ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setSpDaftarDokumen((prev) => {
+                                  const base = prev[0] || {
+                                    id: '1',
+                                    uraian: '',
+                                    namaBerkas: '',
+                                    jumlah: '1 bendel',
+                                    keterangan: 'Disampaikan dengan hormat sebagai permohonan dan atas perhatiannya disampaikan terima kasih',
+                                  };
+                                  return [{ ...base, jumlah: val }];
+                                });
+                              }}
+                              placeholder="Contoh: 1 bendel atau 1 (satu) Berkas"
+                              className="w-full bg-white border border-slate-300 rounded-lg p-2.5 focus:ring-1 focus:ring-teal-600 focus:outline-none text-xs font-medium"
+                            />
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                              <span className="text-[10px] text-slate-400 font-medium">Contoh Satuan:</span>
+                              {['1 bendel', '1 Berkas', '1 Eksemplar', '1 Gabung', '1 Set', '1 Rangkap'].map((opt) => (
+                                <button
+                                  key={opt}
+                                  type="button"
+                                  onClick={() => {
+                                    setSpDaftarDokumen((prev) => {
+                                      const base = prev[0] || {
+                                        id: '1',
+                                        uraian: '',
+                                        namaBerkas: '',
+                                        jumlah: opt,
+                                        keterangan: 'Disampaikan dengan hormat sebagai permohonan dan atas perhatiannya disampaikan terima kasih',
+                                      };
+                                      return [{ ...base, jumlah: opt }];
+                                    });
+                                  }}
+                                  className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 hover:bg-teal-100 hover:text-teal-800 transition-colors border border-slate-200"
+                                >
+                                  {opt}
+                                </button>
                               ))}
-                            </select>
+                            </div>
+                          </div>
+
+                          {/* 3. Keterangan */}
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-[11px] font-bold text-slate-700">
+                                Keterangan Berkas
+                              </label>
+                              <span className="text-[10px] text-slate-400">
+                                Maksud dan tujuan pengiriman berkas
+                              </span>
+                            </div>
+                            <textarea
+                              value={spDaftarDokumen[0]?.keterangan ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setSpDaftarDokumen((prev) => {
+                                  const base = prev[0] || {
+                                    id: '1',
+                                    uraian: '',
+                                    namaBerkas: '',
+                                    jumlah: '1 bendel',
+                                    keterangan: '',
+                                  };
+                                  return [{ ...base, keterangan: val }];
+                                });
+                              }}
+                              rows={2}
+                              placeholder="Disampaikan dengan hormat sebagai permohonan dan atas perhatiannya disampaikan terima kasih"
+                              className="w-full bg-white border border-slate-300 rounded-lg p-2.5 focus:ring-1 focus:ring-teal-600 focus:outline-none text-xs leading-relaxed"
+                            />
+                            <div className="flex flex-col gap-1 mt-1.5">
+                              <span className="text-[10px] text-slate-400 font-medium">Contoh Kalimat Keterangan:</span>
+                              {[
+                                'Disampaikan dengan hormat sebagai permohonan dan atas perhatiannya disampaikan terima kasih',
+                                'Disampaikan dengan hormat untuk mendapatkan penyelesaian dan tindak lanjut',
+                                'Sebagai laporan rutin dan bahan pertimbangan',
+                              ].map((opt) => (
+                                <button
+                                  key={opt}
+                                  type="button"
+                                  onClick={() => {
+                                    setSpDaftarDokumen((prev) => {
+                                      const base = prev[0] || {
+                                        id: '1',
+                                        uraian: '',
+                                        namaBerkas: '',
+                                        jumlah: '1 bendel',
+                                        keterangan: opt,
+                                      };
+                                      return [{ ...base, keterangan: opt }];
+                                    });
+                                  }}
+                                  className="text-[10px] text-left px-2 py-1 rounded bg-slate-100 text-slate-700 hover:bg-teal-100 hover:text-teal-800 transition-colors border border-slate-200"
+                                >
+                                  {opt}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Isian Tembusan Surat */}
+                        <div className="p-3.5 bg-white border border-slate-200 rounded-xl shadow-xs space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <span>Tembusan Surat</span>
+                              <span className="text-[10px] font-normal text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
+                                Kiri Bawah Surat
+                              </span>
+                            </label>
+                            <span className="text-[11px] text-slate-400 italic">
+                              1 baris per tembusan
+                            </span>
+                          </div>
+                          <textarea
+                            value={spTembusan}
+                            onChange={(e) => setSpTembusan(e.target.value)}
+                            rows={3}
+                            placeholder={`1. Yang bersangkutan\n2. Arsip`}
+                            className="w-full bg-white border border-slate-300 rounded-lg p-2.5 focus:ring-1 focus:ring-teal-600 focus:outline-none text-xs font-mono leading-relaxed"
+                          />
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-[10px] text-slate-400 font-medium">Contoh Tembusan:</span>
+                            {[
+                              '1. Yang bersangkutan\n2. Arsip',
+                              '1. Kepala Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana\n2. Arsip',
+                              '1. Pengawas Pembina Gugus\n2. Arsip',
+                              'Arsip',
+                            ].map((opt, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => setSpTembusan(opt)}
+                                className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 hover:bg-teal-100 hover:text-teal-800 transition-colors font-medium border border-slate-200"
+                              >
+                                {opt.split('\n')[0]}...
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Pratinjau Layout Dokumen */}
+                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <Eye className="w-3.5 h-3.5 text-teal-700" />
+                              Pratinjau Format Dokumen Surat Pengantar
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-medium">
+                              Sesuai Format Baku Kedinasan
+                            </span>
+                          </div>
+
+                          <div className="p-4 bg-white border border-slate-300 rounded-lg text-slate-800 text-[11px] shadow-xs space-y-3 font-serif">
+                            {/* Kop Placeholder */}
+                            <div className="text-center pb-2 border-b-2 border-slate-900 font-sans">
+                              <p className="text-[11px] font-bold uppercase tracking-wide">
+                                {sekolah.instansiInduk || 'PEMERINTAH KABUPATEN JEMBRANA'}
+                              </p>
+                              <p className="text-[10px] font-bold uppercase">
+                                {sekolah.dinasPendidikan || 'DINAS PENDIDIKAN KEPEMUDAAN DAN OLAHRAGA'}
+                              </p>
+                              <p className="text-xs font-bold uppercase">
+                                {formatNamaSekolahIsi(sekolah.namaSekolah)}
+                              </p>
+                            </div>
+
+                            {/* Kepada Yth: Sisi Kanan (Berlawanan) dengan format rapi */}
+                            <div className="flex justify-end pt-1 font-sans">
+                              <div className="w-1/2 text-left space-y-0.5 text-[10.5px]">
+                                <p>Kepada</p>
+                                <p className="font-bold">Yth. {tujuan || 'Kepala Dinas Pendidikan Kepemudaan dan Olahraga'}</p>
+                                <p>di -</p>
+                                <p className="underline pl-4">{spTempatTujuan || 'Tempat'}</p>
+                              </div>
+                            </div>
+
+                            {/* Judul: SURAT PENGANTAR + NOMOR di tengah */}
+                            <div className="text-center py-1 font-sans">
+                              <p className="font-bold underline tracking-wider text-xs">SURAT PENGANTAR</p>
+                              <p className="text-[10px]">Nomor: {noSurat || '400.3.5/.../SDN1PKT/IX/2026'}</p>
+                            </div>
+
+                            {/* Tabel Inti: No, Uraian, Jumlah, Keterangan */}
+                            <table className="w-full border-collapse border border-slate-800 text-[10px] font-sans">
+                              <thead>
+                                <tr className="bg-slate-100 text-center font-bold">
+                                  <th className="border border-slate-800 py-1.5 px-1 w-8">No</th>
+                                  <th className="border border-slate-800 py-1.5 px-2 text-left">Uraian</th>
+                                  <th className="border border-slate-800 py-1.5 px-2 text-center w-24">Jumlah</th>
+                                  <th className="border border-slate-800 py-1.5 px-2 text-left w-48">Keterangan</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td className="border border-slate-800 py-2 px-1 text-center align-top">1.</td>
+                                  <td className="border border-slate-800 py-2 px-2 align-top font-medium whitespace-pre-line leading-tight">
+                                    {spDaftarDokumen[0]?.uraian || <span className="text-slate-300 italic">(Uraian berkas belum diisi)</span>}
+                                  </td>
+                                  <td className="border border-slate-800 py-2 px-2 text-center align-top font-medium">
+                                    {spDaftarDokumen[0]?.jumlah || '1 bendel'}
+                                  </td>
+                                  <td className="border border-slate-800 py-2 px-2 align-top whitespace-pre-line leading-tight">
+                                    {spDaftarDokumen[0]?.keterangan || '-'}
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+
+                            {/* Tanda Tangan: Kiri Tembusan (di-enter ke bawah agar tidak sejajar dengan baris atas TTD), Kanan Kepala Sekolah */}
+                            <div className="pt-2 flex items-end justify-between gap-4 font-sans text-[10px]">
+                              {/* Kiri: Tembusan di-enter ke bawah */}
+                              <div className="w-1/2 text-left pt-14">
+                                <p className="font-bold underline text-[9.5px]">Tembusan disampaikan kepada Yth.:</p>
+                                <div className="mt-1 space-y-0.5 pl-0.5 text-[9px]">
+                                  {(spTembusan || '1. Yang bersangkutan\n2. Arsip')
+                                    .split('\n')
+                                    .filter(Boolean)
+                                    .map((line, idx) => {
+                                      const clean = line.replace(/^[0-9]+[\.\)]\s*/, '');
+                                      return (
+                                        <p key={idx} className="text-slate-700">
+                                          {idx + 1}. {clean}
+                                        </p>
+                                      );
+                                    })}
+                                </div>
+                              </div>
+
+                              {/* Kanan: Kepala Sekolah */}
+                              <div className="w-1/2 text-center">
+                                <p>{sekolah.desa || 'Pekutatan'}, {formatTanggalIndonesia(tglSurat || new Date().toISOString().slice(0, 10))}</p>
+                                <p className="font-bold">Kepala Sekolah,</p>
+                                <div className="h-12 flex items-center justify-center text-slate-300 italic text-[9px]">
+                                  (Tanda Tangan & Cap)
+                                </div>
+                                <p className="font-bold underline">
+                                  {sekolah?.kepalaSekolah || 'Gede Ariasa, S.Pd'}
+                                </p>
+                                <p className="text-[9px] text-slate-600">
+                                  NIP. {sekolah?.nipKepalaSekolah || '198906232014031002'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] text-emerald-900 flex items-center gap-2">
+                            <FileText className="w-4 h-4 shrink-0 text-emerald-700" />
+                            <span>
+                              Format surat pengantar berkas telah disesuaikan: <strong>Kepada Yth di sisi kanan</strong>, <strong>Tembusan di sisi kiri</strong> (terpisah dari tanda tangan), serta <strong>tanpa kolom tanda tangan penerima</strong>.
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 2. Pengantar Siswa */}
+                    {spSubJenis === 'siswa' && (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                              Untuk Kegiatan / Keperluan *
+                            </label>
+                            <input
+                              type="text"
+                              value={spKeperluanSiswa}
+                              onChange={(e) => setSpKeperluanSiswa(e.target.value)}
+                              placeholder="Contoh: Mengikuti Festival dan Lomba Seni Siswa Nasional (FLS2N)"
+                              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-teal-600 focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                              Tempat Kegiatan
+                            </label>
+                            <input
+                              type="text"
+                              value={spTempatKegiatanSiswa}
+                              onChange={(e) => setSpTempatKegiatanSiswa(e.target.value)}
+                              placeholder="Contoh: Aula Korwil Kecamatan Pekutatan"
+                              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-teal-600 focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                              Tanggal Pelaksanaan
+                            </label>
+                            <input
+                              type="date"
+                              value={spTglKegiatanSiswa}
+                              onChange={(e) => setSpTglKegiatanSiswa(e.target.value)}
+                              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-teal-600 focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                              Guru Pendamping / Pembina
+                            </label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={spGuruPendamping}
+                                onChange={(e) => setSpGuruPendamping(e.target.value)}
+                                placeholder="Nama Pembina / Guru Pendamping"
+                                className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-teal-600 focus:outline-none"
+                              />
+                              <select
+                                value=""
+                                onChange={(e) => {
+                                  const g = guruList.find((item) => item.id === e.target.value);
+                                  if (g) setSpGuruPendamping(`${g.nama} (${g.jabatan || 'Guru SDN 1 Pekutatan'})`);
+                                }}
+                                className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs focus:ring-1 focus:ring-teal-600 text-slate-600"
+                              >
+                                <option value="">Pilih Guru...</option>
+                                {guruList.map((g) => (
+                                  <option key={g.id} value={g.id}>
+                                    {g.nama}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Daftar Siswa */}
+                        <div className="space-y-2 pt-1">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">
+                              Daftar Peserta Didik yang Diantar:
+                            </label>
                             <button
                               type="button"
                               onClick={() => {
-                                setSptPegawai(sptPegawai.filter((_, i) => i !== idx));
+                                setSpDaftarSiswa([
+                                  ...spDaftarSiswa,
+                                  {
+                                    id: String(Date.now()),
+                                    nama: '',
+                                    nisn: '',
+                                    kelas: 'Kelas IV',
+                                    jk: 'L',
+                                    keterangan: 'Peserta Kegiatan',
+                                  },
+                                ]);
                               }}
-                              className="text-rose-500 hover:text-rose-700 p-1"
+                              className="px-2.5 py-1 text-xs font-semibold bg-teal-700 hover:bg-teal-600 text-white rounded-lg flex items-center gap-1 transition-colors"
                             >
-                              <X className="w-4 h-4" />
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Tambah Siswa</span>
                             </button>
                           </div>
-                        ))}
+
+                          <div className="space-y-2">
+                            {spDaftarSiswa.map((s, idx) => (
+                              <div
+                                key={s.id}
+                                className="p-3 bg-white border border-teal-200/80 rounded-xl space-y-2 shadow-xs"
+                              >
+                                <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+                                  <span className="text-xs font-bold text-teal-800">
+                                    Siswa #{idx + 1}
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <select
+                                      value=""
+                                      onChange={(e) => {
+                                        const picked = siswaList.find((item) => item.id === e.target.value);
+                                        if (picked) {
+                                          const updated = [...spDaftarSiswa];
+                                          updated[idx] = {
+                                            ...updated[idx],
+                                            nama: picked.nama,
+                                            nisn: picked.nisn || picked.nis || '-',
+                                            kelas: picked.kelas || 'Kelas IV',
+                                            jk: picked.jenisKelamin === 'Perempuan' ? 'P' : 'L',
+                                          };
+                                          setSpDaftarSiswa(updated);
+                                        }
+                                      }}
+                                      className="text-[11px] bg-white border border-slate-300 rounded px-2 py-1 text-slate-600 focus:outline-none"
+                                    >
+                                      <option value="">-- Pilih dari Data Siswa --</option>
+                                      {siswaList.map((sw) => (
+                                        <option key={sw.id} value={sw.id}>
+                                          {sw.nama} ({sw.kelas})
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSpDaftarSiswa(spDaftarSiswa.filter((_, i) => i !== idx));
+                                      }}
+                                      className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded transition-colors"
+                                      title="Hapus Siswa"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs">
+                                  <div className="sm:col-span-4">
+                                    <label className="block text-[11px] font-medium text-slate-600 mb-0.5">Nama Siswa *</label>
+                                    <input
+                                      type="text"
+                                      value={s.nama}
+                                      placeholder="Nama Lengkap Siswa"
+                                      onChange={(e) => {
+                                        const updated = [...spDaftarSiswa];
+                                        updated[idx] = { ...updated[idx], nama: e.target.value };
+                                        setSpDaftarSiswa(updated);
+                                      }}
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-teal-600 focus:outline-none"
+                                    />
+                                  </div>
+                                  <div className="sm:col-span-3">
+                                    <label className="block text-[11px] font-medium text-slate-600 mb-0.5">NIS / NISN</label>
+                                    <input
+                                      type="text"
+                                      value={s.nisn}
+                                      placeholder="Nomor Induk Siswa"
+                                      onChange={(e) => {
+                                        const updated = [...spDaftarSiswa];
+                                        updated[idx] = { ...updated[idx], nisn: e.target.value };
+                                        setSpDaftarSiswa(updated);
+                                      }}
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-teal-600 focus:outline-none"
+                                    />
+                                  </div>
+                                  <div className="sm:col-span-1">
+                                    <label className="block text-[11px] font-medium text-slate-600 mb-0.5">L/P</label>
+                                    <select
+                                      value={s.jk}
+                                      onChange={(e) => {
+                                        const updated = [...spDaftarSiswa];
+                                        updated[idx] = { ...updated[idx], jk: e.target.value };
+                                        setSpDaftarSiswa(updated);
+                                      }}
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-1 py-1.5 focus:ring-1 focus:ring-teal-600 focus:outline-none text-center"
+                                    >
+                                      <option value="L">L</option>
+                                      <option value="P">P</option>
+                                    </select>
+                                  </div>
+                                  <div className="sm:col-span-2">
+                                    <label className="block text-[11px] font-medium text-slate-600 mb-0.5">Kelas</label>
+                                    <input
+                                      type="text"
+                                      value={s.kelas}
+                                      placeholder="Kelas IV"
+                                      onChange={(e) => {
+                                        const updated = [...spDaftarSiswa];
+                                        updated[idx] = { ...updated[idx], kelas: e.target.value };
+                                        setSpDaftarSiswa(updated);
+                                      }}
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-teal-600 focus:outline-none"
+                                    />
+                                  </div>
+                                  <div className="sm:col-span-2">
+                                    <label className="block text-[11px] font-medium text-slate-600 mb-0.5">Cabang / Ket</label>
+                                    <input
+                                      type="text"
+                                      value={s.keterangan}
+                                      placeholder="Contoh: Lomba Tari"
+                                      onChange={(e) => {
+                                        const updated = [...spDaftarSiswa];
+                                        updated[idx] = { ...updated[idx], keterangan: e.target.value };
+                                        setSpDaftarSiswa(updated);
+                                      }}
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-teal-600 focus:outline-none"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 3. Pengantar PTK */}
+                    {spSubJenis === 'ptk' && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                            Untuk Keperluan Usulan Kedinasan *
+                          </label>
+                          <input
+                            type="text"
+                            value={spKeperluanPtk}
+                            onChange={(e) => setSpKeperluanPtk(e.target.value)}
+                            placeholder="Contoh: Pengusulan Berkas Kenaikan Pangkat Pendidik Periode Oktober 2026"
+                            className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-teal-600 focus:outline-none"
+                          />
+                        </div>
+
+                        {/* Daftar PTK */}
+                        <div className="space-y-2 pt-1">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">
+                              Daftar Pendidik dan Tenaga Kependidikan (PTK) yang Diantar:
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSpDaftarPtk([
+                                  ...spDaftarPtk,
+                                  {
+                                    id: String(Date.now()),
+                                    nama: '',
+                                    nip: '-',
+                                    pangkatGol: '-',
+                                    jabatan: 'Guru SD Negeri 1 Pekutatan',
+                                    berkasKeterangan: '1 Berkas Portofolio Lengkap',
+                                  },
+                                ]);
+                              }}
+                              className="px-2.5 py-1 text-xs font-semibold bg-teal-700 hover:bg-teal-600 text-white rounded-lg flex items-center gap-1 transition-colors"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Tambah PTK</span>
+                            </button>
+                          </div>
+
+                          <div className="space-y-2">
+                            {spDaftarPtk.map((ptk, idx) => (
+                              <div
+                                key={ptk.id}
+                                className="p-3 bg-white border border-teal-200/80 rounded-xl space-y-2 shadow-xs"
+                              >
+                                <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+                                  <span className="text-xs font-bold text-teal-800">
+                                    PTK #{idx + 1}
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <select
+                                      value=""
+                                      onChange={(e) => {
+                                        const g = guruList.find((item) => item.id === e.target.value);
+                                        if (g) {
+                                          const updated = [...spDaftarPtk];
+                                          updated[idx] = {
+                                            ...updated[idx],
+                                            nama: g.nama,
+                                            nip: g.nip || g.nuptk || '-',
+                                            pangkatGol: g.pangkatGol || '-',
+                                            jabatan: g.jabatan || 'Guru SD Negeri 1 Pekutatan',
+                                          };
+                                          setSpDaftarPtk(updated);
+                                        }
+                                      }}
+                                      className="text-[11px] bg-white border border-slate-300 rounded px-2 py-1 text-slate-600 focus:outline-none"
+                                    >
+                                      <option value="">-- Pilih dari Data Guru --</option>
+                                      {guruList.map((g) => (
+                                        <option key={g.id} value={g.id}>
+                                          {g.nama} ({g.nip ? `NIP. ${g.nip}` : g.jabatan})
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSpDaftarPtk(spDaftarPtk.filter((_, i) => i !== idx));
+                                      }}
+                                      className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded transition-colors"
+                                      title="Hapus PTK"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs">
+                                  <div className="sm:col-span-4">
+                                    <label className="block text-[11px] font-medium text-slate-600 mb-0.5">Nama & Gelar *</label>
+                                    <input
+                                      type="text"
+                                      value={ptk.nama}
+                                      placeholder="Nama Lengkap dan Gelar"
+                                      onChange={(e) => {
+                                        const updated = [...spDaftarPtk];
+                                        updated[idx] = { ...updated[idx], nama: e.target.value };
+                                        setSpDaftarPtk(updated);
+                                      }}
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-teal-600 focus:outline-none"
+                                    />
+                                  </div>
+                                  <div className="sm:col-span-3">
+                                    <label className="block text-[11px] font-medium text-slate-600 mb-0.5">NIP / NIPPPK</label>
+                                    <input
+                                      type="text"
+                                      value={ptk.nip}
+                                      placeholder="NIP atau tanda hubung (-)"
+                                      onChange={(e) => {
+                                        const updated = [...spDaftarPtk];
+                                        updated[idx] = { ...updated[idx], nip: e.target.value };
+                                        setSpDaftarPtk(updated);
+                                      }}
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-teal-600 focus:outline-none"
+                                    />
+                                  </div>
+                                  <div className="sm:col-span-2">
+                                    <label className="block text-[11px] font-medium text-slate-600 mb-0.5">Pangkat / Gol</label>
+                                    <input
+                                      type="text"
+                                      value={ptk.pangkatGol}
+                                      placeholder="Penata Muda / III/a"
+                                      onChange={(e) => {
+                                        const updated = [...spDaftarPtk];
+                                        updated[idx] = { ...updated[idx], pangkatGol: e.target.value };
+                                        setSpDaftarPtk(updated);
+                                      }}
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-teal-600 focus:outline-none"
+                                    />
+                                  </div>
+                                  <div className="sm:col-span-3">
+                                    <label className="block text-[11px] font-medium text-slate-600 mb-0.5">Kelengkapan Berkas</label>
+                                    <input
+                                      type="text"
+                                      value={ptk.berkasKeterangan}
+                                      placeholder="1 Berkas Portofolio"
+                                      onChange={(e) => {
+                                        const updated = [...spDaftarPtk];
+                                        updated[idx] = { ...updated[idx], berkasKeterangan: e.target.value };
+                                        setSpDaftarPtk(updated);
+                                      }}
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-teal-600 focus:outline-none"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* FORM KHUSUS: SURAT REKOMENDASI */}
+                {jenisSurat === 'surat_rekomendasi' && (
+                  <div className="p-4 bg-sky-50/70 border border-sky-200 rounded-xl space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2 border-b border-sky-200/80 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <Award className="w-4 h-4 text-sky-700" />
+                        <span className="font-bold text-sky-950 text-xs sm:text-sm">
+                          Isian Khusus: Surat Rekomendasi
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-sky-200">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRekSubJenis('siswa');
+                            setPerihal('Surat Rekomendasi Peserta Didik');
+                            setTujuan(rekSiswaNama || 'Peserta Didik');
+                          }}
+                          className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
+                            rekSubJenis === 'siswa'
+                              ? 'bg-sky-700 text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Rekomendasi Siswa
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRekSubJenis('ptk');
+                            setPerihal('Surat Rekomendasi Pendidik dan Tenaga Kependidikan');
+                            setTujuan(rekPtkNama || 'PTK');
+                          }}
+                          className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
+                            rekSubJenis === 'ptk'
+                              ? 'bg-sky-700 text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Rekomendasi PTK
+                        </button>
                       </div>
                     </div>
+
+                    {/* Rekomendasi Siswa */}
+                    {rekSubJenis === 'siswa' && (
+                      <div className="space-y-4">
+                        {/* Keperluan & Pertimbangan Global */}
+                        <div className="space-y-3 bg-white/70 p-3.5 rounded-xl border border-sky-200">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                              Rekomendasi Diberikan Untuk / Keperluan *
+                            </label>
+                            <input
+                              type="text"
+                              value={rekSiswaKeperluan}
+                              onChange={(e) => setRekSiswaKeperluan(e.target.value)}
+                              placeholder="Contoh: Penerimaan Bantuan Beasiswa Program Indonesia Pintar (PIP) Tahun 2026"
+                              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-sky-600 focus:outline-none font-semibold text-sky-950"
+                            />
+                          </div>
+
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-[11px] font-semibold text-slate-700">
+                                Dasar Pertimbangan / Prestasi / Catatan Sekolah <span className="text-slate-400 font-normal">(Opsional)</span>
+                              </label>
+                              {rekSiswaPertimbangan ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setRekSiswaPertimbangan('')}
+                                  className="text-[10px] text-rose-600 hover:text-rose-800 font-medium cursor-pointer"
+                                >
+                                  Kosongkan Catatan
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setRekSiswaPertimbangan(
+                                      'Bahwa yang bersangkutan merupakan peserta didik aktif di sekolah kami, berkelakuan baik, disiplin, berprestasi, dan memenuhi persyaratan untuk diberikan rekomendasi tersebut.'
+                                    )
+                                  }
+                                  className="text-[10px] text-sky-700 hover:text-sky-900 font-medium cursor-pointer"
+                                >
+                                  + Gunakan Contoh Catatan
+                                </button>
+                              )}
+                            </div>
+                            <textarea
+                              value={rekSiswaPertimbangan}
+                              onChange={(e) => setRekSiswaPertimbangan(e.target.value)}
+                              rows={2}
+                              placeholder="Kosongkan jika tidak ingin memunculkan paragraf catatan/pertimbangan pada surat rekomendasi. Contoh: Bahwa peserta didik tersebut di atas berkelakuan baik, aktif dalam kegiatan pembelajaran di sekolah, dan layak diberikan rekomendasi."
+                              className="w-full bg-white border border-slate-300 rounded-lg p-2.5 focus:ring-1 focus:ring-sky-600 focus:outline-none text-xs"
+                            />
+                            <p className="text-[10px] text-slate-400 mt-1">
+                              * Jika isian catatan ini dikosongkan, bagian catatan/pertimbangan tidak akan dimunculkan pada surat rekomendasi.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Daftar Siswa */}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-sky-950">
+                                Daftar Siswa yang Direkomendasikan
+                              </span>
+                              <span className="px-2 py-0.5 text-[10px] font-semibold bg-sky-200 text-sky-900 rounded-full">
+                                {rekDaftarSiswa.length} Siswa
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nextId = (rekDaftarSiswa.length + 1).toString();
+                                setRekDaftarSiswa([
+                                  ...rekDaftarSiswa,
+                                  {
+                                    id: nextId,
+                                    nama: '',
+                                    nisn: '',
+                                    kelas: 'Kelas IV',
+                                    tempatTglLahir: '',
+                                    namaOrtu: '',
+                                    alamat: '',
+                                  },
+                                ]);
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-700 hover:bg-sky-800 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              Tambah Siswa
+                            </button>
+                          </div>
+
+                          <div className="space-y-3">
+                            {rekDaftarSiswa.map((siswa, idx) => (
+                              <div
+                                key={siswa.id || idx}
+                                className="bg-white border border-sky-200 rounded-xl p-3 sm:p-3.5 space-y-3 shadow-2xs relative"
+                              >
+                                <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-100">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-5 h-5 rounded-full bg-sky-100 text-sky-800 text-[11px] font-bold flex items-center justify-center">
+                                      {idx + 1}
+                                    </span>
+                                    <span className="text-xs font-bold text-slate-800">
+                                      Siswa #{idx + 1}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <select
+                                      value=""
+                                      onChange={(e) => {
+                                        const s = siswaList.find((item) => item.id === e.target.value);
+                                        if (s) {
+                                          const updated = [...rekDaftarSiswa];
+                                          updated[idx] = {
+                                            ...updated[idx],
+                                            nama: s.nama,
+                                            nisn: s.nisn || s.nis || '',
+                                            kelas: s.kelas || 'Kelas IV',
+                                            tempatTglLahir:
+                                              (s as any).tempatTanggalLahir ||
+                                              (s.tempatLahir ? `${s.tempatLahir}, ${s.tglLahir}` : 'Pekutatan, 12 Mei 2015'),
+                                            namaOrtu: s.namaOrtu || (s as any).namaOrangTua || '',
+                                            alamat: s.alamat || 'Pekutatan, Jembrana',
+                                          };
+                                          setRekDaftarSiswa(updated);
+                                          if (idx === 0) {
+                                            setRekSiswaNama(s.nama);
+                                            setRekSiswaNisn(s.nisn || s.nis || '');
+                                            setRekSiswaKelas(s.kelas || 'Kelas IV');
+                                            setRekSiswaTtl(updated[idx].tempatTglLahir || '');
+                                            setRekSiswaOrtu(updated[idx].namaOrtu || '');
+                                            setRekSiswaAlamat(updated[idx].alamat || '');
+                                          }
+                                        }
+                                      }}
+                                      className="bg-sky-50 border border-sky-300 rounded px-2 py-1 text-[11px] text-sky-900 font-medium focus:outline-none"
+                                    >
+                                      <option value="">Pilih dari Data Siswa...</option>
+                                      {siswaList.map((sw) => (
+                                        <option key={sw.id} value={sw.id}>
+                                          {sw.nama} ({sw.kelas})
+                                        </option>
+                                      ))}
+                                    </select>
+
+                                    {rekDaftarSiswa.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const updated = rekDaftarSiswa.filter((_, i) => i !== idx);
+                                          setRekDaftarSiswa(updated);
+                                        }}
+                                        className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
+                                        title="Hapus Siswa ini"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">
+                                      Nama Lengkap Siswa *
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={siswa.nama}
+                                      onChange={(e) => {
+                                        const updated = [...rekDaftarSiswa];
+                                        updated[idx] = { ...updated[idx], nama: e.target.value };
+                                        setRekDaftarSiswa(updated);
+                                        if (idx === 0) {
+                                          setRekSiswaNama(e.target.value);
+                                        }
+                                      }}
+                                      placeholder="Nama Siswa"
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-sky-600 focus:outline-none"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">
+                                      NISN / NIS
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={siswa.nisn}
+                                      onChange={(e) => {
+                                        const updated = [...rekDaftarSiswa];
+                                        updated[idx] = { ...updated[idx], nisn: e.target.value };
+                                        setRekDaftarSiswa(updated);
+                                        if (idx === 0) setRekSiswaNisn(e.target.value);
+                                      }}
+                                      placeholder="Nomor Induk Siswa"
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-sky-600 focus:outline-none"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">
+                                      Kelas
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={siswa.kelas}
+                                      onChange={(e) => {
+                                        const updated = [...rekDaftarSiswa];
+                                        updated[idx] = { ...updated[idx], kelas: e.target.value };
+                                        setRekDaftarSiswa(updated);
+                                        if (idx === 0) setRekSiswaKelas(e.target.value);
+                                      }}
+                                      placeholder="Contoh: Kelas IV"
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-sky-600 focus:outline-none"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">
+                                      Tempat, Tanggal Lahir
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={siswa.tempatTglLahir || ''}
+                                      onChange={(e) => {
+                                        const updated = [...rekDaftarSiswa];
+                                        updated[idx] = { ...updated[idx], tempatTglLahir: e.target.value };
+                                        setRekDaftarSiswa(updated);
+                                        if (idx === 0) setRekSiswaTtl(e.target.value);
+                                      }}
+                                      placeholder="Pekutatan, 10 Mei 2015"
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-sky-600 focus:outline-none"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">
+                                      Nama Orang Tua / Wali
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={siswa.namaOrtu || ''}
+                                      onChange={(e) => {
+                                        const updated = [...rekDaftarSiswa];
+                                        updated[idx] = { ...updated[idx], namaOrtu: e.target.value };
+                                        setRekDaftarSiswa(updated);
+                                        if (idx === 0) setRekSiswaOrtu(e.target.value);
+                                      }}
+                                      placeholder="Nama Ayah / Ibu / Wali"
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-sky-600 focus:outline-none"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">
+                                      Alamat Tempat Tinggal
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={siswa.alamat || ''}
+                                      onChange={(e) => {
+                                        const updated = [...rekDaftarSiswa];
+                                        updated[idx] = { ...updated[idx], alamat: e.target.value };
+                                        setRekDaftarSiswa(updated);
+                                        if (idx === 0) setRekSiswaAlamat(e.target.value);
+                                      }}
+                                      placeholder="Banjar / Desa, Pekutatan"
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-sky-600 focus:outline-none"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="p-2.5 bg-sky-100/60 rounded-lg text-[11px] text-sky-900 flex items-center gap-2">
+                            <span className="font-semibold">Format Output:</span>
+                            {rekDaftarSiswa.length > 3 ? (
+                              <span>
+                                Surat rekomendasi akan otomatis menyajikan <strong>{rekDaftarSiswa.length} siswa</strong> dalam bentuk tabel bernomor resmi (karena lebih dari 3 siswa).
+                              </span>
+                            ) : (
+                              <span>
+                                Surat rekomendasi menyajikan {rekDaftarSiswa.length} siswa dalam format identitas vertikal rapi (tidak dalam bentuk tabel karena tidak lebih dari 3 siswa).
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Rekomendasi PTK */}
+                    {rekSubJenis === 'ptk' && (
+                      <div className="space-y-4">
+                        {/* Keperluan & Pertimbangan Global */}
+                        <div className="space-y-3 bg-white/70 p-3.5 rounded-xl border border-sky-200">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                              Rekomendasi Diberikan Untuk / Keperluan *
+                            </label>
+                            <input
+                              type="text"
+                              value={rekPtkKeperluan}
+                              onChange={(e) => setRekPtkKeperluan(e.target.value)}
+                              placeholder="Contoh: Mengikuti Seleksi Program Pendidikan Profesi Guru (PPG) Guru Tertentu / Calon Guru Penggerak"
+                              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-sky-600 focus:outline-none font-semibold text-sky-950"
+                            />
+                          </div>
+
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-[11px] font-semibold text-slate-700">
+                                Dasar Pertimbangan / Penilaian Kinerja & Integritas <span className="text-slate-400 font-normal">(Opsional)</span>
+                              </label>
+                              {rekPtkPertimbangan ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setRekPtkPertimbangan('')}
+                                  className="text-[10px] text-rose-600 hover:text-rose-800 font-medium cursor-pointer"
+                                >
+                                  Kosongkan Catatan
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setRekPtkPertimbangan(
+                                      'Bahwa yang bersangkutan memiliki loyalitas, integritas, kedisiplinan yang tinggi, serta rekam jejak kinerja yang sangat baik dan tidak sedang menjalani sanksi hukuman disiplin kedinasan.'
+                                    )
+                                  }
+                                  className="text-[10px] text-sky-700 hover:text-sky-900 font-medium cursor-pointer"
+                                >
+                                  + Gunakan Contoh Catatan
+                                </button>
+                              )}
+                            </div>
+                            <textarea
+                              value={rekPtkPertimbangan}
+                              onChange={(e) => setRekPtkPertimbangan(e.target.value)}
+                              rows={2}
+                              placeholder="Kosongkan jika tidak ingin memunculkan paragraf catatan/pertimbangan pada surat rekomendasi. Contoh: Bahwa yang bersangkutan memiliki loyalitas, integritas, kedisiplinan yang tinggi, serta rekam jejak kinerja yang sangat baik..."
+                              className="w-full bg-white border border-slate-300 rounded-lg p-2.5 focus:ring-1 focus:ring-sky-600 focus:outline-none text-xs"
+                            />
+                            <p className="text-[10px] text-slate-400 mt-1">
+                              * Jika isian catatan ini dikosongkan, bagian catatan/pertimbangan tidak akan dimunculkan pada surat rekomendasi.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Daftar PTK */}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-sky-950">
+                                Daftar Guru / PTK yang Direkomendasikan
+                              </span>
+                              <span className="px-2 py-0.5 text-[10px] font-semibold bg-sky-200 text-sky-900 rounded-full">
+                                {rekDaftarPtk.length} PTK
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nextId = (rekDaftarPtk.length + 1).toString();
+                                setRekDaftarPtk([
+                                  ...rekDaftarPtk,
+                                  {
+                                    id: nextId,
+                                    nama: '',
+                                    nip: '',
+                                    nuptk: '',
+                                    pangkatGol: '',
+                                    jabatan: 'Guru SDN 1 Pekutatan',
+                                    unitKerja: 'SDN 1 Pekutatan',
+                                  },
+                                ]);
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-700 hover:bg-sky-800 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              Tambah PTK
+                            </button>
+                          </div>
+
+                          <div className="space-y-3">
+                            {rekDaftarPtk.map((ptk, idx) => (
+                              <div
+                                key={ptk.id || idx}
+                                className="bg-white border border-sky-200 rounded-xl p-3 sm:p-3.5 space-y-3 shadow-2xs relative"
+                              >
+                                <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-100">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-5 h-5 rounded-full bg-sky-100 text-sky-800 text-[11px] font-bold flex items-center justify-center">
+                                      {idx + 1}
+                                    </span>
+                                    <span className="text-xs font-bold text-slate-800">
+                                      Guru / PTK #{idx + 1}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <select
+                                      value=""
+                                      onChange={(e) => {
+                                        const g = guruList.find((item) => item.id === e.target.value);
+                                        if (g) {
+                                          const updated = [...rekDaftarPtk];
+                                          updated[idx] = {
+                                            ...updated[idx],
+                                            nama: g.nama,
+                                            nip: g.nip || g.nuptk || '-',
+                                            nuptk: g.nuptk || '-',
+                                            pangkatGol: g.pangkatGol || '-',
+                                            jabatan: g.jabatan || 'Guru SD Negeri 1 Pekutatan',
+                                            unitKerja: 'SD Negeri 1 Pekutatan',
+                                          };
+                                          setRekDaftarPtk(updated);
+                                          if (idx === 0) {
+                                            setRekPtkNama(g.nama);
+                                            setRekPtkNip(g.nip || g.nuptk || '-');
+                                            setRekPtkNuptk(g.nuptk || '-');
+                                            setRekPtkPangkatGol(g.pangkatGol || '-');
+                                            setRekPtkJabatan(g.jabatan || 'Guru SD Negeri 1 Pekutatan');
+                                            setRekPtkUnitKerja('SD Negeri 1 Pekutatan');
+                                          }
+                                        }
+                                      }}
+                                      className="bg-sky-50 border border-sky-300 rounded px-2 py-1 text-[11px] text-sky-900 font-medium focus:outline-none"
+                                    >
+                                      <option value="">Pilih dari Data Guru / PTK...</option>
+                                      {guruList.map((g) => (
+                                        <option key={g.id} value={g.id}>
+                                          {g.nama} ({g.nip ? `NIP. ${g.nip}` : g.jabatan})
+                                        </option>
+                                      ))}
+                                    </select>
+
+                                    {rekDaftarPtk.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const updated = rekDaftarPtk.filter((_, i) => i !== idx);
+                                          setRekDaftarPtk(updated);
+                                        }}
+                                        className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
+                                        title="Hapus PTK ini"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">
+                                      Nama Lengkap & Gelar *
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={ptk.nama}
+                                      onChange={(e) => {
+                                        const updated = [...rekDaftarPtk];
+                                        updated[idx] = { ...updated[idx], nama: e.target.value };
+                                        setRekDaftarPtk(updated);
+                                        if (idx === 0) setRekPtkNama(e.target.value);
+                                      }}
+                                      placeholder="Nama Lengkap dan Gelar"
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-sky-600 focus:outline-none"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">
+                                      NIP / NIPPPK
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={ptk.nip}
+                                      onChange={(e) => {
+                                        const updated = [...rekDaftarPtk];
+                                        updated[idx] = { ...updated[idx], nip: e.target.value };
+                                        setRekDaftarPtk(updated);
+                                        if (idx === 0) setRekPtkNip(e.target.value);
+                                      }}
+                                      placeholder="NIP atau (-)"
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-sky-600 focus:outline-none"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">
+                                      NUPTK
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={ptk.nuptk || ''}
+                                      onChange={(e) => {
+                                        const updated = [...rekDaftarPtk];
+                                        updated[idx] = { ...updated[idx], nuptk: e.target.value };
+                                        setRekDaftarPtk(updated);
+                                        if (idx === 0) setRekPtkNuptk(e.target.value);
+                                      }}
+                                      placeholder="NUPTK atau (-)"
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-sky-600 focus:outline-none"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">
+                                      Pangkat / Golongan
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={ptk.pangkatGol}
+                                      onChange={(e) => {
+                                        const updated = [...rekDaftarPtk];
+                                        updated[idx] = { ...updated[idx], pangkatGol: e.target.value };
+                                        setRekDaftarPtk(updated);
+                                        if (idx === 0) setRekPtkPangkatGol(e.target.value);
+                                      }}
+                                      placeholder="Penata / III/c"
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-sky-600 focus:outline-none"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">
+                                      Jabatan
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={ptk.jabatan}
+                                      onChange={(e) => {
+                                        const updated = [...rekDaftarPtk];
+                                        updated[idx] = { ...updated[idx], jabatan: e.target.value };
+                                        setRekDaftarPtk(updated);
+                                        if (idx === 0) setRekPtkJabatan(e.target.value);
+                                      }}
+                                      placeholder="Guru Kelas / Guru Mapel"
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-sky-600 focus:outline-none"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">
+                                      Unit Kerja
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={ptk.unitKerja || ''}
+                                      onChange={(e) => {
+                                        const updated = [...rekDaftarPtk];
+                                        updated[idx] = { ...updated[idx], unitKerja: e.target.value };
+                                        setRekDaftarPtk(updated);
+                                        if (idx === 0) setRekPtkUnitKerja(e.target.value);
+                                      }}
+                                      placeholder="SDN 1 Pekutatan"
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-sky-600 focus:outline-none"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="p-2.5 bg-sky-100/60 rounded-lg text-[11px] text-sky-900 flex items-center gap-2">
+                            <span className="font-semibold">Format Output:</span>
+                            {rekDaftarPtk.length > 3 ? (
+                              <span>
+                                Surat rekomendasi akan otomatis menyajikan <strong>{rekDaftarPtk.length} PTK</strong> dalam bentuk tabel bernomor resmi (karena lebih dari 3 PTK).
+                              </span>
+                            ) : (
+                              <span>
+                                Surat rekomendasi menyajikan {rekDaftarPtk.length} PTK dalam format identitas vertikal rapi (tidak dalam bentuk tabel karena tidak lebih dari 3 PTK).
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -2731,7 +4873,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       const nextSeq = getNextNomorUrut(suratKeluarList, arsipList);
                       const dateObj = arsipTglSurat ? new Date(arsipTglSurat) : new Date();
                       const autoNo = generateNomorSurat(
-                        arsipKode || '421.2',
+                        arsipKode || '400.3.5',
                         nextSeq,
                         sekolah.kodeSuratSekolah || 'SDN1PKT',
                         dateObj
@@ -2748,7 +4890,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: 421.2/044/SDN1PKT/IX/2026 atau 044..."
+                  placeholder="Contoh: 400.3.5/044/SDN1PKT/IX/2026 atau 044..."
                   value={arsipNoSurat}
                   onChange={(e) => setArsipNoSurat(e.target.value)}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono font-bold focus:ring-2 focus:ring-indigo-600 focus:outline-none"

@@ -169,28 +169,7 @@ export function refreshNomorUrut(
   return `${kode}/${urutFormatted}/${kodeSekolah}/${romawi}/${tahun}`;
 }
 
-export function cariKlasifikasi(
-  keyword: string,
-  kategori?: 'Pendidikan Dasar' | 'Kepegawaian' | 'Semua'
-): KlasifikasiMendagriItem[] {
-  let list = KLASIFIKASI_MENDAGRI_83_2022;
-
-  if (kategori && kategori !== 'Semua') {
-    list = list.filter((item) => item.kategori === kategori);
-  }
-
-  if (!keyword || keyword.trim() === '') {
-    return list;
-  }
-
-  const query = keyword.toLowerCase().trim();
-  return list.filter(
-    (item) =>
-      item.kode.toLowerCase().includes(query) ||
-      item.uraian.toLowerCase().includes(query) ||
-      (item.subUraian && item.subUraian.toLowerCase().includes(query))
-  );
-}
+export { cariKlasifikasi, getKodeDefaultByJenis } from '../data/klasifikasiMendagri';
 
 export function getKlasifikasiByKode(kode: string): KlasifikasiMendagriItem | undefined {
   return KLASIFIKASI_MENDAGRI_83_2022.find((k) => k.kode === kode);
