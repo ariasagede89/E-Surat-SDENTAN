@@ -316,9 +316,9 @@ export const INITIAL_SURAT_KELUAR: SuratKeluar[] = [
   {
     id: 'sk-4',
     jenisSurat: 'surat_undangan',
-    noSurat: '000.1.5/045/SDN1PKT/IX/2026',
-    kodeKlasifikasi: '000.1.5',
-    namaKlasifikasi: 'Rapat Dinas / Rapat Kerja / Pertemuan Kedinasan',
+    noSurat: '400.3.5/045/SDN1PKT/IX/2026',
+    kodeKlasifikasi: '400.3.5',
+    namaKlasifikasi: 'Pendidikan Dasar dan Menengah Pertama (Operasional Umum & Rapat Dinas)',
     tglSurat: '2026-09-10',
     tujuan: 'Bapak/Ibu Orang Tua / Wali Murid Kelas I - VI',
     perihal: 'Undangan Rapat Koordinasi Komite Sekolah dan Program Kerja Semester Ganjil',

@@ -23,7 +23,7 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
   onSelectNumber,
 }) => {
   const [activeKategori, setActiveKategori] = useState<
-    'Semua' | 'Pendidikan Dasar' | 'Kepegawaian' | 'Tata Usaha & Pertemuan'
+    'Semua' | 'Pendidikan Dasar' | 'Kepegawaian'
   >('Semua');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItem, setSelectedItem] = useState<KlasifikasiMendagriItem>(() => {
@@ -178,7 +178,7 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
             </div>
 
             {/* Filter Buttons */}
-            <div className="flex flex-wrap sm:flex-nowrap gap-1.5 p-1 bg-slate-100 rounded-xl mb-3">
+            <div className="flex gap-1.5 p-1 bg-slate-100 rounded-xl mb-3">
               <button
                 onClick={() => setActiveKategori('Semua')}
                 className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg transition-all ${
@@ -210,16 +210,6 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
               >
                 <UserCheck className="w-3.5 h-3.5" />
                 Kepegawaian (800)
-              </button>
-              <button
-                onClick={() => setActiveKategori('Tata Usaha & Pertemuan')}
-                className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg transition-all ${
-                  activeKategori === 'Tata Usaha & Pertemuan'
-                    ? 'bg-white text-blue-950 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Tata Usaha (000)
               </button>
             </div>
 

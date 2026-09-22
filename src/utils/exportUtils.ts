@@ -726,29 +726,99 @@ export interface KepadaYthBlockOptions {
 }
 
 /**
+ * Intelligently extracts individual recipient names from a single tujuan string or explicit tujuanList array.
+ * Cleans up existing numeric prefixes (e.g. '1.', '2)', '-') to prevent double-numbering.
+ */
+export function extractTujuanRecipients(tujuan?: string, explicitList?: string[]): string[] {
+  if (Array.isArray(explicitList) && explicitList.length > 0) {
+    const cleaned = explicitList
+      .map((item) => (typeof item === 'string' ? item : '').trim())
+      .filter((item) => item.length > 0)
+      .map((item) => item.replace(/^[0-9]+[\.\)]\s*/, '').trim())
+      .filter((item) => item.length > 0);
+    if (cleaned.length > 0) {
+      return cleaned;
+    }
+  }
+
+  if (!tujuan) return [];
+
+  const raw = tujuan.trim();
+  if (!raw) return [];
+
+  // Check if multiline
+  if (raw.includes('\n')) {
+    const lines = raw
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
+      .map((l) => l.replace(/^[0-9]+[\.\)]\s*/, '').trim())
+      .filter((l) => l.length > 0);
+    if (lines.length > 1) {
+      return lines;
+    }
+  }
+
+  // Check if contains numbered pattern e.g. "1. Dewan Guru 2. Komite Sekolah"
+  if (/(?:^|\s+)1[\.\)]\s+.*(?:^|\s+)2[\.\)]\s+/i.test(raw)) {
+    const parts = raw
+      .split(/(?=(?:^|\s+)[0-9]+[\.\)]\s+)/)
+      .map((p) => p.replace(/^[0-9]+[\.\)]\s*/, '').trim())
+      .filter((p) => p.length > 0);
+    if (parts.length > 1) {
+      return parts;
+    }
+  }
+
+  // Check if separated by semicolon e.g. "Dewan Guru; Komite Sekolah; Pengawas Sekolah"
+  if (raw.includes(';')) {
+    const parts = raw
+      .split(';')
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0)
+      .map((p) => p.replace(/^[0-9]+[\.\)]\s*/, '').trim())
+      .filter((p) => p.length > 0);
+    if (parts.length > 1) {
+      return parts;
+    }
+  }
+
+  return [raw.replace(/^[0-9]+[\.\)]\s*/, '').trim()];
+}
+
+/**
  * Standardize 'Kepada Yth.' layout across all outgoing letters:
- * Renders on the right side of the paper (using a 2-column table: 52% left empty, 48% right content)
- * matching the standardized layout established in Surat Pengantar.
+ * Renders on the right side of the paper (using a 2-column table: 52% left empty, 48% right content).
+ * If there are multiple recipients (> 1 person), renders a clean numbered list:
+ * Kepada Yth.
+ * 1. Dewan guru
+ * 2. Komite sekolah
+ * 3. Pengawas sekolah
+ * di -
+ *   Tempat
+ * (Without any "Bapak/Ibu/Saudara:" line)
  */
 export function buildKepadaYthBlock(options: KepadaYthBlockOptions): string {
   const fs = options.fontSize || '11.5pt';
   const tempat = options.tempat || 'Tempat';
 
+  const list = extractTujuanRecipients(options.tujuan, options.tujuanList);
+
   let isiHtml = '';
-  if (options.tujuanList && options.tujuanList.length > 1) {
+  if (list.length > 1) {
     isiHtml = `
       <p style="margin: 0; text-align: left; font-size: ${fs};">Kepada Yth.</p>
-      <p style="margin: 1.5pt 0 0 0; text-align: left; font-size: ${fs};">Bapak/Ibu/Saudara:</p>
-      <ol style="margin: 3pt 0 4pt 18pt; padding: 0; font-size: ${fs}; text-align: left;">
-        ${options.tujuanList.map((t) => `<li style="margin-bottom: 2pt; font-weight: bold; font-size: ${fs};">${t}</li>`).join('')}
+      <ol style="margin: 2.5pt 0 4pt 16pt; padding: 0; font-size: ${fs}; text-align: left; list-style-type: decimal;">
+        ${list.map((t) => `<li style="margin-bottom: 2pt; font-size: ${fs}; text-align: left;">${t}</li>`).join('')}
       </ol>
       <p style="margin: 1.5pt 0 0 0; text-align: left; font-size: ${fs};">di -</p>
-      <p style="margin: 1.5pt 0 0 18pt; text-decoration: underline; text-align: left; font-size: ${fs};">${tempat}</p>
+      <p style="margin: 1.5pt 0 0 16pt; text-decoration: underline; text-align: left; font-size: ${fs};">${tempat}</p>
     `;
   } else {
+    const singleTujuan = list[0] || options.tujuan || 'Kepala Sekolah';
     isiHtml = `
       <p style="margin: 0; text-align: left; font-size: ${fs};">Kepada</p>
-      <p style="margin: 1.5pt 0 0 0; font-weight: bold; text-align: left; font-size: ${fs};">Yth. ${options.tujuan || 'Kepala Sekolah'}</p>
+      <p style="margin: 1.5pt 0 0 0; font-weight: bold; text-align: left; font-size: ${fs};">Yth. ${singleTujuan}</p>
       ${options.instansi ? `<p style="margin: 1.5pt 0 0 0; text-align: left; font-size: ${fs};">${options.instansi}</p>` : ''}
       <p style="margin: 1.5pt 0 0 0; text-align: left; font-size: ${fs};">di -</p>
       <p style="margin: 1.5pt 0 0 18pt; text-decoration: underline; text-align: left; font-size: ${fs};">${tempat}</p>
@@ -1069,7 +1139,7 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
         : (surat.tujuan ? [surat.tujuan] : []);
 
       const tujuanHtml = buildKepadaYthBlock({
-        tujuan: surat.tujuan || 'Bapak/Ibu/Saudara',
+        tujuan: surat.tujuan || 'Dewan Guru SDN 1 Pekutatan',
         tujuanList: rawTujuanList,
         tempat: 'Tempat',
         fontSize: '12pt',
@@ -1443,18 +1513,13 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
 
         badanSurat = `
           <!-- 1. Tujuan Surat: Sisi Kanan Kertas (berlawanan) dengan format rapi -->
-          <table style="width: 100%; border: none; border-collapse: collapse; margin: 10pt 0 14pt 0;" border="0" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="width: 52%; border: none;">&nbsp;</td>
-              <td style="width: 48%; text-align: left; vertical-align: top; border: none; padding: 0 0 0 8pt; font-size: 11.5pt; line-height: 1.4;">
-                <p style="margin: 0; font-size: 11.5pt;">Kepada</p>
-                <p style="margin: 1.5pt 0 0 0; font-weight: bold; font-size: 11.5pt;">Yth. ${surat.tujuan || 'Kepala Dinas Pendidikan Kepemudaan dan Olahraga'}</p>
-                ${data.tujuanInstansi ? `<p style="margin: 1.5pt 0 0 0; font-size: 11.5pt;">${data.tujuanInstansi}</p>` : ''}
-                <p style="margin: 1.5pt 0 0 0; font-size: 11.5pt;">di -</p>
-                <p style="margin: 1.5pt 0 0 18pt; text-decoration: underline; font-size: 11.5pt;">${tempatTujuan}</p>
-              </td>
-            </tr>
-          </table>
+          ${buildKepadaYthBlock({
+            tujuan: surat.tujuan || 'Kepala Dinas Pendidikan Kepemudaan dan Olahraga',
+            instansi: data.tujuanInstansi,
+            tempat: tempatTujuan,
+            tujuanList: Array.isArray(data.tujuanList) ? data.tujuanList : undefined,
+            fontSize: '11.5pt',
+          })}
 
           <!-- 2. Judul Naskah Dinas: Surat Pengantar dan Nomor Surat di tengah -->
           <div style="text-align: center; margin: 14pt 0 14pt 0;">
@@ -1525,17 +1590,13 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
 
         badanSurat = `
           <!-- 1. Tujuan Surat: Sisi Kanan Kertas (berlawanan) dengan format rapi -->
-          <table style="width: 100%; border: none; border-collapse: collapse; margin: 10pt 0 14pt 0;" border="0" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="width: 52%; border: none;">&nbsp;</td>
-              <td style="width: 48%; text-align: left; vertical-align: top; border: none; padding: 0 0 0 8pt; font-size: 11.5pt; line-height: 1.4;">
-                <p style="margin: 0; text-align: left; font-size: 11.5pt;">Kepada Yth.</p>
-                <p style="margin: 1.5pt 0 0 0; font-weight: bold; text-align: left; font-size: 11.5pt;">${surat.tujuan || 'Panitia Pelaksana Kegiatan'}</p>
-                <p style="margin: 1.5pt 0 0 0; text-align: left; font-size: 11.5pt;">di -</p>
-                <p style="margin: 1.5pt 0 0 18pt; text-decoration: underline; text-align: left; font-size: 11.5pt;">Tempat</p>
-              </td>
-            </tr>
-          </table>
+          ${buildKepadaYthBlock({
+            tujuan: surat.tujuan || 'Panitia Pelaksana Kegiatan',
+            instansi: data.tujuanInstansi,
+            tempat: 'Tempat',
+            tujuanList: Array.isArray(data.tujuanList) ? data.tujuanList : undefined,
+            fontSize: '11.5pt',
+          })}
 
           <!-- 2. Judul Naskah Dinas: Surat Pengantar dan Nomor Surat di tengah -->
           <div style="text-align: center; margin: 14pt 0 14pt 0;">
@@ -1613,17 +1674,13 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
 
         badanSurat = `
           <!-- 1. Tujuan Surat: Sisi Kanan Kertas (berlawanan) dengan format rapi -->
-          <table style="width: 100%; border: none; border-collapse: collapse; margin: 10pt 0 14pt 0;" border="0" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="width: 52%; border: none;">&nbsp;</td>
-              <td style="width: 48%; text-align: left; vertical-align: top; border: none; padding: 0 0 0 8pt; font-size: 11.5pt; line-height: 1.4;">
-                <p style="margin: 0; text-align: left; font-size: 11.5pt;">Kepada Yth.</p>
-                <p style="margin: 1.5pt 0 0 0; font-weight: bold; text-align: left; font-size: 11.5pt;">${surat.tujuan || 'Kepala Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana'}</p>
-                <p style="margin: 1.5pt 0 0 0; text-align: left; font-size: 11.5pt;">di -</p>
-                <p style="margin: 1.5pt 0 0 18pt; text-decoration: underline; text-align: left; font-size: 11.5pt;">Tempat</p>
-              </td>
-            </tr>
-          </table>
+          ${buildKepadaYthBlock({
+            tujuan: surat.tujuan || 'Kepala Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana',
+            instansi: data.tujuanInstansi,
+            tempat: 'Tempat',
+            tujuanList: Array.isArray(data.tujuanList) ? data.tujuanList : undefined,
+            fontSize: '11.5pt',
+          })}
 
           <!-- 2. Judul Naskah Dinas: Surat Pengantar dan Nomor Surat di tengah -->
           <div style="text-align: center; margin: 14pt 0 14pt 0;">

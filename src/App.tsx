@@ -178,9 +178,26 @@ export default function App() {
     const saved = localStorage.getItem('simas_surat_keluar');
     let items = saved ? JSON.parse(saved) : initialSuratKeluar;
     if (Array.isArray(items)) {
-      items = items.map((s: SuratKeluar) =>
-        s.id === 'sk-5' && s.tglSurat === '2026-09-01' ? { ...s, tglSurat: '2026-09-11' } : s
-      );
+      items = items.map((s: SuratKeluar) => {
+        if (s.id === 'sk-5' && s.tglSurat === '2026-09-01') {
+          return { ...s, tglSurat: '2026-09-11' };
+        }
+        if (s.id === 'sk-4' && (!s.dataKhusus?.tujuanList || s.dataKhusus.tujuanList.length <= 1)) {
+          return {
+            ...s,
+            tujuan: '1. Dewan Guru SDN 1 Pekutatan\n2. Komite Sekolah SDN 1 Pekutatan\n3. Pengawas Sekolah Pembina',
+            dataKhusus: {
+              ...s.dataKhusus,
+              tujuanList: [
+                'Dewan Guru SDN 1 Pekutatan',
+                'Komite Sekolah SDN 1 Pekutatan',
+                'Pengawas Sekolah Pembina',
+              ],
+            },
+          };
+        }
+        return s;
+      });
       return items.sort(compareSuratKeluarDesc);
     }
     return [];

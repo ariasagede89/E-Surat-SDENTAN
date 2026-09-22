@@ -5,7 +5,7 @@ import { KlasifikasiMendagriItem } from '../types';
  * PERATURAN MENTERI DALAM NEGERI REPUBLIK INDONESIA NOMOR 83 TAHUN 2022
  * TENTANG KODE KLASIFIKASI ARSIP DI LINGKUNGAN KEMENTERIAN DALAM NEGERI DAN PEMERINTAH DAERAH
  * Mengacu Penuh pada Lampiran Resmi:
- * 1. 400.3.5: Pendidikan Dasar dan Menengah Pertama (400.3.5.1 s.d 400.3.5.6)
+ * 1. 400.3.5: Pendidikan Dasar dan Menengah Pertama (Operasional Umum SD, Rapat Dinas & Kerja Sama) (400.3.5.1 s.d 400.3.5.6)
  * 2. 400.3.10: Pendidik dan Tenaga Pendidik (400.3.10.1 s.d 400.3.10.8)
  * 3. 400.3.11: Penilaian Pendidikan (400.3.11.1 s.d 400.3.11.3)
  * 4. 400.3.12: Data dan Statistik Pendidikan (400.3.12.1 s.d 400.3.12.2)
@@ -13,28 +13,14 @@ import { KlasifikasiMendagriItem } from '../types';
  * 6. 800.1.11.1: Surat Perintah Dinas/Surat Tugas
  */
 export const KLASIFIKASI_MENDAGRI_83_2022: KlasifikasiMendagriItem[] = [
-  // --- BIDANG UMUM / TATA USAHA / RAPAT DINAS (000) ---
-  {
-    kode: '000.1.5',
-    kategori: 'Tata Usaha & Pertemuan',
-    uraian: 'Rapat Dinas / Rapat Kerja / Pertemuan Kedinasan',
-    subUraian: 'Undangan rapat dinas sekolah, rapat dewan guru, rapat koordinasi komite sekolah',
-  },
-  {
-    kode: '000.1.10',
-    kategori: 'Tata Usaha & Pertemuan',
-    uraian: 'Kerja Sama / Kemitraan Satuan Pendidikan',
-    subUraian: 'Kerja sama dengan komite sekolah, puskesmas, instansi terkait',
-  },
-
   // --- BIDANG PENDIDIKAN (400.3) SESUAI LAMPIRAN RESMI ---
 
-  // 400.3.5 Pendidikan Dasar dan Menengah Pertama
+  // 400.3.5 Pendidikan Dasar dan Menengah Pertama (Operasional Umum, Rapat Dinas, Kerja Sama)
   {
     kode: '400.3.5',
     kategori: 'Pendidikan Dasar',
-    uraian: 'Pendidikan Dasar dan Menengah Pertama',
-    subUraian: 'Penyelenggaraan dan tata kelola umum operasional Sekolah Dasar (SD)',
+    uraian: 'Pendidikan Dasar dan Menengah Pertama (Operasional Umum)',
+    subUraian: 'Penyelenggaraan operasional umum SD, rapat dinas sekolah/dewan guru, kerja sama/kemitraan, dan administrasi umum',
   },
   {
     kode: '400.3.5.1',
@@ -275,7 +261,7 @@ export const KLASIFIKASI_MENDAGRI_83_2022: KlasifikasiMendagriItem[] = [
  */
 export function cariKlasifikasi(
   keyword: string,
-  kategori?: 'Pendidikan Dasar' | 'Kepegawaian' | 'Tata Usaha & Pertemuan' | 'Semua'
+  kategori?: 'Pendidikan Dasar' | 'Kepegawaian' | 'Semua'
 ): KlasifikasiMendagriItem[] {
   let list = KLASIFIKASI_MENDAGRI_83_2022;
 
@@ -301,9 +287,9 @@ export function cariKlasifikasi(
  * - Surat Tugas: 800.1.11.1 (Surat Perintah Dinas/Surat Tugas)
  * - Surat Keterangan Siswa/PTK: 400.3.12.1 (Data peserta didik, pendidik dan tenaga kependidikan)
  * - Surat Keputusan (SK Pembagian Tugas Guru/PTK): 400.3.10 (Pendidik dan Tenaga Pendidik)
- * - Surat Pengantar: 400.3.5 (Pendidikan Dasar dan Menengah Pertama)
+ * - Surat Pengantar: 400.3.5 (Pendidikan Dasar dan Menengah Pertama - Operasional Umum)
  * - Surat Rekomendasi Siswa/PTK: 400.3.12.1 (Data peserta didik, pendidik dan tenaga kependidikan)
- * - Surat Undangan: 000.1.5 (Rapat Dinas / Rapat Kerja / Pertemuan Kedinasan)
+ * - Surat Undangan / Rapat Dinas: 400.3.5 (Pendidikan Dasar dan Menengah Pertama - Operasional Umum & Rapat Dinas)
  * - Surat Izin/Cuti Guru: 800.1.11.5 (Cuti Alasan Penting / Permohonan Izin Tidak Masuk Sekolah)
  * - Surat Edaran Kurikulum: 400.3.5.1 (Kurikulum, bahan ajar)
  */
@@ -327,7 +313,7 @@ export function getKodeDefaultByJenis(jenis: string): { kode: string; nama: stri
     case 'surat_pengantar':
       return {
         kode: '400.3.5',
-        nama: 'Pendidikan Dasar dan Menengah Pertama',
+        nama: 'Pendidikan Dasar dan Menengah Pertama (Operasional Umum)',
       };
     case 'surat_rekomendasi':
       return {
@@ -336,8 +322,8 @@ export function getKodeDefaultByJenis(jenis: string): { kode: string; nama: stri
       };
     case 'surat_undangan':
       return {
-        kode: '000.1.5',
-        nama: 'Rapat Dinas / Rapat Kerja / Pertemuan Kedinasan',
+        kode: '400.3.5',
+        nama: 'Pendidikan Dasar dan Menengah Pertama (Operasional Umum & Rapat Dinas)',
       };
     case 'surat_ijin_guru':
       return {
@@ -352,7 +338,7 @@ export function getKodeDefaultByJenis(jenis: string): { kode: string; nama: stri
     default:
       return {
         kode: '400.3.5',
-        nama: 'Pendidikan Dasar dan Menengah Pertama',
+        nama: 'Pendidikan Dasar dan Menengah Pertama (Operasional Umum)',
       };
   }
 }

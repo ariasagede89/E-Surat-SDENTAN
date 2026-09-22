@@ -142,7 +142,7 @@ export type FirebaseConfig = FirebaseAppConfig;
 
 export interface KlasifikasiMendagriItem {
   kode: string;
-  kategori: 'Pendidikan Dasar' | 'Kepegawaian' | 'Tata Usaha & Pertemuan' | string;
+  kategori: 'Pendidikan Dasar' | 'Kepegawaian' | string;
   uraian: string;
   subUraian?: string;
 }

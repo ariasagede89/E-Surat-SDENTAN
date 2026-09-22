@@ -46,6 +46,7 @@ import {
   buildSuratHtml,
   formatNamaSekolahIsi,
   resolveKepalaSekolahData,
+  extractTujuanRecipients,
 } from '../utils/exportUtils';
 import {
   generateNomorSurat,
@@ -719,7 +720,8 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       if (Array.isArray(d.tujuanList) && d.tujuanList.length > 0) {
         setUndTujuanList(d.tujuanList);
       } else if (sk.tujuan) {
-        setUndTujuanList([sk.tujuan]);
+        const extracted = extractTujuanRecipients(sk.tujuan);
+        setUndTujuanList(extracted.length > 0 ? extracted : [sk.tujuan]);
       } else {
         setUndTujuanList(['Dewan Guru SDN 1 Pekutatan']);
       }
@@ -970,7 +972,9 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
         kalimatPenutup: undKalimatPenutup,
         tujuanList: activeTujuanList,
       };
-      finalTujuan = activeTujuanList.join(', ');
+      finalTujuan = activeTujuanList.length > 1
+        ? activeTujuanList.map((t, idx) => `${idx + 1}. ${t}`).join('\n')
+        : activeTujuanList[0];
     } else if (jenisSurat === 'surat_keputusan') {
       const menimbangText = skMenimbangList.map((item) => `${item.poin} ${item.isi}`).join('\n');
       const mengingatText = skMengingatList.map((item) => `${item.poin} ${item.isi}`).join('\n');
@@ -1456,7 +1460,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             {sk.perihal}
                           </p>
                           <p className="text-xs text-slate-600 mt-1">
-                            Tujuan: <span className="font-medium text-slate-800">{sk.tujuan}</span>
+                            Tujuan: <span className="font-medium text-slate-800 whitespace-pre-line">{sk.tujuan}</span>
                           </p>
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap text-xs text-slate-600">
@@ -2722,7 +2726,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                         ))}
                       </div>
                       <p className="text-[11px] text-slate-500 italic">
-                        * Jika penerima lebih dari 1, cetakan surat akan otomatis memformat penomoran daftar penerima dengan rapi.
+                        * Jika penerima lebih dari 1, cetakan surat otomatis menyusun daftar penerima menggunakan nomor angka (1., 2., 3., dst.) tanpa kalimat &quot;Bapak/Ibu/Saudara:&quot;.
                       </p>
                     </div>
 
@@ -3727,10 +3731,25 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             {/* Kepada Yth: Sisi Kanan (Berlawanan) dengan format rapi */}
                             <div className="flex justify-end pt-1 font-sans">
                               <div className="w-1/2 text-left space-y-0.5 text-[10.5px]">
-                                <p>Kepada</p>
-                                <p className="font-bold">Yth. {tujuan || 'Kepala Dinas Pendidikan Kepemudaan dan Olahraga'}</p>
-                                <p>di -</p>
-                                <p className="underline pl-4">{spTempatTujuan || 'Tempat'}</p>
+                                {extractTujuanRecipients(tujuan).length > 1 ? (
+                                  <>
+                                    <p>Kepada Yth.</p>
+                                    <ol className="list-decimal pl-4 space-y-0.5 font-normal">
+                                      {extractTujuanRecipients(tujuan).map((t, idx) => (
+                                        <li key={idx}>{t}</li>
+                                      ))}
+                                    </ol>
+                                    <p>di -</p>
+                                    <p className="underline pl-4">{spTempatTujuan || 'Tempat'}</p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p>Kepada</p>
+                                    <p className="font-bold">Yth. {tujuan || 'Kepala Dinas Pendidikan Kepemudaan dan Olahraga'}</p>
+                                    <p>di -</p>
+                                    <p className="underline pl-4">{spTempatTujuan || 'Tempat'}</p>
+                                  </>
+                                )}
                               </div>
                             </div>
 
