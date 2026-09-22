@@ -451,9 +451,10 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     const kode = def.kode;
     const nama = def.nama;
 
-    // Hitung nomor urut berikutnya dari data yang ada (Terkoneksi dengan Arsip Surat Keluar)
-    const nextSeq = getNextNomorUrut(suratKeluarList, arsipList);
+    // Hitung nomor urut berikutnya dari data yang ada (Terkoneksi dengan Arsip Surat Keluar & Reset per tahun)
     const dateObj = tglVal ? new Date(tglVal) : new Date();
+    const targetYear = dateObj.getFullYear();
+    const nextSeq = getNextNomorUrut(suratKeluarList, arsipList, targetYear);
     const nomor = generateNomorSurat(kode, nextSeq, sekolah.kodeSuratSekolah || 'SDN1PKT', dateObj);
 
     return { nomor, kode, nama };
@@ -1203,9 +1204,10 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       setArsipLampiranTipe(sk.lampiranTipe || '');
     } else {
       setEditingArsipId(null);
-      const nextSeq = getNextNomorUrut(suratKeluarList, arsipList);
-      const defaultKode = '400.3.5';
       const today = new Date().toISOString().slice(0, 10);
+      const targetYear = new Date(today).getFullYear();
+      const nextSeq = getNextNomorUrut(suratKeluarList, arsipList, targetYear);
+      const defaultKode = '400.3.5';
       const autoNo = generateNomorSurat(defaultKode, nextSeq, sekolah.kodeSuratSekolah || 'SDN1PKT', new Date());
       setArsipNoSurat(autoNo);
       setArsipKode(defaultKode);
@@ -1591,22 +1593,22 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                   </span>
                 </div>
                 <p className="text-xs text-slate-300 mt-0.5 max-w-xl">
-                  Nomor surat arsip manual yang diinput otomatis terhubung dengan penomoran surat keluar aplikasi. Nomor surat berikutnya akan berlanjut setelah nomor tertinggi sehingga dijamin tidak tumpang tindih.
+                  Nomor surat arsip manual otomatis terhubung dengan sistem surat keluar. Nomor urut berjalan per tahun kalender (otomatis mulai dari 001 setiap tahun baru) sehingga tertib administrasi dan tidak tumpang tindih.
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-3 shrink-0 bg-white/10 px-3.5 py-2 rounded-xl border border-white/10 text-xs">
               <div>
-                <div className="text-[11px] text-slate-300">No. Urut Tertinggi:</div>
+                <div className="text-[11px] text-slate-300">No. Urut Tertinggi ({new Date().getFullYear()}):</div>
                 <div className="font-mono font-bold text-white text-sm">
-                  #{formatNomorUrut(getHighestNomorUrut(suratKeluarList, arsipList))}
+                  #{formatNomorUrut(getHighestNomorUrut(suratKeluarList, arsipList, new Date().getFullYear()))}
                 </div>
               </div>
               <div className="h-6 w-px bg-white/20"></div>
               <div>
-                <div className="text-[11px] text-emerald-300 font-medium">No. Urut Berikutnya:</div>
+                <div className="text-[11px] text-emerald-300 font-medium">No. Urut Berikutnya ({new Date().getFullYear()}):</div>
                 <div className="font-mono font-bold text-emerald-300 text-sm">
-                  #{formatNomorUrut(getNextNomorUrut(suratKeluarList, arsipList))}
+                  #{formatNomorUrut(getNextNomorUrut(suratKeluarList, arsipList, new Date().getFullYear()))}
                 </div>
               </div>
             </div>
@@ -1881,8 +1883,9 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                         <button
                           type="button"
                           onClick={() => {
-                            const nextSeq = getNextNomorUrut(suratKeluarList, arsipList);
                             const dateObj = tglSurat ? new Date(tglSurat) : new Date();
+                            const targetYear = dateObj.getFullYear();
+                            const nextSeq = getNextNomorUrut(suratKeluarList, arsipList, targetYear);
                             const defaultKode = getKodeDefaultByJenis(jenisSurat).kode;
                             const refreshed = refreshNomorUrut(
                               noSurat,
@@ -4889,8 +4892,9 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      const nextSeq = getNextNomorUrut(suratKeluarList, arsipList);
                       const dateObj = arsipTglSurat ? new Date(arsipTglSurat) : new Date();
+                      const targetYear = dateObj.getFullYear();
+                      const nextSeq = getNextNomorUrut(suratKeluarList, arsipList, targetYear);
                       const autoNo = generateNomorSurat(
                         arsipKode || '400.3.5',
                         nextSeq,
@@ -4900,10 +4904,10 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       setArsipNoSurat(autoNo);
                     }}
                     className="text-[11px] text-indigo-700 hover:text-indigo-900 font-bold flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded border border-indigo-200 transition-colors cursor-pointer"
-                    title="Buat nomor surat otomatis berdasarkan nomor urut berikutnya"
+                    title="Buat nomor surat otomatis berdasarkan nomor urut berikutnya sesuai tahun surat"
                   >
                     <Sparkles className="w-3 h-3 text-indigo-600" />
-                    <span>No. Urut Otomatis (#{formatNomorUrut(getNextNomorUrut(suratKeluarList, arsipList))})</span>
+                    <span>No. Urut Otomatis (#{formatNomorUrut(getNextNomorUrut(suratKeluarList, arsipList, arsipTglSurat || new Date()))})</span>
                   </button>
                 </div>
                 <input
@@ -4918,7 +4922,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                 {/* Indikator Koneksi Nomor Urut */}
                 {(() => {
                   const detectedSeq = extractNomorUrut(arsipNoSurat);
-                  const highestSeq = getHighestNomorUrut(suratKeluarList, arsipList);
+                  const highestSeq = getHighestNomorUrut(suratKeluarList, arsipList, arsipTglSurat || new Date());
                   return (
                     <div className="mt-1.5 p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 space-y-1">
                       <div className="flex items-center justify-between font-medium">

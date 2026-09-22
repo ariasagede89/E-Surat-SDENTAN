@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { X, Copy, Check, Sparkles, BookOpen, UserCheck, Search, ArrowRight } from 'lucide-react';
-import { cariKlasifikasi, generateNomorSurat, getBulanRomawi, getNextNomorUrut } from '../utils/numberGenerator';
+import {
+  cariKlasifikasi,
+  generateNomorSurat,
+  getBulanRomawi,
+  getNextNomorUrut,
+  formatNomorUrut,
+  resolveYear,
+} from '../utils/numberGenerator';
 import { KlasifikasiMendagriItem, PengaturanSekolah, SuratKeluar, ArsipSurat } from '../types';
 
 interface AutoNumberModalProps {
@@ -31,14 +38,13 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
   });
   const [tanggalSurat, setTanggalSurat] = useState(() => new Date().toISOString().slice(0, 10));
 
-  const calculateSeq = () => {
-    if (suratKeluarList.length > 0 || arsipList.length > 0) {
-      return getNextNomorUrut(suratKeluarList, arsipList);
-    }
-    return totalSuratKeluar + 1;
+  const calculateSeq = (dateStr?: string) => {
+    const targetDate = dateStr || tanggalSurat;
+    const targetYear = resolveYear(targetDate);
+    return getNextNomorUrut(suratKeluarList, arsipList, targetYear);
   };
 
-  const [nomorUrut, setNomorUrut] = useState(calculateSeq);
+  const [nomorUrut, setNomorUrut] = useState(() => calculateSeq());
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -139,13 +145,20 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
               <input
                 type="date"
                 value={tanggalSurat}
-                onChange={(e) => setTanggalSurat(e.target.value)}
+                onChange={(e) => {
+                  const newTgl = e.target.value;
+                  setTanggalSurat(newTgl);
+                  setNomorUrut(calculateSeq(newTgl));
+                }}
                 className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none"
               />
+              <p className="text-[11px] text-blue-700 mt-1 font-medium">
+                Tahun Surat: {dateObj.getFullYear()} (Mulai 001 di awal tahun)
+              </p>
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Nomor Urut Surat Keluar
+                Nomor Urut Surat Keluar (Tahun {dateObj.getFullYear()})
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -157,12 +170,16 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                 />
                 <button
                   type="button"
-                  onClick={() => setNomorUrut(totalSuratKeluar + 1)}
-                  className="text-xs text-blue-700 hover:text-blue-900 whitespace-nowrap bg-blue-50 px-2 py-2 rounded-lg border border-blue-200"
+                  onClick={() => setNomorUrut(calculateSeq(tanggalSurat))}
+                  className="text-xs text-blue-700 hover:text-blue-900 whitespace-nowrap bg-blue-50 hover:bg-blue-100 font-semibold px-2.5 py-2 rounded-lg border border-blue-200 transition-colors"
+                  title={`Hitung otomatis nomor urut berikutnya untuk tahun ${dateObj.getFullYear()}`}
                 >
-                  Otomatis
+                  Otomatis #{formatNomorUrut(calculateSeq(tanggalSurat))}
                 </button>
               </div>
+              <p className="text-[11px] text-slate-500 mt-1 italic">
+                * Reset nomor ke 001 jika memasuki tahun baru (misal: 2027).
+              </p>
             </div>
           </div>
 

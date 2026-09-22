@@ -88,43 +88,141 @@ export function extractNomorUrut(noSurat: string): number | null {
 }
 
 /**
- * Mencari nomor urut tertinggi dari gabungan Surat Keluar dan Buku Arsip Surat Keluar.
- * Memastikan surat manual yang diarsipkan tidak akan membuat nomor urut tumpang tindih.
+ * Ekstraksi tahun dari objek surat atau arsip (dari tglSurat, noSurat, tglArsip, atau createdAt).
  */
-export function getHighestNomorUrut(
-  suratKeluarList: { noSurat?: string }[] = [],
-  arsipList: { noSurat?: string }[] = [],
-  filterYear?: number
-): number {
-  let maxSeq = 0;
+export function extractYearFromItem(
+  item: { noSurat?: string; tglSurat?: string; tglArsip?: string; createdAt?: string } | null | undefined
+): number | null {
+  if (!item) return null;
 
-  const checkItem = (item: { noSurat?: string }) => {
-    if (!item || !item.noSurat) return;
-    if (filterYear) {
-      const yearStr = String(filterYear);
-      if (item.noSurat.includes('/') && !item.noSurat.includes(yearStr)) {
-        return;
+  // 1. Dari tglSurat (format YYYY-MM-DD)
+  if (item.tglSurat && typeof item.tglSurat === 'string') {
+    const match = item.tglSurat.match(/\b(20\d{2})\b/);
+    if (match) {
+      const y = parseInt(match[1], 10);
+      if (y >= 1990 && y <= 2100) return y;
+    }
+    const d = new Date(item.tglSurat);
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      if (y >= 1990 && y <= 2100) return y;
+    }
+  }
+
+  // 2. Dari nomor surat (contoh: 400.3.5/045/SDN1PKT/IX/2026 atau 045/SDN1PKT/2027)
+  if (item.noSurat && typeof item.noSurat === 'string') {
+    if (item.noSurat.includes('/')) {
+      const parts = item.noSurat.split('/');
+      const last = parts[parts.length - 1].trim();
+      const lastMatch = last.match(/\b(20\d{2})\b/);
+      if (lastMatch) {
+        const y = parseInt(lastMatch[1], 10);
+        if (y >= 1990 && y <= 2100) return y;
       }
     }
+    const match = item.noSurat.match(/\b(20\d{2})\b/);
+    if (match) {
+      const y = parseInt(match[1], 10);
+      if (y >= 1990 && y <= 2100) return y;
+    }
+  }
+
+  // 3. Dari tglArsip
+  if (item.tglArsip && typeof item.tglArsip === 'string') {
+    const match = item.tglArsip.match(/\b(20\d{2})\b/);
+    if (match) {
+      const y = parseInt(match[1], 10);
+      if (y >= 1990 && y <= 2100) return y;
+    }
+  }
+
+  // 4. Dari createdAt
+  if (item.createdAt && typeof item.createdAt === 'string') {
+    const match = item.createdAt.match(/\b(20\d{2})\b/);
+    if (match) {
+      const y = parseInt(match[1], 10);
+      if (y >= 1990 && y <= 2100) return y;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Mengonversi berbagai bentuk input (Date, string, number, null) menjadi tahun 4 digit.
+ * Secara default (jika undefined), menghasilkan tahun kalender berjalan.
+ */
+export function resolveYear(input?: number | Date | string | null): number | null {
+  if (input === null || input === 0 || input === 'all') return null;
+  if (input instanceof Date) {
+    return isNaN(input.getTime()) ? new Date().getFullYear() : input.getFullYear();
+  }
+  if (typeof input === 'number') {
+    return input >= 1990 && input <= 2100 ? input : new Date().getFullYear();
+  }
+  if (typeof input === 'string') {
+    const match = input.match(/\b(20\d{2})\b/);
+    if (match) return parseInt(match[1], 10);
+    const d = new Date(input);
+    if (!isNaN(d.getTime()) && d.getFullYear() >= 1990) {
+      return d.getFullYear();
+    }
+  }
+  return new Date().getFullYear();
+}
+
+/**
+ * Mencari nomor urut tertinggi dari gabungan Surat Keluar dan Buku Arsip Surat Keluar untuk tahun tertentu.
+ * Jika memasuki tahun baru (contoh tahun 2027), nomor urut akan otomatis mulai kembali dari 0 (sehingga nomor berikutnya adalah 001).
+ */
+export function getHighestNomorUrut(
+  suratKeluarList: { noSurat?: string; tglSurat?: string; tglArsip?: string; createdAt?: string }[] = [],
+  arsipList: { noSurat?: string; tglSurat?: string; tglArsip?: string; createdAt?: string }[] = [],
+  filterYear?: number | Date | string | null
+): number {
+  const targetYear = resolveYear(filterYear);
+  let maxSeq = 0;
+
+  const checkItem = (item: { noSurat?: string; tglSurat?: string; tglArsip?: string; createdAt?: string }) => {
+    if (!item || !item.noSurat) return;
+
+    if (targetYear !== null) {
+      const itemYear = extractYearFromItem(item);
+      if (itemYear !== null && itemYear !== targetYear) {
+        return; // Surat berasal dari tahun berbeda, lewati agar penomoran tahun baru mulai dari awal
+      }
+      if (itemYear === null && item.noSurat.includes('/')) {
+        const otherMatch = item.noSurat.match(/\b(20\d{2})\b/);
+        if (otherMatch && parseInt(otherMatch[1], 10) !== targetYear) {
+          return;
+        }
+      }
+    }
+
     const seq = extractNomorUrut(item.noSurat);
     if (seq !== null && seq > maxSeq && seq < 10000) {
       maxSeq = seq;
     }
   };
 
-  suratKeluarList.forEach(checkItem);
-  arsipList.forEach(checkItem);
+  if (Array.isArray(suratKeluarList)) {
+    suratKeluarList.forEach(checkItem);
+  }
+  if (Array.isArray(arsipList)) {
+    arsipList.forEach(checkItem);
+  }
 
   return maxSeq;
 }
 
 /**
  * Mendapatkan nomor urut berikutnya yang terhubung antara Surat Keluar dan Arsip Surat Keluar.
+ * Jika tahun berganti (misal menginjak tahun 2027), nomor urut otomatis mulai dari 1 (format: 001).
  */
 export function getNextNomorUrut(
-  suratKeluarList: { noSurat?: string }[] = [],
-  arsipList: { noSurat?: string }[] = [],
-  filterYear?: number
+  suratKeluarList: { noSurat?: string; tglSurat?: string; tglArsip?: string; createdAt?: string }[] = [],
+  arsipList: { noSurat?: string; tglSurat?: string; tglArsip?: string; createdAt?: string }[] = [],
+  filterYear?: number | Date | string | null
 ): number {
   const highest = getHighestNomorUrut(suratKeluarList, arsipList, filterYear);
   return highest + 1;
@@ -186,24 +284,8 @@ export function compareSuratKeluarDesc(
   const seqB = extractNomorUrut(b.noSurat || '');
 
   // 1. Ekstraksi tahun surat (dari tglSurat, createdAt, atau nomor surat)
-  const getYear = (item: { noSurat?: string; tglSurat?: string; createdAt?: string }): number => {
-    if (item.tglSurat) {
-      const y = new Date(item.tglSurat).getFullYear();
-      if (!isNaN(y) && y > 1900) return y;
-    }
-    if (item.createdAt) {
-      const y = new Date(item.createdAt).getFullYear();
-      if (!isNaN(y) && y > 1900) return y;
-    }
-    if (item.noSurat) {
-      const match = item.noSurat.match(/\b(20\d{2})\b/);
-      if (match) return parseInt(match[1], 10);
-    }
-    return 0;
-  };
-
-  const yearA = getYear(a);
-  const yearB = getYear(b);
+  const yearA = extractYearFromItem(a) || 0;
+  const yearB = extractYearFromItem(b) || 0;
   if (yearA > 0 && yearB > 0 && yearA !== yearB) {
     return yearB - yearA; // Tahun lebih baru di atas
   }
