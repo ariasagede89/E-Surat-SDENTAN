@@ -104,6 +104,15 @@ export interface Siswa {
   alamat: string;
 }
 
+export interface SptSiswaItem {
+  id?: string;
+  nama: string;
+  nisn: string;
+  kelas: string;
+  sekolah?: string;
+  keterangan?: string;
+}
+
 export interface PengaturanSekolah {
   namaSekolah: string;
   npsn: string;

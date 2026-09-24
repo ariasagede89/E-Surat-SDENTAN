@@ -12,6 +12,7 @@ import {
   Archive,
   X,
   UserCheck,
+  GraduationCap,
   Calendar,
   Check,
   Users,
@@ -39,6 +40,7 @@ import {
   SkPointItem,
   RekomendasiSiswaItem,
   RekomendasiPtkItem,
+  SptSiswaItem,
 } from '../types';
 import {
   formatTanggalIndonesia,
@@ -344,6 +346,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
   ]);
 
   // Khusus: Surat Tugas
+  const [sptTipePenerima, setSptTipePenerima] = useState<'guru' | 'siswa'>('guru');
   const [sptFormatPembuka, setSptFormatPembuka] = useState<'ttd_kepsek' | 'dasar'>('ttd_kepsek');
   const [sptDasar, setSptDasar] = useState('');
   const [sptKeperluan, setSptKeperluan] = useState('');
@@ -352,6 +355,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
   const [sptTglSelesai, setSptTglSelesai] = useState('');
   const [sptWaktu, setSptWaktu] = useState('');
   const [sptPegawai, setSptPegawai] = useState<any[]>([]);
+  const [sptSiswa, setSptSiswa] = useState<SptSiswaItem[]>([]);
 
   // Khusus: Surat Pengantar
   const [spSubJenis, setSpSubJenis] = useState<'dokumen' | 'siswa' | 'ptk'>('dokumen');
@@ -531,6 +535,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       { id: '3', label: 'Ketiga', isi: 'Keputusan ini berlaku sejak tanggal ditetapkan, dengan ketentuan apabila terdapat kekeliruan di kemudian hari akan diadakan perbaikan sebagaimana mestinya.' },
     ]);
 
+    setSptTipePenerima('guru');
     setSptFormatPembuka('ttd_kepsek');
     setSptDasar('Surat Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana');
     setSptKeperluan('Mengikuti Workshop Peningkatan Mutu Pembelajaran');
@@ -541,6 +546,19 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     setSptPegawai(
       guruList.length > 0
         ? [{ nama: guruList[0].nama, nip: guruList[0].nip, pangkatGol: guruList[0].pangkatGol, jabatan: guruList[0].jabatan }]
+        : []
+    );
+    setSptSiswa(
+      siswaList.length > 0
+        ? [
+            {
+              nama: siswaList[0].nama,
+              nisn: siswaList[0].nisn || siswaList[0].nis || '-',
+              kelas: siswaList[0].kelas || 'Kelas IV',
+              sekolah: formatNamaSekolahIsi(sekolah.namaSekolah),
+              keterangan: 'Peserta Kegiatan',
+            },
+          ]
         : []
     );
 
@@ -813,6 +831,8 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
         ]);
       }
     } else if (sk.jenisSurat === 'surat_tugas') {
+      const isSiswaTarget = d.tipePenerima === 'siswa' || (Array.isArray(d.siswaDitugaskan) && d.siswaDitugaskan.length > 0 && (!d.pegawaiDitugaskan || d.pegawaiDitugaskan.length === 0));
+      setSptTipePenerima(isSiswaTarget ? 'siswa' : 'guru');
       setSptFormatPembuka(d.formatPembuka || (d.dasarTugas ? 'dasar' : 'ttd_kepsek'));
       setSptDasar(d.dasarTugas || '');
       setSptKeperluan(d.tujuanTugas || '');
@@ -821,6 +841,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       setSptTglSelesai(d.tglSelesai || '');
       setSptWaktu(d.waktu || '');
       setSptPegawai(d.pegawaiDitugaskan || []);
+      setSptSiswa(d.siswaDitugaskan || []);
     } else if (sk.jenisSurat === 'surat_pengantar') {
       setSpSubJenis(d.subJenisPengantar || 'dokumen');
       setSpTempatTujuan(d.tempatTujuan || 'Tempat');
@@ -1000,6 +1021,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       };
     } else if (jenisSurat === 'surat_tugas') {
       dataKhusus = {
+        tipePenerima: sptTipePenerima,
         formatPembuka: sptFormatPembuka,
         dasarTugas: sptDasar,
         tujuanTugas: sptKeperluan,
@@ -1007,7 +1029,8 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
         tglMulai: sptTglMulai,
         tglSelesai: sptTglSelesai,
         waktu: sptWaktu,
-        pegawaiDitugaskan: sptPegawai,
+        pegawaiDitugaskan: sptTipePenerima === 'guru' ? sptPegawai : [],
+        siswaDitugaskan: sptTipePenerima === 'siswa' ? sptSiswa : [],
       };
     } else if (jenisSurat === 'surat_pengantar') {
       if (spSubJenis === 'dokumen') {
@@ -1447,8 +1470,13 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                           {idx + 1}
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 block w-max">
-                            {labelJenisMap[sk.jenisSurat] || sk.jenisSurat}
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1 w-max">
+                            <span>{labelJenisMap[sk.jenisSurat] || sk.jenisSurat}</span>
+                            {sk.jenisSurat === 'surat_tugas' && (
+                              <span className="text-[9px] font-medium text-emerald-800 bg-white/70 px-1 py-0.2 rounded border border-emerald-300">
+                                {sk.dataKhusus?.tipePenerima === 'siswa' || (Array.isArray(sk.dataKhusus?.siswaDitugaskan) && sk.dataKhusus?.siswaDitugaskan.length > 0) ? 'Siswa' : 'Guru'}
+                              </span>
+                            )}
                           </span>
                           <span className="font-mono text-xs font-bold text-slate-900 block mt-1">
                             {sk.noSurat}
@@ -1497,7 +1525,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             {/* Tombol Export MS Word */}
                             <button
                               onClick={() => {
-                                const html = buildSuratHtml(sk, sekolah, guruList);
+                                const html = buildSuratHtml(sk, sekolah, guruList, siswaList);
                                 exportToWord(`Surat_${sk.jenisSurat}_${sk.noSurat.replace(/\//g, '_')}`, html);
                               }}
                               className="p-1.5 text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
@@ -3078,6 +3106,73 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       Detail Surat Perintah Tugas (SPT)
                     </h3>
 
+                    {/* Pilihan Sasaran / Penerima Tugas */}
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1.5">Penerima Perintah Tugas (SPT)</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSptTipePenerima('guru');
+                          }}
+                          className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border text-left text-xs font-semibold transition-all ${
+                            sptTipePenerima === 'guru'
+                              ? 'bg-emerald-50 border-emerald-600 text-emerald-900 shadow-xs ring-1 ring-emerald-600'
+                              : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span className={`w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center ${sptTipePenerima === 'guru' ? 'border-emerald-600' : 'border-slate-400'}`}>
+                            {sptTipePenerima === 'guru' && <span className="w-2 h-2 rounded-full bg-emerald-600" />}
+                          </span>
+                          <div className="flex items-center gap-1.5 text-slate-900">
+                            <UserCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+                            <span>Guru / Tenaga Kependidikan</span>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSptTipePenerima('siswa');
+                            if (sptSiswa.length === 0 && siswaList.length > 0) {
+                              setSptSiswa([
+                                {
+                                  nama: siswaList[0].nama,
+                                  nisn: siswaList[0].nisn || siswaList[0].nis || '-',
+                                  kelas: siswaList[0].kelas || 'Kelas IV',
+                                  sekolah: formatNamaSekolahIsi(sekolah.namaSekolah),
+                                  keterangan: 'Peserta Kegiatan / Perlombaan',
+                                },
+                              ]);
+                            }
+                            if (!tujuan || tujuan.includes('Guru') || tujuan.includes('Workshop') || tujuan.includes('SD Negeri 1 Pekutatan')) {
+                              if (siswaList.length > 0) {
+                                setTujuan(siswaList[0].nama);
+                              }
+                            }
+                            if (perihal === 'Surat Perintah Tugas Mengikuti Kegiatan Kedinasan' || perihal === 'Surat Perintah Tugas Mengikuti Workshop Penyusunan Modul Ajar KKG Gugus Pekutatan') {
+                              setPerihal('Surat Perintah Tugas Mengikuti Kegiatan / Perlombaan Siswa');
+                            }
+                            if (sptKeperluan === 'Mengikuti Workshop Peningkatan Mutu Pembelajaran') {
+                              setSptKeperluan('Mengikuti Perlombaan / Festival Siswa Tingkat Kecamatan Pekutatan');
+                            }
+                          }}
+                          className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border text-left text-xs font-semibold transition-all ${
+                            sptTipePenerima === 'siswa'
+                              ? 'bg-emerald-50 border-emerald-600 text-emerald-900 shadow-xs ring-1 ring-emerald-600'
+                              : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span className={`w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center ${sptTipePenerima === 'siswa' ? 'border-emerald-600' : 'border-slate-400'}`}>
+                            {sptTipePenerima === 'siswa' && <span className="w-2 h-2 rounded-full bg-emerald-600" />}
+                          </span>
+                          <div className="flex items-center gap-1.5 text-slate-900">
+                            <GraduationCap className="w-4 h-4 text-emerald-700 shrink-0" />
+                            <span>Siswa / Peserta Didik</span>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
                     {/* Pilihan Model Pembuka Surat Tugas */}
                     <div>
                       <label className="block font-semibold text-slate-700 mb-1.5">Model Format Pembuka Surat Tugas</label>
@@ -3085,36 +3180,30 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                         <button
                           type="button"
                           onClick={() => setSptFormatPembuka('ttd_kepsek')}
-                          className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-left text-xs transition-all ${
+                          className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border text-left text-xs font-semibold transition-all ${
                             sptFormatPembuka === 'ttd_kepsek'
                               ? 'bg-emerald-50 border-emerald-600 text-emerald-900 shadow-xs ring-1 ring-emerald-600'
                               : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
                           }`}
                         >
-                          <span className={`w-4 h-4 rounded-full border flex-shrink-0 mt-0.5 flex items-center justify-center ${sptFormatPembuka === 'ttd_kepsek' ? 'border-emerald-600' : 'border-slate-400'}`}>
+                          <span className={`w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center ${sptFormatPembuka === 'ttd_kepsek' ? 'border-emerald-600' : 'border-slate-400'}`}>
                             {sptFormatPembuka === 'ttd_kepsek' && <span className="w-2 h-2 rounded-full bg-emerald-600" />}
                           </span>
-                          <div>
-                            <p className="font-bold text-slate-900">Format Kepala Sekolah Langsung</p>
-                            <p className="text-slate-500 text-[11px] mt-0.5">&quot;Yang bertanda tangan dibawah ini Kepala SD Negeri 1 Pekutatan, Kecamatan Pekutatan, Kabupaten Jembrana-Bali menugaskan kepada :&quot;</p>
-                          </div>
+                          <span className="text-slate-900">Format Kepala Sekolah Langsung</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setSptFormatPembuka('dasar')}
-                          className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-left text-xs transition-all ${
+                          className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border text-left text-xs font-semibold transition-all ${
                             sptFormatPembuka === 'dasar'
                               ? 'bg-emerald-50 border-emerald-600 text-emerald-900 shadow-xs ring-1 ring-emerald-600'
                               : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
                           }`}
                         >
-                          <span className={`w-4 h-4 rounded-full border flex-shrink-0 mt-0.5 flex items-center justify-center ${sptFormatPembuka === 'dasar' ? 'border-emerald-600' : 'border-slate-400'}`}>
+                          <span className={`w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center ${sptFormatPembuka === 'dasar' ? 'border-emerald-600' : 'border-slate-400'}`}>
                             {sptFormatPembuka === 'dasar' && <span className="w-2 h-2 rounded-full bg-emerald-600" />}
                           </span>
-                          <div>
-                            <p className="font-bold text-slate-900">Format Berdasarkan Surat (Dasar)</p>
-                            <p className="text-slate-500 text-[11px] mt-0.5">&quot;Dasar: Surat Edaran / Disposisi Dinas Dikpora...&quot;</p>
-                          </div>
+                          <span className="text-slate-900">Format Berdasarkan Surat (Dasar)</span>
                         </button>
                       </div>
                     </div>
@@ -3188,153 +3277,333 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                     </div>
 
                     {/* Pegawai yang ditugaskan */}
-                    <div className="border-t border-slate-200 pt-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <label className="font-bold text-slate-800 text-xs sm:text-sm">Daftar Guru yang Ditugaskan:</label>
-                          <p className="text-[11px] text-slate-500">Lengkapi identitas: Nama, NIP/NIPPPK, Pangkat/Golongan, dan Jabatan.</p>
+                    {sptTipePenerima === 'guru' && (
+                      <div className="border-t border-slate-200 pt-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <label className="font-bold text-slate-800 text-xs sm:text-sm">Daftar Guru yang Ditugaskan:</label>
+                            <p className="text-[11px] text-slate-500">Lengkapi identitas: Nama, NIP/NIPPPK, Pangkat/Golongan, dan Jabatan.</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const defaultGuru = guruList[0];
+                              setSptPegawai([
+                                ...sptPegawai,
+                                {
+                                  nama: defaultGuru?.nama || '',
+                                  nip: defaultGuru?.nip || defaultGuru?.nuptk || '-',
+                                  pangkatGol: defaultGuru?.pangkatGol || '-',
+                                  jabatan: defaultGuru?.jabatan || 'Guru SD Negeri 1 Pekutatan',
+                                },
+                              ]);
+                            }}
+                            className="px-2.5 py-1 text-xs bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 rounded-lg font-bold transition-all shadow-2xs"
+                          >
+                            + Tambah Guru
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const defaultGuru = guruList[0];
-                            setSptPegawai([
-                              ...sptPegawai,
-                              {
-                                nama: defaultGuru?.nama || '',
-                                nip: defaultGuru?.nip || defaultGuru?.nuptk || '-',
-                                pangkatGol: defaultGuru?.pangkatGol || '-',
-                                jabatan: defaultGuru?.jabatan || 'Guru SD Negeri 1 Pekutatan',
-                              },
-                            ]);
-                          }}
-                          className="px-2.5 py-1 text-xs bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 rounded-lg font-bold transition-all shadow-2xs"
-                        >
-                          + Tambah Guru
-                        </button>
-                      </div>
 
-                      {sptPegawai.length === 0 ? (
-                        <div className="p-3 text-center bg-slate-50 border border-dashed border-slate-300 rounded-xl text-slate-500 text-xs">
-                          Belum ada guru yang ditugaskan. Silakan klik <strong>+ Tambah Guru</strong>.
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {sptPegawai.map((p, idx) => (
-                            <div key={idx} className="bg-slate-50/70 p-3 rounded-xl border border-slate-200 space-y-2.5">
-                              <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
-                                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
-                                  <span className="w-5 h-5 rounded-full bg-emerald-800 text-white flex items-center justify-center text-[11px] font-bold">
-                                    {idx + 1}
+                        {sptPegawai.length === 0 ? (
+                          <div className="p-3 text-center bg-slate-50 border border-dashed border-slate-300 rounded-xl text-slate-500 text-xs">
+                            Belum ada guru yang ditugaskan. Silakan klik <strong>+ Tambah Guru</strong>.
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {sptPegawai.map((p, idx) => (
+                              <div key={idx} className="bg-slate-50/70 p-3 rounded-xl border border-slate-200 space-y-2.5">
+                                <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
+                                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                                    <span className="w-5 h-5 rounded-full bg-emerald-800 text-white flex items-center justify-center text-[11px] font-bold">
+                                      {idx + 1}
+                                    </span>
+                                    Guru / Pegawai #{idx + 1}
                                   </span>
-                                  Guru / Pegawai #{idx + 1}
-                                </span>
 
-                                <div className="flex items-center gap-2">
-                                  <select
-                                    value=""
-                                    onChange={(e) => {
-                                      const selected = guruList.find((g) => g.id === e.target.value);
-                                      if (selected) {
+                                  <div className="flex items-center gap-2">
+                                    <select
+                                      value=""
+                                      onChange={(e) => {
+                                        const selected = guruList.find((g) => g.id === e.target.value);
+                                        if (selected) {
+                                          const updated = [...sptPegawai];
+                                          updated[idx] = {
+                                            nama: selected.nama,
+                                            nip: selected.nip || selected.nuptk || '-',
+                                            pangkatGol: selected.pangkatGol || '-',
+                                            jabatan: selected.jabatan || 'Guru SD Negeri 1 Pekutatan',
+                                          };
+                                          setSptPegawai(updated);
+                                        }
+                                      }}
+                                      className="text-[11px] bg-white border border-slate-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-600 text-slate-600"
+                                    >
+                                      <option value="">-- Pilih dari Data Guru --</option>
+                                      {guruList.map((g) => (
+                                        <option key={g.id} value={g.id}>
+                                          {g.nama} ({g.nip ? `NIP. ${g.nip}` : g.jabatan})
+                                        </option>
+                                      ))}
+                                    </select>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSptPegawai(sptPegawai.filter((_, i) => i !== idx));
+                                      }}
+                                      className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded transition-colors"
+                                      title="Hapus Guru"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Nama & Gelar *</label>
+                                    <input
+                                      type="text"
+                                      value={p.nama || ''}
+                                      placeholder="Nama Lengkap dan Gelar"
+                                      onChange={(e) => {
                                         const updated = [...sptPegawai];
-                                        updated[idx] = {
-                                          nama: selected.nama,
-                                          nip: selected.nip || selected.nuptk || '-',
-                                          pangkatGol: selected.pangkatGol || '-',
-                                          jabatan: selected.jabatan || 'Guru SD Negeri 1 Pekutatan',
-                                        };
+                                        updated[idx] = { ...updated[idx], nama: e.target.value };
                                         setSptPegawai(updated);
-                                      }
-                                    }}
-                                    className="text-[11px] bg-white border border-slate-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-600 text-slate-600"
-                                  >
-                                    <option value="">-- Pilih dari Data Guru --</option>
-                                    {guruList.map((g) => (
-                                      <option key={g.id} value={g.id}>
-                                        {g.nama} ({g.nip ? `NIP. ${g.nip}` : g.jabatan})
-                                      </option>
-                                    ))}
-                                  </select>
+                                      }}
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
+                                    />
+                                  </div>
 
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setSptPegawai(sptPegawai.filter((_, i) => i !== idx));
-                                    }}
-                                    className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded transition-colors"
-                                    title="Hapus Guru"
-                                  >
-                                    <X className="w-4 h-4" />
-                                  </button>
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">NIP / NIPPPK *</label>
+                                    <input
+                                      type="text"
+                                      value={p.nip || ''}
+                                      placeholder="NIP / NIPPPK atau tanda -"
+                                      onChange={(e) => {
+                                        const updated = [...sptPegawai];
+                                        updated[idx] = { ...updated[idx], nip: e.target.value };
+                                        setSptPegawai(updated);
+                                      }}
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Pangkat / Golongan *</label>
+                                    <input
+                                      type="text"
+                                      value={p.pangkatGol || ''}
+                                      placeholder="Contoh: Pembina / IV/a atau IX atau -"
+                                      onChange={(e) => {
+                                        const updated = [...sptPegawai];
+                                        updated[idx] = { ...updated[idx], pangkatGol: e.target.value };
+                                        setSptPegawai(updated);
+                                      }}
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Jabatan *</label>
+                                    <input
+                                      type="text"
+                                      value={p.jabatan || ''}
+                                      placeholder="Contoh: Guru Kelas IV / Guru PJOK"
+                                      onChange={(e) => {
+                                        const updated = [...sptPegawai];
+                                        updated[idx] = { ...updated[idx], jabatan: e.target.value };
+                                        setSptPegawai(updated);
+                                      }}
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
+                                    />
+                                  </div>
                                 </div>
                               </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                                <div>
-                                  <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Nama & Gelar *</label>
-                                  <input
-                                    type="text"
-                                    value={p.nama || ''}
-                                    placeholder="Nama Lengkap dan Gelar"
-                                    onChange={(e) => {
-                                      const updated = [...sptPegawai];
-                                      updated[idx] = { ...updated[idx], nama: e.target.value };
-                                      setSptPegawai(updated);
-                                    }}
-                                    className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">NIP / NIPPPK *</label>
-                                  <input
-                                    type="text"
-                                    value={p.nip || ''}
-                                    placeholder="NIP / NIPPPK atau tanda -"
-                                    onChange={(e) => {
-                                      const updated = [...sptPegawai];
-                                      updated[idx] = { ...updated[idx], nip: e.target.value };
-                                      setSptPegawai(updated);
-                                    }}
-                                    className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Pangkat / Golongan *</label>
-                                  <input
-                                    type="text"
-                                    value={p.pangkatGol || ''}
-                                    placeholder="Contoh: Pembina / IV/a atau IX atau -"
-                                    onChange={(e) => {
-                                      const updated = [...sptPegawai];
-                                      updated[idx] = { ...updated[idx], pangkatGol: e.target.value };
-                                      setSptPegawai(updated);
-                                    }}
-                                    className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Jabatan *</label>
-                                  <input
-                                    type="text"
-                                    value={p.jabatan || ''}
-                                    placeholder="Contoh: Guru Kelas IV / Guru PJOK"
-                                    onChange={(e) => {
-                                      const updated = [...sptPegawai];
-                                      updated[idx] = { ...updated[idx], jabatan: e.target.value };
-                                      setSptPegawai(updated);
-                                    }}
-                                    className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+                    {/* Siswa yang ditugaskan */}
+                    {sptTipePenerima === 'siswa' && (
+                      <div className="border-t border-slate-200 pt-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <label className="font-bold text-slate-800 text-xs sm:text-sm flex items-center gap-1.5">
+                              <GraduationCap className="w-4 h-4 text-emerald-700" />
+                              Daftar Siswa yang Ditugaskan:
+                            </label>
+                            <p className="text-[11px] text-slate-500">
+                              Lengkapi identitas: Nama, NISN/NIS, Kelas, dan Asal Sekolah.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const defaultSiswa = siswaList[sptSiswa.length % (siswaList.length || 1)];
+                              setSptSiswa([
+                                ...sptSiswa,
+                                {
+                                  nama: defaultSiswa?.nama || '',
+                                  nisn: defaultSiswa?.nisn || defaultSiswa?.nis || '-',
+                                  kelas: defaultSiswa?.kelas || 'Kelas IV',
+                                  sekolah: formatNamaSekolahIsi(sekolah.namaSekolah),
+                                },
+                              ]);
+                            }}
+                            className="px-2.5 py-1 text-xs bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 rounded-lg font-bold transition-all shadow-2xs flex items-center gap-1"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            Tambah Siswa
+                          </button>
                         </div>
-                      )}
-                    </div>
+
+                        {sptSiswa.length === 0 ? (
+                          <div className="p-4 text-center bg-slate-50 border border-dashed border-slate-300 rounded-xl text-slate-500 text-xs">
+                            <p className="mb-2">Belum ada siswa yang ditugaskan.</p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const defaultSiswa = siswaList[0];
+                                setSptSiswa([
+                                  {
+                                    nama: defaultSiswa?.nama || '',
+                                    nisn: defaultSiswa?.nisn || defaultSiswa?.nis || '-',
+                                    kelas: defaultSiswa?.kelas || 'Kelas IV',
+                                    sekolah: formatNamaSekolahIsi(sekolah.namaSekolah),
+                                  },
+                                ]);
+                              }}
+                              className="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700 transition-colors inline-flex items-center gap-1.5 shadow-xs"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              + Tambah Siswa Pertama
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {sptSiswa.map((s, idx) => (
+                              <div key={idx} className="bg-slate-50/70 p-3 rounded-xl border border-slate-200 space-y-2.5">
+                                <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
+                                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                                    <span className="w-5 h-5 rounded-full bg-emerald-800 text-white flex items-center justify-center text-[11px] font-bold">
+                                      {idx + 1}
+                                    </span>
+                                    Siswa #{idx + 1}
+                                  </span>
+
+                                  <div className="flex items-center gap-2">
+                                    <select
+                                      value=""
+                                      onChange={(e) => {
+                                        const selected = siswaList.find((item) => item.id === e.target.value);
+                                        if (selected) {
+                                          const updated = [...sptSiswa];
+                                          updated[idx] = {
+                                            nama: selected.nama,
+                                            nisn: selected.nisn || selected.nis || '-',
+                                            kelas: selected.kelas || 'Kelas IV',
+                                            sekolah: formatNamaSekolahIsi(sekolah.namaSekolah),
+                                          };
+                                          setSptSiswa(updated);
+                                          if (idx === 0) {
+                                            setTujuan(updated.length > 1 ? `${selected.nama}, dkk.` : selected.nama);
+                                          }
+                                        }
+                                      }}
+                                      className="text-[11px] bg-white border border-slate-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-600 text-slate-600 max-w-[200px]"
+                                    >
+                                      <option value="">-- Pilih dari Data Siswa --</option>
+                                      {siswaList.map((item) => (
+                                        <option key={item.id} value={item.id}>
+                                          {item.nama} ({item.kelas || 'Siswa'})
+                                        </option>
+                                      ))}
+                                    </select>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSptSiswa(sptSiswa.filter((_, i) => i !== idx));
+                                      }}
+                                      className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded transition-colors"
+                                      title="Hapus Siswa"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Nama Siswa *</label>
+                                    <input
+                                      type="text"
+                                      value={s.nama || ''}
+                                      placeholder="Nama Lengkap Siswa"
+                                      onChange={(e) => {
+                                        const updated = [...sptSiswa];
+                                        updated[idx] = { ...updated[idx], nama: e.target.value };
+                                        setSptSiswa(updated);
+                                      }}
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">NISN / NIS *</label>
+                                    <input
+                                      type="text"
+                                      value={s.nisn || ''}
+                                      placeholder="NISN atau NIS Siswa"
+                                      onChange={(e) => {
+                                        const updated = [...sptSiswa];
+                                        updated[idx] = { ...updated[idx], nisn: e.target.value };
+                                        setSptSiswa(updated);
+                                      }}
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Kelas *</label>
+                                    <input
+                                      type="text"
+                                      value={s.kelas || ''}
+                                      placeholder="Contoh: Kelas IV / Kelas V"
+                                      onChange={(e) => {
+                                        const updated = [...sptSiswa];
+                                        updated[idx] = { ...updated[idx], kelas: e.target.value };
+                                        setSptSiswa(updated);
+                                      }}
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Asal Sekolah</label>
+                                    <input
+                                      type="text"
+                                      value={s.sekolah || formatNamaSekolahIsi(sekolah.namaSekolah)}
+                                      placeholder="Contoh: SD Negeri 1 Pekutatan"
+                                      onChange={(e) => {
+                                        const updated = [...sptSiswa];
+                                        updated[idx] = { ...updated[idx], sekolah: e.target.value };
+                                        setSptSiswa(updated);
+                                      }}
+                                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 

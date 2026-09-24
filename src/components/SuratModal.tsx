@@ -1,21 +1,22 @@
 import React, { useState } from 'react';
 import { X, Printer, FileText, FileSpreadsheet } from 'lucide-react';
-import { SuratKeluar, PengaturanSekolah, PaperSize, Guru } from '../types';
+import { SuratKeluar, PengaturanSekolah, PaperSize, Guru, Siswa } from '../types';
 import { buildSuratHtml, exportToWord, printHtmlElement } from '../utils/exportUtils';
 
 interface SuratModalProps {
   surat: SuratKeluar | null;
   sekolah: PengaturanSekolah;
   guruList?: Guru[];
+  siswaList?: Siswa[];
   onClose: () => void;
 }
 
-export const SuratModal: React.FC<SuratModalProps> = ({ surat, sekolah, guruList, onClose }) => {
+export const SuratModal: React.FC<SuratModalProps> = ({ surat, sekolah, guruList, siswaList, onClose }) => {
   const [paperSize, setPaperSize] = useState<PaperSize>('A4');
 
   if (!surat) return null;
 
-  const htmlContent = buildSuratHtml(surat, sekolah, guruList);
+  const htmlContent = buildSuratHtml(surat, sekolah, guruList, siswaList);
 
   const handlePrint = () => {
     printHtmlElement(
@@ -119,9 +120,16 @@ export const SuratModal: React.FC<SuratModalProps> = ({ surat, sekolah, guruList
 
           <div
             id="surat-print-preview-container"
-            className={`bg-white p-6 sm:p-10 rounded-sm shadow-xl border border-slate-300 w-full text-slate-900 font-serif leading-relaxed ${
+            className={`bg-white rounded-sm shadow-xl border border-slate-300 w-full text-slate-900 font-serif leading-relaxed ${
               paperSize === 'F4' ? 'max-w-[840px] min-h-[780px]' : 'max-w-[800px] min-h-[700px]'
             }`}
+            style={{
+              paddingTop: '1cm',
+              paddingRight: '2cm',
+              paddingBottom: '2cm',
+              paddingLeft: surat.jenisSurat === 'surat_keputusan' ? '2cm' : '3cm',
+              boxSizing: 'border-box',
+            }}
             dangerouslySetInnerHTML={{ __html: htmlContent }}
           />
         </div>

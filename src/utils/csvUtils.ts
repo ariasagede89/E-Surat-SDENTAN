@@ -280,6 +280,20 @@ export function normalizeJenisKelamin(raw: string): 'L' | 'P' {
 }
 
 /**
+ * Cleans an extracted CSV cell value, stripping Excel formula formatting like ="0077376879" and quotes
+ */
+export function cleanCsvValue(raw: string): string {
+  if (!raw) return '';
+  let val = raw.trim();
+  val = val.replace(/^"|"$/g, '').trim();
+  const formulaMatch = val.match(/^=\s*["']?(.*?)["']?$/);
+  if (formulaMatch && formulaMatch[1] !== undefined) {
+    val = formulaMatch[1].replace(/^"|"$/g, '').trim();
+  }
+  return val.replace(/^\t/, '').trim();
+}
+
+/**
  * Normalizes header string to lowercase alphanumeric
  */
 function normalizeHeaderName(name: string): string {
@@ -319,7 +333,7 @@ export function parseSiswaCsv(csvText: string): {
   });
 
   const firstRow = rows[0];
-  const detectedHeaders = firstRow.map((c) => c.replace(/^"|"$/g, '').trim());
+  const detectedHeaders = firstRow.map((c) => cleanCsvValue(c));
 
   // Check if first row is header
   let hasHeader = false;
@@ -372,6 +386,9 @@ export function parseSiswaCsv(csvText: string): {
     } else if (clean.includes('alamat') || clean.includes('domisili') || clean.includes('alamatrumah')) {
       colMap['alamat'] = idx;
       hasHeader = true;
+    } else if (clean.includes('umur') || clean.includes('usia') || clean.includes('age')) {
+      colMap['umur'] = idx;
+      hasHeader = true;
     } else if (
       (clean.includes('nama') || clean.includes('siswa')) &&
       !clean.includes('ortu') &&
@@ -391,7 +408,22 @@ export function parseSiswaCsv(csvText: string): {
   } else {
     // If no header found, determine column positions based on length
     const colCount = firstRow.length;
-    if (colCount >= 10) {
+    if (colCount >= 11) {
+      // Export with Umur: No, NIS, NISN, Nama, Kelas, JK, Umur, Tempat, Tgl, Ortu, Alamat
+      colMap = {
+        no: 0,
+        nis: 1,
+        nisn: 2,
+        nama: 3,
+        kelas: 4,
+        jenisKelamin: 5,
+        umur: 6,
+        tempatLahir: 7,
+        tglLahir: 8,
+        namaOrtu: 9,
+        alamat: 10,
+      };
+    } else if (colCount >= 10) {
       // Standard export with No: No, NIS, NISN, Nama, Kelas, JK, Tempat, Tgl, Ortu, Alamat
       colMap = {
         no: 0,
@@ -442,7 +474,7 @@ export function parseSiswaCsv(csvText: string): {
     let getVal = (key: string): string => {
       const idx = colMap[key];
       if (idx !== undefined && idx < row.length) {
-        return row[idx]?.replace(/^"|"$/g, '').trim() || '';
+        return cleanCsvValue(row[idx]);
       }
       return '';
     };
@@ -470,15 +502,15 @@ export function parseSiswaCsv(csvText: string): {
         if (/^\d{1,4}$/.test(rescued[0]) && /^\d{3,15}$/.test(rescued[1])) {
           rIdx = 1; // rescued[1] is NIS
         }
-        nis = rescued[rIdx] || nis;
-        nisn = rescued[rIdx + 1] || nisn;
-        nama = rescued[rIdx + 2] || nama;
-        kelas = rescued[rIdx + 3] || kelas;
-        jkRaw = rescued[rIdx + 4] || jkRaw;
-        tempatLahir = rescued[rIdx + 5] || tempatLahir;
-        tglLahirRaw = rescued[rIdx + 6] || tglLahirRaw;
-        namaOrtu = rescued[rIdx + 7] || namaOrtu;
-        alamat = rescued[rIdx + 8] || alamat;
+        nis = cleanCsvValue(rescued[rIdx] || nis);
+        nisn = cleanCsvValue(rescued[rIdx + 1] || nisn);
+        nama = cleanCsvValue(rescued[rIdx + 2] || nama);
+        kelas = cleanCsvValue(rescued[rIdx + 3] || kelas);
+        jkRaw = cleanCsvValue(rescued[rIdx + 4] || jkRaw);
+        tempatLahir = cleanCsvValue(rescued[rIdx + 5] || tempatLahir);
+        tglLahirRaw = cleanCsvValue(rescued[rIdx + 6] || tglLahirRaw);
+        namaOrtu = cleanCsvValue(rescued[rIdx + 7] || namaOrtu);
+        alamat = cleanCsvValue(rescued[rIdx + 8] || alamat);
       }
     }
 
@@ -804,7 +836,7 @@ export function parseGuruCsv(csvText: string): {
 /**
  * Downloads a preformatted CSV template for Siswa
  */
-export function downloadSiswaTemplateCsv(): void {
+export function downloadSiswaTemplateCsv(delimiter: ';' | ',' = ';'): void {
   const headers = [
     'No',
     'NIS',
@@ -829,7 +861,7 @@ export function downloadSiswaTemplateCsv(): void {
       'Jembrana',
       '2014-05-12',
       'I Made Sotong',
-      'Pekutatan, Jembrana',
+      'Banjar Pasar, Pekutatan, Jembrana',
     ],
     [
       '2',
@@ -853,27 +885,38 @@ export function downloadSiswaTemplateCsv(): void {
       'Negara',
       '2013-11-15',
       'I Wayan Wardana',
-      'Banjar Pasar, Pekutatan',
+      'Banjar Pengeragoan, Pekutatan',
     ],
   ];
 
   const csvRows = [
-    headers.map((h) => `"${h}"`).join(','),
+    headers.map((h) => `"${h}"`).join(delimiter),
     ...sampleRows.map((r) =>
-      r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')
+      r
+        .map((c) => {
+          const str = String(c);
+          // Preserve leading zeros for numeric values like NIS/NISN so Excel doesn't truncate them
+          if (/^0\d+$/.test(str) && str.length > 1) {
+            return `="${str}"`;
+          }
+          return `"${str.replace(/"/g, '""')}"`;
+        })
+        .join(delimiter)
     ),
   ];
 
-  const csvContent = '\ufeff' + csvRows.join('\r\n');
+  const directive = `sep=${delimiter}\r\n`;
+  const csvContent = '\ufeff' + directive + csvRows.join('\r\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'Format_Template_Data_Siswa_SDN_1_Pekutatan.csv';
+  const suffix = delimiter === ';' ? 'Excel' : 'Standar';
+  a.download = `Format_Template_Data_Siswa_${suffix}_SDN_1_Pekutatan.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /**

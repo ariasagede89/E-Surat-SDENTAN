@@ -1081,6 +1081,7 @@ export default function App() {
         surat={previewSuratKeluar}
         sekolah={sekolah}
         guruList={guruList}
+        siswaList={siswaList}
         onClose={() => setPreviewSuratKeluar(null)}
       />
 

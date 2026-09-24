@@ -495,6 +495,11 @@ export function printHtmlElement(
       }
       table {
         page-break-inside: auto;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      th, td {
+        box-sizing: border-box !important;
       }
       tr {
         page-break-inside: avoid;
@@ -534,12 +539,15 @@ export function printHtmlElement(
     table {
       border-collapse: collapse;
       width: 100%;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
       font-size: 12pt;
     }
     th, td {
       padding: 1.5pt 3pt;
       vertical-align: top;
       font-size: 12pt;
+      box-sizing: border-box !important;
     }
     td p {
       margin: 0;
@@ -842,7 +850,7 @@ export function buildKepadaYthBlock(options: KepadaYthBlockOptions): string {
  * Generates official HTML string for letter templates
  * Format is designed to render pixel-identically in PDF, browser preview, and MS Word (.doc)
  */
-export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, guruList?: Guru[]): string {
+export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, guruList?: Guru[], siswaList?: Siswa[]): string {
   const tglIndo = formatTanggalIndonesia(surat.tglSurat);
   const data = surat.dataKhusus || {};
   const schoolNameIsi = formatNamaSekolahIsi(sekolah?.namaSekolah);
@@ -1314,7 +1322,10 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
     }
 
     case 'surat_tugas': {
+      const tipePenerima = data.tipePenerima || (Array.isArray(data.siswaDitugaskan) && data.siswaDitugaskan.length > 0 ? 'siswa' : 'guru');
+      const isSiswa = tipePenerima === 'siswa';
       const pegawaiList = data.pegawaiDitugaskan || [];
+      const siswaListTugas = data.siswaDitugaskan || [];
       const formatPembuka = data.formatPembuka || (data.dasarTugas ? 'dasar' : 'ttd_kepsek');
       const isTtdKepsek = formatPembuka === 'ttd_kepsek';
 
@@ -1343,70 +1354,173 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
         <p style="margin: 0 0 6pt 0; font-weight: bold; font-size: 12pt;">Kepada:</p>
       `;
 
-      badanSurat = `
-        <div style="text-align: center; margin: 12pt 0 16pt 0;">
-          <p style="margin: 0; text-align: center; font-size: 12pt; font-weight: bold; text-decoration: underline;">SURAT PERINTAH TUGAS</p>
-          <p class="nomor-surat" style="margin: 2pt 0 0 0; text-align: center; font-size: 11pt;">Nomor: ${surat.noSurat}</p>
-        </div>
+      let penerimaHtml = '';
+      const isTableFormat = (isSiswa && siswaListTugas.length > 3) || (!isSiswa && pegawaiList.length > 3);
 
-        ${pembukaHtml}
-
-        <div style="margin-left: 16pt; margin-bottom: 12pt;">
-          ${pegawaiList.length > 0 ? (
-            pegawaiList.length >= 4 ? `
-              <table style="width: 100%; border-collapse: collapse; font-size: 11pt; margin-top: 4pt; margin-bottom: 8pt;" border="1" cellpadding="4" cellspacing="0">
-                <thead>
-                  <tr style="background: #f8fafc; text-align: center; font-weight: bold;">
-                    <th style="width: 25pt; border: 1px solid #000; padding: 4pt 2pt; text-align: center;">No</th>
-                    <th style="border: 1px solid #000; padding: 4pt; text-align: left;">Nama</th>
-                    <th style="width: 120pt; border: 1px solid #000; padding: 4pt; text-align: left;">NIP / NIPPPK</th>
-                    <th style="width: 105pt; border: 1px solid #000; padding: 4pt; text-align: left;">Pangkat / Golongan</th>
-                    <th style="width: 105pt; border: 1px solid #000; padding: 4pt; text-align: left;">Jabatan</th>
+      if (isSiswa) {
+        if (siswaListTugas.length > 3) {
+          // Lebih dari 3 siswa: format tabel proporsional 100% pas margin (Nama diperbesar maks 2 baris, NISN & Kelas diperkecil)
+          penerimaHtml = `
+            <table style="width: 100%; max-width: 100%; border-collapse: collapse; font-size: 10pt; margin-top: 4pt; margin-bottom: 6pt; table-layout: fixed; box-sizing: border-box;" border="1" cellpadding="4" cellspacing="0">
+              <colgroup>
+                <col style="width: 5%;">
+                <col style="width: 45%;">
+                <col style="width: 16%;">
+                <col style="width: 10%;">
+                <col style="width: 24%;">
+              </colgroup>
+              <thead>
+                <tr style="background: #f8fafc; text-align: center; font-weight: bold; font-size: 9.5pt;">
+                  <th style="width: 5%; border: 1px solid #000; padding: 4pt 2pt; text-align: center; box-sizing: border-box;">No</th>
+                  <th style="width: 45%; border: 1px solid #000; padding: 4pt 6pt; text-align: left; box-sizing: border-box;">Nama Siswa</th>
+                  <th style="width: 16%; border: 1px solid #000; padding: 4pt 2pt; text-align: center; box-sizing: border-box;">NISN / NIS</th>
+                  <th style="width: 10%; border: 1px solid #000; padding: 4pt 2pt; text-align: center; box-sizing: border-box;">Kelas</th>
+                  <th style="width: 24%; border: 1px solid #000; padding: 4pt 5pt; text-align: left; box-sizing: border-box;">Asal Sekolah</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${siswaListTugas.map((s: any, idx: number) => `
+                  <tr>
+                    <td style="border: 1px solid #000; padding: 4pt 2pt; text-align: center; vertical-align: middle; box-sizing: border-box;">${idx + 1}.</td>
+                    <td style="border: 1px solid #000; padding: 4pt 6pt; vertical-align: middle; font-weight: 600; font-size: 10pt; line-height: 1.25; word-wrap: break-word; overflow-wrap: break-word; word-break: normal; box-sizing: border-box;">${s.nama || '-'}</td>
+                    <td style="border: 1px solid #000; padding: 4pt 2pt; vertical-align: middle; text-align: center; font-size: 9pt; white-space: nowrap; box-sizing: border-box;">${s.nisn || s.nis || '-'}</td>
+                    <td style="border: 1px solid #000; padding: 4pt 2pt; vertical-align: middle; text-align: center; font-size: 9pt; white-space: nowrap; box-sizing: border-box;">${s.kelas || '-'}</td>
+                    <td style="border: 1px solid #000; padding: 4pt 5pt; vertical-align: middle; font-size: 9pt; line-height: 1.2; word-wrap: break-word; overflow-wrap: break-word; word-break: normal; box-sizing: border-box;">${s.sekolah || schoolName}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  ${pegawaiList.map((p: any, idx: number) => `
-                    <tr>
-                      <td style="border: 1px solid #000; padding: 4pt 2pt; text-align: center; vertical-align: top;">${idx + 1}.</td>
-                      <td style="border: 1px solid #000; padding: 4pt; vertical-align: top; font-weight: 600;">${p.nama || '-'}</td>
-                      <td style="border: 1px solid #000; padding: 4pt; vertical-align: top;">${p.nip || p.nipppk || '-'}</td>
-                      <td style="border: 1px solid #000; padding: 4pt; vertical-align: top;">${p.pangkatGol || p.pangkat || '-'}</td>
-                      <td style="border: 1px solid #000; padding: 4pt; vertical-align: top;">${p.jabatan || 'Guru ' + schoolName}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
+                `).join('')}
+              </tbody>
+            </table>
+          `;
+        } else if (siswaListTugas.length > 0) {
+          // 1 - 3 siswa: format perincian baris
+          penerimaHtml = siswaListTugas.map((s: any, idx: number) => `
+            <div style="margin-bottom: 8pt; page-break-inside: avoid;">
+              <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="width: 22pt; vertical-align: top; border: none; padding: 2pt 0;">${siswaListTugas.length > 1 ? `${idx + 1}.` : ''}</td>
+                  <td style="width: 135pt; vertical-align: top; border: none; padding: 2pt 0;">Nama Siswa</td>
+                  <td style="width: 15pt; vertical-align: top; border: none; padding: 2pt 0;">:</td>
+                  <td style="vertical-align: top; font-weight: bold; border: none; padding: 2pt 0;">${s.nama || '-'}</td>
+                </tr>
+                <tr>
+                  <td style="border: none;"></td>
+                  <td style="vertical-align: top; border: none; padding: 2pt 0;">NISN / NIS</td>
+                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${s.nisn || s.nis || '-'}</td>
+                </tr>
+                <tr>
+                  <td style="border: none;"></td>
+                  <td style="vertical-align: top; border: none; padding: 2pt 0;">Kelas</td>
+                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${s.kelas || '-'}</td>
+                </tr>
+                <tr>
+                  <td style="border: none;"></td>
+                  <td style="vertical-align: top; border: none; padding: 2pt 0;">Asal Sekolah</td>
+                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${s.sekolah || schoolName}</td>
+                </tr>
               </table>
-            ` : pegawaiList.map((p: any, idx: number) => `
-              <div style="margin-bottom: 8pt; page-break-inside: avoid;">
-                <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+            </div>
+          `).join('');
+        } else {
+          penerimaHtml = `
+            <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="width: 22pt; vertical-align: top; border: none; padding: 2pt 0;">1.</td>
+                <td style="width: 135pt; vertical-align: top; border: none; padding: 2pt 0;">Nama Siswa</td>
+                <td style="width: 15pt; vertical-align: top; border: none; padding: 2pt 0;">:</td>
+                <td style="vertical-align: top; font-weight: bold; border: none; padding: 2pt 0;">${surat.tujuan || '-'}</td>
+              </tr>
+              <tr>
+                <td style="border: none;"></td>
+                <td style="vertical-align: top; border: none; padding: 2pt 0;">NISN / NIS</td>
+                <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
+                <td style="vertical-align: top; border: none; padding: 2pt 0;">-</td>
+              </tr>
+              <tr>
+                <td style="border: none;"></td>
+                <td style="vertical-align: top; border: none; padding: 2pt 0;">Kelas</td>
+                <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
+                <td style="vertical-align: top; border: none; padding: 2pt 0;">-</td>
+              </tr>
+              <tr>
+                <td style="border: none;"></td>
+                <td style="vertical-align: top; border: none; padding: 2pt 0;">Asal Sekolah</td>
+                <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
+                <td style="vertical-align: top; border: none; padding: 2pt 0;">${schoolName}</td>
+              </tr>
+            </table>
+          `;
+        }
+      } else {
+        // Penerima Guru / Pegawai
+        if (pegawaiList.length > 3) {
+          // Lebih dari 3 guru: format tabel proporsional 100% pas margin (Nama diperbesar maks 2 baris)
+          penerimaHtml = `
+            <table style="width: 100%; max-width: 100%; border-collapse: collapse; font-size: 10pt; margin-top: 4pt; margin-bottom: 6pt; table-layout: fixed; box-sizing: border-box;" border="1" cellpadding="4" cellspacing="0">
+              <colgroup>
+                <col style="width: 5%;">
+                <col style="width: 41%;">
+                <col style="width: 20%;">
+                <col style="width: 14%;">
+                <col style="width: 20%;">
+              </colgroup>
+              <thead>
+                <tr style="background: #f8fafc; text-align: center; font-weight: bold; font-size: 9.5pt;">
+                  <th style="width: 5%; border: 1px solid #000; padding: 4pt 2pt; text-align: center; box-sizing: border-box;">No</th>
+                  <th style="width: 41%; border: 1px solid #000; padding: 4pt 6pt; text-align: left; box-sizing: border-box;">Nama</th>
+                  <th style="width: 20%; border: 1px solid #000; padding: 4pt 2pt; text-align: center; box-sizing: border-box;">NIP / NIPPPK</th>
+                  <th style="width: 14%; border: 1px solid #000; padding: 4pt 2pt; text-align: center; box-sizing: border-box;">Pangkat / Gol</th>
+                  <th style="width: 20%; border: 1px solid #000; padding: 4pt 5pt; text-align: left; box-sizing: border-box;">Jabatan</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${pegawaiList.map((p: any, idx: number) => `
                   <tr>
-                    <td style="width: 22pt; vertical-align: top; border: none; padding: 2pt 0;">${pegawaiList.length > 1 ? `${idx + 1}.` : ''}</td>
-                    <td style="width: 135pt; vertical-align: top; border: none; padding: 2pt 0;">Nama</td>
-                    <td style="width: 15pt; vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                    <td style="vertical-align: top; font-weight: bold; border: none; padding: 2pt 0;">${p.nama || '-'}</td>
+                    <td style="border: 1px solid #000; padding: 4pt 2pt; text-align: center; vertical-align: middle; box-sizing: border-box;">${idx + 1}.</td>
+                    <td style="border: 1px solid #000; padding: 4pt 6pt; vertical-align: middle; font-weight: 600; font-size: 10pt; line-height: 1.25; word-wrap: break-word; overflow-wrap: break-word; word-break: normal; box-sizing: border-box;">${p.nama || '-'}</td>
+                    <td style="border: 1px solid #000; padding: 4pt 2pt; vertical-align: middle; text-align: center; font-size: 9pt; line-height: 1.2; box-sizing: border-box;">${p.nip || p.nipppk || '-'}</td>
+                    <td style="border: 1px solid #000; padding: 4pt 2pt; vertical-align: middle; text-align: center; font-size: 9pt; line-height: 1.2; box-sizing: border-box;">${p.pangkatGol || p.pangkat || '-'}</td>
+                    <td style="border: 1px solid #000; padding: 4pt 5pt; vertical-align: middle; font-size: 9pt; line-height: 1.2; word-wrap: break-word; overflow-wrap: break-word; word-break: normal; box-sizing: border-box;">${p.jabatan || 'Guru ' + schoolName}</td>
                   </tr>
-                  <tr>
-                    <td style="border: none;"></td>
-                    <td style="vertical-align: top; border: none; padding: 2pt 0;">NIP / NIPPPK</td>
-                    <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                    <td style="vertical-align: top; border: none; padding: 2pt 0;">${p.nip || p.nipppk || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td style="border: none;"></td>
-                    <td style="vertical-align: top; border: none; padding: 2pt 0;">Pangkat / Golongan</td>
-                    <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                    <td style="vertical-align: top; border: none; padding: 2pt 0;">${p.pangkatGol || p.pangkat || '-'}</td>
-                  </tr>
-                  <tr>
-                    <td style="border: none;"></td>
-                    <td style="vertical-align: top; border: none; padding: 2pt 0;">Jabatan</td>
-                    <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                    <td style="vertical-align: top; border: none; padding: 2pt 0;">${p.jabatan || 'Guru ' + schoolName}</td>
-                  </tr>
-                </table>
-              </div>
-            `).join('')
-          ) : `
+                `).join('')}
+              </tbody>
+            </table>
+          `;
+        } else if (pegawaiList.length > 0) {
+          penerimaHtml = pegawaiList.map((p: any, idx: number) => `
+            <div style="margin-bottom: 8pt; page-break-inside: avoid;">
+              <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="width: 22pt; vertical-align: top; border: none; padding: 2pt 0;">${pegawaiList.length > 1 ? `${idx + 1}.` : ''}</td>
+                  <td style="width: 135pt; vertical-align: top; border: none; padding: 2pt 0;">Nama</td>
+                  <td style="width: 15pt; vertical-align: top; border: none; padding: 2pt 0;">:</td>
+                  <td style="vertical-align: top; font-weight: bold; border: none; padding: 2pt 0;">${p.nama || '-'}</td>
+                </tr>
+                <tr>
+                  <td style="border: none;"></td>
+                  <td style="vertical-align: top; border: none; padding: 2pt 0;">NIP / NIPPPK</td>
+                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${p.nip || p.nipppk || '-'}</td>
+                </tr>
+                <tr>
+                  <td style="border: none;"></td>
+                  <td style="vertical-align: top; border: none; padding: 2pt 0;">Pangkat / Golongan</td>
+                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${p.pangkatGol || p.pangkat || '-'}</td>
+                </tr>
+                <tr>
+                  <td style="border: none;"></td>
+                  <td style="vertical-align: top; border: none; padding: 2pt 0;">Jabatan</td>
+                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${p.jabatan || 'Guru ' + schoolName}</td>
+                </tr>
+              </table>
+            </div>
+          `).join('');
+        } else {
+          penerimaHtml = `
             <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
               <tr>
                 <td style="width: 22pt; vertical-align: top; border: none; padding: 2pt 0;">1.</td>
@@ -1433,12 +1547,25 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
                 <td style="vertical-align: top; border: none; padding: 2pt 0;">Guru ${schoolName}</td>
               </tr>
             </table>
-          `}
+          `;
+        }
+      }
+
+      badanSurat = `
+        <div style="text-align: center; margin: 12pt 0 16pt 0;">
+          <p style="margin: 0; text-align: center; font-size: 12pt; font-weight: bold; text-decoration: underline;">SURAT PERINTAH TUGAS</p>
+          <p class="nomor-surat" style="margin: 2pt 0 0 0; text-align: center; font-size: 11pt;">Nomor: ${surat.noSurat}</p>
+        </div>
+
+        ${pembukaHtml}
+
+        <div style="${isTableFormat ? 'margin: 6pt 0 10pt 0; width: 100%; box-sizing: border-box;' : 'margin-left: 16pt; margin-bottom: 10pt;'}">
+          ${penerimaHtml}
         </div>
 
         <p style="margin: 0 0 6pt 0; font-weight: bold;">Untuk:</p>
 
-        <table style="margin-left: 16pt; margin-bottom: 12pt; width: 94%; border: none; border-collapse: collapse; line-height: 1.45;" border="0" cellpadding="0" cellspacing="0">
+        <table style="margin-left: 16pt; margin-bottom: 12pt; width: calc(100% - 16pt); border: none; border-collapse: collapse; line-height: 1.45; box-sizing: border-box;" border="0" cellpadding="0" cellspacing="0">
           <tr>
             <td style="width: 20pt; vertical-align: top; border: none; padding: 2pt 0;">1.</td>
             <td style="text-align: justify; vertical-align: top; border: none; padding: 2pt 0;">
@@ -1457,16 +1584,20 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
               Waktu pelaksanaan: ${data.tglMulai ? formatTanggalIndonesia(data.tglMulai) : tglIndo}${data.tglSelesai && data.tglSelesai !== data.tglMulai ? ` s.d. ${formatTanggalIndonesia(data.tglSelesai)}` : ''}${data.waktu ? ` (${data.waktu})` : ''}
             </td>
           </tr>
+          ${!isSiswa ? `
           <tr>
             <td style="vertical-align: top; border: none; padding: 2pt 0;">4.</td>
             <td style="text-align: justify; vertical-align: top; border: none; padding: 2pt 0;">
               Melaporkan hasil pelaksanaan tugas kepada atasan langsung setelah kegiatan selesai.
             </td>
           </tr>
+          ` : ''}
         </table>
 
         <p style="text-align: justify; margin-top: 10pt; line-height: 1.4;">
-          Demikian surat perintah tugas ini dibuat untuk dilaksanakan dengan sebaik-baiknya dan penuh rasa tanggung jawab.
+          ${isSiswa
+            ? 'Demikian surat perintah tugas ini diberikan kepada siswa yang bersangkutan untuk dilaksanakan dengan sebaik-baiknya dan penuh rasa tanggung jawab.'
+            : 'Demikian surat perintah tugas ini dibuat untuk dilaksanakan dengan sebaik-baiknya dan penuh rasa tanggung jawab.'}
         </p>
       `;
       break;
@@ -3387,9 +3518,14 @@ export function exportAbsenSiswaToWord(
 }
 
 /**
- * Generic CSV exporter for tabular objects with UTF-8 BOM and configurable delimiter
+ * Generic CSV exporter for tabular objects with UTF-8 BOM, sep directive, and configurable delimiter
  */
-export function exportToCsv(filename: string, rows: Record<string, any>[], delimiter: string = ',') {
+export function exportToCsv(
+  filename: string,
+  rows: Record<string, any>[],
+  delimiter: string = ';',
+  includeSepDirective: boolean = true
+) {
   if (rows.length === 0) return;
   const headers = Object.keys(rows[0]);
   const csvRows = [
@@ -3398,13 +3534,20 @@ export function exportToCsv(filename: string, rows: Record<string, any>[], delim
       headers
         .map((header) => {
           const val = row[header] ?? '';
-          const escaped = String(val).replace(/"/g, '""');
+          const strVal = String(val);
+          const escaped = strVal.replace(/"/g, '""');
+          // If value is a digit string with leading zero (e.g. NISN "0077376879" or NIS "0123"),
+          // format as ="0077376879" so Excel keeps leading zeros intact instead of truncating them
+          if (/^0\d+$/.test(strVal) && strVal.length > 1) {
+            return `="${escaped}"`;
+          }
           return `"${escaped}"`;
         })
         .join(delimiter)
     ),
   ];
-  const csvContent = '\ufeff' + csvRows.join('\r\n');
+  const directive = includeSepDirective ? `sep=${delimiter}\r\n` : '';
+  const csvContent = '\ufeff' + directive + csvRows.join('\r\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -3413,6 +3556,7 @@ export function exportToCsv(filename: string, rows: Record<string, any>[], delim
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /**

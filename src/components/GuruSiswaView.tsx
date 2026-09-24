@@ -21,10 +21,14 @@ import {
   Check,
   Settings2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
 } from 'lucide-react';
 import { Guru, Siswa, PengaturanSekolah, KategoriPTK, PaperSize } from '../types';
 import {
   exportToCsv,
+  exportToWord,
   buildAbsenGuruHtml,
   buildAbsenPTKHtml,
   buildAbsenSiswaHtml,
@@ -43,6 +47,77 @@ import {
   compareKelas,
 } from '../utils/csvUtils';
 import { KalenderKecilLibur, NAMA_BULAN_INDONESIA } from './KalenderKecilLibur';
+import {
+  KalenderKecilAcuanUmur,
+  formatTanggalIndonesiaLengkap,
+  formatTanggalIndonesiaPendek,
+  getTodayString,
+} from './KalenderKecilAcuanUmur';
+
+/**
+ * Menghitung umur siswa dalam tahun berdasarkan tanggal lahir dan tanggal acuan (default: hari ini).
+ * Mendukung format YYYY-MM-DD, DD-MM-YYYY, teks tanggal Indonesia ("12 Juni 2014"), dll.
+ */
+export function hitungUmurSiswa(tglLahir: string, acuanStrOrDate?: string | Date): number | null {
+  if (!tglLahir) return null;
+  const str = tglLahir.trim();
+  let birthDate: Date | null = null;
+  if (/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}/.test(str)) {
+    const parts = str.split(/[-/.]/);
+    birthDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  } else if (/^\d{1,2}[-/.]\d{1,2}[-/.]\d{4}/.test(str)) {
+    const parts = str.split(/[-/.]/);
+    birthDate = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+  } else {
+    const months: Record<string, number> = {
+      januari: 0, februari: 1, maret: 2, april: 3, mei: 4, juni: 5,
+      juli: 6, agustus: 7, september: 8, oktober: 9, november: 10, desember: 11,
+      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+    };
+    const match = str.match(/(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/);
+    if (match) {
+      const d = parseInt(match[1], 10);
+      const mStr = match[2].toLowerCase();
+      const y = parseInt(match[3], 10);
+      if (months[mStr] !== undefined) {
+        birthDate = new Date(y, months[mStr], d);
+      }
+    } else {
+      const parsed = new Date(str);
+      if (!isNaN(parsed.getTime())) {
+        birthDate = parsed;
+      }
+    }
+  }
+
+  if (!birthDate || isNaN(birthDate.getTime())) return null;
+
+  let refDate: Date;
+  if (acuanStrOrDate instanceof Date) {
+    refDate = acuanStrOrDate;
+  } else if (typeof acuanStrOrDate === 'string' && acuanStrOrDate.trim()) {
+    const parts = acuanStrOrDate.trim().split(/[-/.]/);
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        refDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      } else {
+        refDate = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+      }
+    } else {
+      const p = new Date(acuanStrOrDate);
+      refDate = !isNaN(p.getTime()) ? p : new Date();
+    }
+  } else {
+    refDate = new Date();
+  }
+
+  let age = refDate.getFullYear() - birthDate.getFullYear();
+  const m = refDate.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && refDate.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age >= 0 && age < 100 ? age : null;
+}
 
 interface GuruSiswaViewProps {
   guruList: Guru[];
@@ -78,6 +153,13 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
   const [activeTab, setActiveTab] = useState<'guru' | 'siswa'>('guru');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterKelasSiswa, setFilterKelasSiswa] = useState<string>('Semua');
+  const [filterJkSiswa, setFilterJkSiswa] = useState<'Semua' | 'L' | 'P'>('Semua');
+  const [filterUmurSiswa, setFilterUmurSiswa] = useState<string>('Semua');
+  const [filterUmurMin, setFilterUmurMin] = useState<string>('');
+  const [filterUmurMax, setFilterUmurMax] = useState<string>('');
+  const [tglAcuanUmur, setTglAcuanUmur] = useState<string>(getTodayString);
+  const [showKalenderAcuan, setShowKalenderAcuan] = useState<boolean>(false);
+  const [showDownloadSiswaMenu, setShowDownloadSiswaMenu] = useState(false);
 
   // Helper Hari Libur Default (Hari Minggu)
   const getInitialSundays = (year: number, month: number) => {
@@ -312,6 +394,15 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
     detectedHeaders: string[];
   } | null>(null);
   const [importMode, setImportMode] = useState<'merge' | 'replace' | 'append'>('merge');
+  const [showUploadSiswaModal, setShowUploadSiswaModal] = useState<boolean>(false);
+  const [showTemplateSiswaMenu, setShowTemplateSiswaMenu] = useState<boolean>(false);
+  const [isDraggingFile, setIsDraggingFile] = useState<boolean>(false);
+  const [previewSearch, setPreviewSearch] = useState<string>('');
+  const [previewKelasFilter, setPreviewKelasFilter] = useState<string>('Semua');
+  const [previewJkFilter, setPreviewJkFilter] = useState<string>('Semua');
+  const [previewRowsPerPage, setPreviewRowsPerPage] = useState<number>(25);
+  const [previewPage, setPreviewPage] = useState<number>(1);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [showDataOptionsDropdown, setShowDataOptionsDropdown] = useState(false);
   const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
   const [showClearConfirmModal, setShowClearConfirmModal] = useState(false);
@@ -341,24 +432,6 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
     exportToCsv('Data_PTK_SDN_1_Pekutatan', data);
   };
 
-  // Export Data Siswa CSV
-  const handleExportSiswa = () => {
-    const sorted = sortSiswa<Siswa>(siswaList);
-    const data = sorted.map((s, idx) => ({
-      No: idx + 1,
-      NIS: s.nis,
-      NISN: s.nisn,
-      'Nama Siswa': s.nama,
-      Kelas: s.kelas,
-      'Jenis Kelamin': s.jenisKelamin,
-      'Tempat Lahir': s.tempatLahir,
-      'Tanggal Lahir': s.tglLahir,
-      'Nama Orang Tua / Wali': s.namaOrtu,
-      Alamat: s.alamat,
-    }));
-    exportToCsv('Data_Siswa_SDN_1_Pekutatan', data);
-  };
-
   // Import PTK via CSV (Header-aware & robust parser)
   const handleUploadGuruCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -380,21 +453,19 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
     if (fileInputGuruRef.current) fileInputGuruRef.current.value = '';
   };
 
-  // Import Siswa via CSV (Header-aware, respects export structure, opens interactive preview)
-  const handleUploadSiswaCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  // Process and parse Siswa CSV file with automatic header mapping and error handling
+  const processSiswaCsvFile = (file: File) => {
+    setUploadError(null);
     const reader = new FileReader();
     reader.onload = (evt) => {
       const text = evt.target?.result as string;
       const res = parseSiswaCsv(text);
       if (!res.success || res.data.length === 0) {
-        alert(res.errors.join('\n') || 'File CSV tidak memiliki baris data siswa yang valid.');
+        setUploadError(res.errors.join('\n') || 'File CSV tidak memiliki baris data siswa yang valid.');
+        setShowUploadSiswaModal(true);
         return;
       }
 
-      // Open preview modal with detected columns and data
       setImportSiswaPreview({
         filename: file.name,
         data: res.data,
@@ -402,9 +473,25 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
         detectedHeaders: res.detectedHeaders,
       });
       setImportMode('merge');
+      setPreviewSearch('');
+      setPreviewKelasFilter('Semua');
+      setPreviewJkFilter('Semua');
+      setPreviewPage(1);
+      setShowUploadSiswaModal(true);
+    };
+    reader.onerror = () => {
+      setUploadError('Gagal membaca file CSV. Pastikan file dalam kondisi baik.');
+      setShowUploadSiswaModal(true);
     };
     reader.readAsText(file);
     if (fileInputSiswaRef.current) fileInputSiswaRef.current.value = '';
+  };
+
+  // Import Siswa via CSV (Header-aware, respects export structure, opens interactive preview)
+  const handleUploadSiswaCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processSiswaCsvFile(file);
   };
 
   // Cetak Absen Guru (Membuka Dialog Cetak dengan Kalender Libur)
@@ -567,16 +654,204 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
 
   const filteredSiswa = sortSiswa<Siswa>(
     siswaList.filter((s) => {
+      const term = searchTerm.toLowerCase();
       const matchesSearch =
-        s.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.nisn.includes(searchTerm) ||
-        s.nis.includes(searchTerm);
+        s.nama.toLowerCase().includes(term) ||
+        s.nisn.includes(term) ||
+        s.nis.includes(term) ||
+        (s.alamat && s.alamat.toLowerCase().includes(term));
       const matchesKelas = filterKelasSiswa === 'Semua' || s.kelas === filterKelasSiswa;
-      return matchesSearch && matchesKelas;
+      const matchesJk = filterJkSiswa === 'Semua' || s.jenisKelamin === filterJkSiswa;
+
+      const umur = hitungUmurSiswa(s.tglLahir, tglAcuanUmur);
+      let matchesUmur = true;
+      if (filterUmurSiswa === 'kustom') {
+        if (umur === null) {
+          matchesUmur = false;
+        } else {
+          const min = filterUmurMin.trim() !== '' ? parseInt(filterUmurMin, 10) : null;
+          const max = filterUmurMax.trim() !== '' ? parseInt(filterUmurMax, 10) : null;
+          if (min !== null && !isNaN(min) && umur < min) {
+            matchesUmur = false;
+          }
+          if (max !== null && !isNaN(max) && umur > max) {
+            matchesUmur = false;
+          }
+        }
+      } else if (filterUmurSiswa !== 'Semua') {
+        if (umur === null) {
+          matchesUmur = false;
+        } else {
+          matchesUmur = umur === parseInt(filterUmurSiswa, 10);
+        }
+      }
+
+      return matchesSearch && matchesKelas && matchesJk && matchesUmur;
     })
   );
 
   const availableKelas = Array.from(new Set(siswaList.map((s) => s.kelas))).sort(compareKelas);
+  const availableUmur: number[] = Array.from(
+    new Set<number>(
+      siswaList
+        .map((s) => hitungUmurSiswa(s.tglLahir, tglAcuanUmur))
+        .filter((u): u is number => u !== null)
+    )
+  ).sort((a, b) => a - b);
+
+  // Export Data Siswa Berdasarkan Filter yang Diterapkan (Format CSV / Excel)
+  const handleExportFilteredSiswa = (format: 'excel' | 'comma' = 'excel') => {
+    if (filteredSiswa.length === 0) {
+      alert('Tidak ada data siswa yang cocok dengan filter saat ini untuk diunduh.');
+      return;
+    }
+    const data = filteredSiswa.map((s, idx) => {
+      const umur = hitungUmurSiswa(s.tglLahir, tglAcuanUmur);
+      return {
+        No: idx + 1,
+        NIS: s.nis,
+        NISN: s.nisn,
+        'Nama Siswa': s.nama,
+        Kelas: s.kelas,
+        'Jenis Kelamin': s.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan',
+        'Umur (Tahun)': umur !== null ? umur : '-',
+        'Tempat Lahir': s.tempatLahir,
+        'Tanggal Lahir': s.tglLahir,
+        'Nama Orang Tua / Wali': s.namaOrtu,
+        Alamat: s.alamat,
+      };
+    });
+
+    let filterLabel = '';
+    if (filterKelasSiswa !== 'Semua') filterLabel += `_Kelas_${filterKelasSiswa}`;
+    if (filterJkSiswa !== 'Semua') filterLabel += `_JK_${filterJkSiswa}`;
+    if (filterUmurSiswa === 'kustom') {
+      const minText = filterUmurMin ? `${filterUmurMin}` : 'min';
+      const maxText = filterUmurMax ? `${filterUmurMax}` : 'max';
+      filterLabel += `_Umur_${minText}-${maxText}th`;
+    } else if (filterUmurSiswa !== 'Semua') {
+      filterLabel += `_Umur_${filterUmurSiswa}th`;
+    }
+    filterLabel += `_Acuan_${tglAcuanUmur}`;
+
+    const delimiter = format === 'excel' ? ';' : ',';
+    const suffix = format === 'excel' ? '_Excel' : '_Standar';
+
+    exportToCsv(
+      `Data_Siswa_SDN_1_Pekutatan${filterLabel || '_Semua'}${suffix}`,
+      data,
+      delimiter,
+      true
+    );
+  };
+
+  // Export Data Siswa Berdasarkan Filter yang Diterapkan (Format Dokumen Word .doc)
+  const handleExportWordFilteredSiswa = () => {
+    if (filteredSiswa.length === 0) {
+      alert('Tidak ada data siswa yang cocok dengan filter saat ini.');
+      return;
+    }
+    const tableRows = filteredSiswa
+      .map((s, idx) => {
+        const u = hitungUmurSiswa(s.tglLahir, tglAcuanUmur);
+        return `
+        <tr>
+          <td style="text-align: center; padding: 6px 8px; border: 1px solid #333;">${idx + 1}</td>
+          <td style="padding: 6px 8px; border: 1px solid #333; font-weight: bold;">${s.nama}</td>
+          <td style="text-align: center; padding: 6px 8px; border: 1px solid #333;">${s.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</td>
+          <td style="text-align: center; padding: 6px 8px; border: 1px solid #333;">${s.nisn}</td>
+          <td style="text-align: center; padding: 6px 8px; border: 1px solid #333;">${s.nis}</td>
+          <td style="text-align: center; padding: 6px 8px; border: 1px solid #333;">Kelas ${s.kelas}</td>
+          <td style="text-align: center; padding: 6px 8px; border: 1px solid #333;">${u !== null ? `${u} Thn` : '-'}</td>
+          <td style="padding: 6px 8px; border: 1px solid #333;">${s.tempatLahir}, ${s.tglLahir}</td>
+          <td style="padding: 6px 8px; border: 1px solid #333;">${s.namaOrtu}</td>
+          <td style="padding: 6px 8px; border: 1px solid #333;">${s.alamat}</td>
+        </tr>
+      `;
+      })
+      .join('');
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; font-size: 11pt; color: #111;">
+        <div style="text-align: center; margin-bottom: 18px;">
+          <h2 style="margin: 0; font-size: 14pt; text-transform: uppercase;">DAFTAR DATA PESERTA DIDIK</h2>
+          <h3 style="margin: 4px 0 0 0; font-size: 12pt; text-transform: uppercase;">${sekolah.nama || 'SDN 1 PEKUTATAN'}</h3>
+          <p style="margin: 4px 0 0 0; font-size: 10pt; color: #555;">Kecamatan Pekutatan, Kabupaten Jembrana - Bali</p>
+          <p style="margin: 4px 0 0 0; font-size: 9.5pt; color: #4338ca; font-weight: bold;">Acuan Perhitungan Umur: ${formatTanggalIndonesiaLengkap(tglAcuanUmur)}</p>
+          <p style="margin: 4px 0 0 0; font-size: 10pt; font-weight: bold;">Total Data: ${filteredSiswa.length} Siswa</p>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 9.5pt;" border="1">
+          <thead>
+            <tr style="background-color: #f2f2f2; font-weight: bold; text-align: center;">
+              <th style="padding: 8px; border: 1px solid #333; width: 35px;">No</th>
+              <th style="padding: 8px; border: 1px solid #333;">Nama Siswa</th>
+              <th style="padding: 8px; border: 1px solid #333; width: 75px;">JK</th>
+              <th style="padding: 8px; border: 1px solid #333; width: 90px;">NISN</th>
+              <th style="padding: 8px; border: 1px solid #333; width: 60px;">NIS</th>
+              <th style="padding: 8px; border: 1px solid #333; width: 65px;">Kelas</th>
+              <th style="padding: 8px; border: 1px solid #333; width: 55px;">Umur</th>
+              <th style="padding: 8px; border: 1px solid #333;">Tempat, Tgl Lahir</th>
+              <th style="padding: 8px; border: 1px solid #333;">Nama Orang Tua</th>
+              <th style="padding: 8px; border: 1px solid #333;">Alamat</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    exportToWord(`Data_Siswa_SDN_1_Pekutatan_Terfilter`, html, 'F4', 'landscape');
+  };
+
+  // Preview Data Filtered & Paginated for Import Modal
+  const previewData = importSiswaPreview?.data || [];
+  const previewTotalL = previewData.filter((s) => s.jenisKelamin === 'L').length;
+  const previewTotalP = previewData.filter((s) => s.jenisKelamin === 'P').length;
+  const previewKelasCounts = previewData.reduce((acc, s) => {
+    acc[s.kelas] = (acc[s.kelas] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const sortedPreviewKelas = Object.keys(previewKelasCounts).sort(compareKelas);
+
+  const filteredImportPreview = previewData.filter((s) => {
+    const term = previewSearch.trim().toLowerCase();
+    const matchSearch =
+      !term ||
+      s.nama.toLowerCase().includes(term) ||
+      s.nis.toLowerCase().includes(term) ||
+      s.nisn.toLowerCase().includes(term) ||
+      s.namaOrtu.toLowerCase().includes(term) ||
+      s.alamat.toLowerCase().includes(term) ||
+      s.tempatLahir.toLowerCase().includes(term);
+
+    const matchKelas =
+      previewKelasFilter === 'Semua' || s.kelas === previewKelasFilter;
+
+    const matchJk =
+      previewJkFilter === 'Semua' || s.jenisKelamin === previewJkFilter;
+
+    return matchSearch && matchKelas && matchJk;
+  });
+
+  const totalPreviewRows = filteredImportPreview.length;
+  const totalPreviewPages =
+    previewRowsPerPage === -1
+      ? 1
+      : Math.max(1, Math.ceil(totalPreviewRows / previewRowsPerPage));
+  const currentPreviewPage = Math.min(Math.max(1, previewPage), totalPreviewPages);
+  const previewStartIndex =
+    previewRowsPerPage === -1
+      ? 0
+      : (currentPreviewPage - 1) * previewRowsPerPage;
+  const paginatedImportPreview =
+    previewRowsPerPage === -1
+      ? filteredImportPreview
+      : filteredImportPreview.slice(
+          previewStartIndex,
+          previewStartIndex + previewRowsPerPage
+        );
 
   return (
     <div className="space-y-6">
@@ -724,16 +999,6 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                 <span>Unduh Format PTK</span>
               </button>
 
-              {/* Tombol Ekspor Data PTK */}
-              <button
-                onClick={handleExportGuru}
-                className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-xs sm:text-sm rounded-xl border border-emerald-200 flex items-center gap-1.5 transition-colors cursor-pointer"
-                title="Ekspor CSV / Excel"
-              >
-                <Download className="w-4 h-4 text-emerald-700" />
-                <span>Ekspor Data PTK</span>
-              </button>
-
               {/* Tombol Cetak & Unduh Presensi PTK (Landscape F4) */}
               <button
                 onClick={handlePrintAbsenGuru}
@@ -852,129 +1117,397 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
       ) : (
         /* ================= TAB B: DATA SISWA ================= */
         <div className="space-y-4">
-          {/* Action Bar */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-            <div className="flex items-center gap-2 flex-1">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Cari nama siswa, NISN, NIS..."
-                  className="w-full text-xs sm:text-sm pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:outline-none"
-                />
+          {/* Action & Filter Bar */}
+          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs space-y-3">
+            {/* Baris 1: Filter Controls (Search, Kelas, JK, Umur) & Action Buttons */}
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2 flex-1">
+                {/* Search */}
+                <div className="relative flex-1 min-w-[200px] max-w-sm">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Cari nama siswa, NISN, NIS..."
+                    className="w-full text-xs sm:text-sm pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                  />
+                </div>
+
+                {/* Filter Kelas */}
+                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-2xs">
+                  <span className="text-[11px] font-semibold text-slate-500">Kelas:</span>
+                  <select
+                    value={filterKelasSiswa}
+                    onChange={(e) => setFilterKelasSiswa(e.target.value)}
+                    className="text-xs bg-transparent focus:outline-none font-bold text-slate-800 cursor-pointer"
+                  >
+                    <option value="Semua">Semua Kelas</option>
+                    {availableKelas.map((k) => (
+                      <option key={k} value={k}>
+                        Kelas {k}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Filter Jenis Kelamin */}
+                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-2xs">
+                  <span className="text-[11px] font-semibold text-slate-500">JK:</span>
+                  <select
+                    value={filterJkSiswa}
+                    onChange={(e) => setFilterJkSiswa(e.target.value as 'Semua' | 'L' | 'P')}
+                    className="text-xs bg-transparent focus:outline-none font-bold text-slate-800 cursor-pointer"
+                  >
+                    <option value="Semua">Semua (L &amp; P)</option>
+                    <option value="L">Laki-laki (L)</option>
+                    <option value="P">Perempuan (P)</option>
+                  </select>
+                </div>
+
+                {/* Filter Umur */}
+                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-2xs">
+                  <span className="text-[11px] font-semibold text-slate-500">Umur:</span>
+                  <select
+                    value={filterUmurSiswa}
+                    onChange={(e) => {
+                      setFilterUmurSiswa(e.target.value);
+                      if (e.target.value !== 'kustom') {
+                        setFilterUmurMin('');
+                        setFilterUmurMax('');
+                      }
+                    }}
+                    className="text-xs bg-transparent focus:outline-none font-bold text-slate-800 cursor-pointer"
+                  >
+                    <option value="Semua">Semua Umur</option>
+                    <option value="kustom">Rentang Umur (Kustom)...</option>
+                    {availableUmur.length > 0 && (
+                      <optgroup label="Pilih Umur Spesifik">
+                        {availableUmur.map((u) => (
+                          <option key={u} value={String(u)}>
+                            {u} Tahun
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                </div>
+
+                {/* Input Rentang Umur Kustom */}
+                {filterUmurSiswa === 'kustom' && (
+                  <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-300 rounded-lg px-2.5 py-1 shadow-2xs text-xs animate-in fade-in">
+                    <span className="text-[11px] font-semibold text-amber-900">Rentang:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="30"
+                      placeholder="Min"
+                      value={filterUmurMin}
+                      onChange={(e) => setFilterUmurMin(e.target.value)}
+                      className="w-12 text-center text-xs py-1 px-1 border border-amber-300 rounded bg-white font-bold text-amber-950 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                      title="Batas Umur Minimum (Tahun)"
+                    />
+                    <span className="text-slate-500 text-xs font-medium">s/d</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="30"
+                      placeholder="Max"
+                      value={filterUmurMax}
+                      onChange={(e) => setFilterUmurMax(e.target.value)}
+                      className="w-12 text-center text-xs py-1 px-1 border border-amber-300 rounded bg-white font-bold text-amber-950 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                      title="Batas Umur Maksimum (Tahun)"
+                    />
+                    <span className="text-[11px] text-amber-900 font-semibold">Tahun</span>
+                  </div>
+                )}
+
+                {/* Kalender Kecil Acuan Menghitung Umur */}
+                {filterUmurSiswa !== 'Semua' && (
+                  <div className="flex items-center animate-in fade-in slide-in-from-left-2">
+                    <KalenderKecilAcuanUmur
+                      value={tglAcuanUmur}
+                      onChange={(val) => setTglAcuanUmur(val)}
+                      isOpen={showKalenderAcuan}
+                      onClose={() => setShowKalenderAcuan(false)}
+                      onToggle={() => setShowKalenderAcuan(!showKalenderAcuan)}
+                    />
+                  </div>
+                )}
+
+                {/* Reset Filter Button */}
+                {(searchTerm ||
+                  filterKelasSiswa !== 'Semua' ||
+                  filterJkSiswa !== 'Semua' ||
+                  filterUmurSiswa !== 'Semua' ||
+                  filterUmurMin !== '' ||
+                  filterUmurMax !== '') && (
+                  <button
+                    onClick={() => {
+                      setSearchTerm('');
+                      setFilterKelasSiswa('Semua');
+                      setFilterJkSiswa('Semua');
+                      setFilterUmurSiswa('Semua');
+                      setFilterUmurMin('');
+                      setFilterUmurMax('');
+                      setTglAcuanUmur(getTodayString());
+                      setShowKalenderAcuan(false);
+                    }}
+                    className="text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1.5 rounded-lg hover:bg-rose-50 flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                    title="Reset Semua Filter"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reset</span>
+                  </button>
+                )}
               </div>
 
-              <select
-                value={filterKelasSiswa}
-                onChange={(e) => setFilterKelasSiswa(e.target.value)}
-                className="text-xs border border-slate-300 rounded-lg px-2.5 py-2 focus:ring-2 focus:ring-indigo-600 focus:outline-none bg-white"
-              >
-                <option value="Semua">Semua Kelas</option>
-                {availableKelas.map((k) => (
-                  <option key={k} value={k}>
-                    Kelas {k}
-                  </option>
-                ))}
-              </select>
-            </div>
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {/* Tombol Upload Data Siswa */}
+                <button
+                  onClick={() => {
+                    setShowUploadSiswaModal(true);
+                    setUploadError(null);
+                  }}
+                  className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 font-semibold text-xs sm:text-sm rounded-xl border border-indigo-200 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                  title="Unggah CSV (Otomatis membaca format ekspor &amp; tampilkan pratinjau tabel rapi)"
+                >
+                  <Upload className="w-4 h-4 text-indigo-700" />
+                  <span>Upload Data Siswa</span>
+                </button>
 
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Tombol Upload Data Siswa */}
-              <button
-                onClick={() => fileInputSiswaRef.current?.click()}
-                className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 font-semibold text-xs sm:text-sm rounded-xl border border-indigo-200 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
-                title="Unggah CSV (Otomatis membaca format ekspor & mencegah data berantakan)"
-              >
-                <Upload className="w-4 h-4 text-indigo-700" />
-                <span>Upload Data Siswa</span>
-              </button>
-
-              {/* Tombol Unduh Format Template CSV Siswa */}
-              <button
-                onClick={downloadSiswaTemplateCsv}
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs sm:text-sm rounded-xl border border-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer"
-                title="Unduh contoh format CSV siap isi sesuai standar ekspor"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-slate-600" />
-                <span>Unduh Format CSV</span>
-              </button>
-
-              {/* Tombol Ekspor Data Siswa */}
-              <button
-                onClick={handleExportSiswa}
-                className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-xs sm:text-sm rounded-xl border border-emerald-200 flex items-center gap-1.5 transition-colors cursor-pointer"
-                title="Ekspor CSV / Excel"
-              >
-                <Download className="w-4 h-4 text-emerald-700" />
-                <span>Ekspor Data Siswa</span>
-              </button>
-
-              {/* Tombol Cetak Absen Siswa */}
-              <button
-                onClick={() =>
-                  openCetakSiswaModal(
-                    filterKelasSiswa !== 'Semua' ? filterKelasSiswa : (availableKelas[0] || '6A')
-                  )
-                }
-                className="px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                title="Cetak Presensi Siswa Bulanan (Format Potret Pilihan Utama / Lanskap & Kostum Libur)"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Cetak Absen Siswa</span>
-              </button>
-
-              {/* Tombol Opsi Data (Reset / Bersihkan) */}
-              {(onResetSiswaDefault || onClearAllSiswa) && (
+                {/* Tombol Unduh Format Template CSV Siswa */}
                 <div className="relative">
                   <button
-                    onClick={() => setShowDataOptionsDropdown(!showDataOptionsDropdown)}
-                    className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-200 flex items-center gap-1 transition-colors cursor-pointer"
-                    title="Opsi Pemulihan / Pembersihan Data Siswa"
+                    onClick={() => setShowTemplateSiswaMenu(!showTemplateSiswaMenu)}
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs sm:text-sm rounded-xl border border-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+                    title="Unduh contoh format CSV siap isi sesuai standar ekspor"
                   >
-                    <Settings2 className="w-4 h-4 text-slate-600" />
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                    <FileSpreadsheet className="w-4 h-4 text-slate-600" />
+                    <span>Unduh Format CSV</span>
+                    <ChevronDown className="w-3.5 h-3.5 opacity-70" />
                   </button>
-                  {showDataOptionsDropdown && (
-                    <div className="absolute right-0 mt-1.5 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-30">
-                      {onResetSiswaDefault && (
+
+                  {showTemplateSiswaMenu && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-20"
+                        onClick={() => setShowTemplateSiswaMenu(false)}
+                      />
+                      <div className="absolute left-0 mt-1.5 w-68 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-30 animate-in fade-in">
+                        <div className="px-3.5 py-1.5 border-b border-slate-100">
+                          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Pilih Format Template CSV
+                          </div>
+                        </div>
                         <button
                           onClick={() => {
-                            setShowDataOptionsDropdown(false);
-                            setShowResetConfirmModal(true);
+                            setShowTemplateSiswaMenu(false);
+                            downloadSiswaTemplateCsv(';');
                           }}
-                          className="w-full text-left px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                          className="w-full text-left px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 flex items-center gap-2.5 cursor-pointer transition-colors"
                         >
-                          <RotateCcw className="w-4 h-4 text-amber-600" />
-                          <span>Kembalikan Data Awal SDN 1</span>
+                          <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <div>
+                            <div className="font-bold text-slate-800">Format Excel (Titik Koma ';')</div>
+                            <div className="text-[10px] text-slate-500 font-normal">
+                              Sangat direkomendasikan untuk Ms. Excel (otomatis terbagi kolom rapi)
+                            </div>
+                          </div>
                         </button>
-                      )}
-                      {onClearAllSiswa && (
                         <button
                           onClick={() => {
-                            setShowDataOptionsDropdown(false);
-                            setShowClearConfirmModal(true);
+                            setShowTemplateSiswaMenu(false);
+                            downloadSiswaTemplateCsv(',');
                           }}
-                          className="w-full text-left px-3.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer border-t border-slate-100"
+                          className="w-full text-left px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-900 flex items-center gap-2.5 cursor-pointer transition-colors border-t border-slate-100"
                         >
-                          <Trash2 className="w-4 h-4 text-rose-500" />
-                          <span>Kosongkan Seluruh Siswa</span>
+                          <FileSpreadsheet className="w-4 h-4 text-indigo-600 shrink-0" />
+                          <div>
+                            <div className="font-bold text-slate-800">Format Standar (Koma ',')</div>
+                            <div className="text-[10px] text-slate-500 font-normal">
+                              Standar universal untuk Google Sheets &amp; Dapodik
+                            </div>
+                          </div>
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    </>
                   )}
                 </div>
-              )}
 
-              {/* Tambah Manual */}
-              <button
-                onClick={() => openSiswaModal()}
-                className="px-3.5 py-2 bg-indigo-700 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Tambah Siswa</span>
-              </button>
+                {/* Menu Unduh Data Siswa Berdasarkan Filter */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowDownloadSiswaMenu(!showDownloadSiswaMenu)}
+                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                    title="Menu Unduh Data Siswa Berdasarkan Filter"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Unduh Data Siswa ({filteredSiswa.length})</span>
+                    <ChevronDown className="w-3.5 h-3.5 opacity-80" />
+                  </button>
+
+                  {showDownloadSiswaMenu && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-20"
+                        onClick={() => setShowDownloadSiswaMenu(false)}
+                      />
+                      <div className="absolute right-0 mt-1.5 w-72 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-30 animate-in fade-in">
+                        <div className="px-3.5 py-2 border-b border-slate-100">
+                          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Unduh Data Terfilter
+                          </div>
+                          <div className="text-xs font-semibold text-emerald-800">
+                            {filteredSiswa.length} dari {siswaList.length} siswa terpilih
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setShowDownloadSiswaMenu(false);
+                            handleExportFilteredSiswa('excel');
+                          }}
+                          className="w-full text-left px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 flex items-center gap-2.5 cursor-pointer transition-colors"
+                        >
+                          <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <div>
+                            <div className="font-bold text-slate-800">Unduh Format Excel (CSV ';')</div>
+                            <div className="text-[10px] text-slate-500 font-normal">
+                              Tersusun langsung dalam kolom tabel rapi di Microsoft Excel
+                            </div>
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowDownloadSiswaMenu(false);
+                            handleExportFilteredSiswa('comma');
+                          }}
+                          className="w-full text-left px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-900 flex items-center gap-2.5 cursor-pointer transition-colors border-t border-slate-100"
+                        >
+                          <FileSpreadsheet className="w-4 h-4 text-indigo-600 shrink-0" />
+                          <div>
+                            <div className="font-bold text-slate-800">Unduh Format Standar (CSV ',')</div>
+                            <div className="text-[10px] text-slate-500 font-normal">
+                              Standar universal untuk Google Sheets &amp; Dapodik
+                            </div>
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowDownloadSiswaMenu(false);
+                            handleExportWordFilteredSiswa();
+                          }}
+                          className="w-full text-left px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-900 flex items-center gap-2.5 cursor-pointer transition-colors border-t border-slate-100"
+                        >
+                          <FileText className="w-4 h-4 text-blue-600 shrink-0" />
+                          <div>
+                            <div className="font-bold text-slate-800">Unduh Dokumen Word (.doc)</div>
+                            <div className="text-[10px] text-slate-500 font-normal">
+                              Tabel cetak rapi siap arsip &amp; cetak resmi
+                            </div>
+                          </div>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Tombol Cetak Absen Siswa */}
+                <button
+                  onClick={() =>
+                    openCetakSiswaModal(
+                      filterKelasSiswa !== 'Semua' ? filterKelasSiswa : (availableKelas[0] || '6A')
+                    )
+                  }
+                  className="px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Cetak Presensi Siswa Bulanan (Format Potret Pilihan Utama / Lanskap &amp; Kostum Libur)"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Cetak Absen Siswa</span>
+                </button>
+
+                {/* Tombol Opsi Data (Reset / Bersihkan) */}
+                {(onResetSiswaDefault || onClearAllSiswa) && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowDataOptionsDropdown(!showDataOptionsDropdown)}
+                      className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-200 flex items-center gap-1 transition-colors cursor-pointer"
+                      title="Opsi Pemulihan / Pembersihan Data Siswa"
+                    >
+                      <Settings2 className="w-4 h-4 text-slate-600" />
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                    </button>
+                    {showDataOptionsDropdown && (
+                      <div className="absolute right-0 mt-1.5 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-30">
+                        {onResetSiswaDefault && (
+                          <button
+                            onClick={() => {
+                              setShowDataOptionsDropdown(false);
+                              setShowResetConfirmModal(true);
+                            }}
+                            className="w-full text-left px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                          >
+                            <RotateCcw className="w-4 h-4 text-amber-600" />
+                            <span>Kembalikan Data Awal SDN 1</span>
+                          </button>
+                        )}
+                        {onClearAllSiswa && (
+                          <button
+                            onClick={() => {
+                              setShowDataOptionsDropdown(false);
+                              setShowClearConfirmModal(true);
+                            }}
+                            className="w-full text-left px-3.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer border-t border-slate-100"
+                          >
+                            <Trash2 className="w-4 h-4 text-rose-500" />
+                            <span>Kosongkan Seluruh Siswa</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Tambah Manual */}
+                <button
+                  onClick={() => openSiswaModal()}
+                  className="px-3.5 py-2 bg-indigo-700 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Tambah Siswa</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Info Filter Status */}
+            <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-700">
+                  Menampilkan {filteredSiswa.length} dari {siswaList.length} siswa
+                </span>
+                {(filterKelasSiswa !== 'Semua' ||
+                  filterJkSiswa !== 'Semua' ||
+                  filterUmurSiswa !== 'Semua' ||
+                  filterUmurMin !== '' ||
+                  filterUmurMax !== '' ||
+                  searchTerm) && (
+                  <span className="text-[11px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
+                    Filter aktif: {[
+                      filterKelasSiswa !== 'Semua' ? `Kelas ${filterKelasSiswa}` : null,
+                      filterJkSiswa !== 'Semua' ? (filterJkSiswa === 'L' ? 'Laki-laki' : 'Perempuan') : null,
+                      filterUmurSiswa === 'kustom'
+                        ? filterUmurMin || filterUmurMax
+                          ? `Rentang Umur ${filterUmurMin || '0'} - ${filterUmurMax || '∞'} thn (Acuan: ${formatTanggalIndonesiaPendek(tglAcuanUmur)})`
+                          : `Rentang Umur Kustom (Acuan: ${formatTanggalIndonesiaPendek(tglAcuanUmur)})`
+                        : filterUmurSiswa !== 'Semua'
+                        ? `Umur ${filterUmurSiswa} thn (Acuan: ${formatTanggalIndonesiaPendek(tglAcuanUmur)})`
+                        : null,
+                      searchTerm ? `"${searchTerm}"` : null,
+                    ].filter(Boolean).join(', ')}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -985,7 +1518,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold">
                     <th className="py-3 px-4 w-12 text-center">No</th>
-                    <th className="py-3 px-4">Nama Siswa & JK</th>
+                    <th className="py-3 px-4">Nama Siswa &amp; JK</th>
                     <th className="py-3 px-4">
                       <div className="flex items-center gap-1.5">
                         <span>NISN / NIS</span>
@@ -1002,8 +1535,24 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                         </span>
                       </div>
                     </th>
+                    <th className="py-3 px-3 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowKalenderAcuan(true)}
+                        className="flex flex-col items-center mx-auto hover:text-indigo-700 transition-colors cursor-pointer group"
+                        title="Klik untuk membuka kalender acuan perhitungan umur siswa"
+                      >
+                        <span className="flex items-center gap-1 group-hover:underline">
+                          <span>Umur</span>
+                          <Calendar className="w-3 h-3 text-indigo-500 opacity-70 group-hover:opacity-100" />
+                        </span>
+                        <span className="text-[9.5px] font-normal text-slate-500 whitespace-nowrap">
+                          (per {formatTanggalIndonesiaPendek(tglAcuanUmur)})
+                        </span>
+                      </button>
+                    </th>
                     <th className="py-3 px-4">Tempat, Tanggal Lahir</th>
-                    <th className="py-3 px-4">Nama Orang Tua & Alamat</th>
+                    <th className="py-3 px-4">Nama Orang Tua &amp; Alamat</th>
                     <th className="py-3 px-4 text-center w-28">Aksi</th>
                   </tr>
                 </thead>
@@ -1027,6 +1576,21 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                         <span className="bg-blue-100 text-blue-900 font-bold px-2 py-0.5 rounded text-xs">
                           Kelas {s.kelas}
                         </span>
+                      </td>
+                      <td className="py-3 px-3 text-center whitespace-nowrap">
+                        {(() => {
+                          const u = hitungUmurSiswa(s.tglLahir, tglAcuanUmur);
+                          return u !== null ? (
+                            <span
+                              className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-900 border border-amber-200"
+                              title={`Umur ${u} tahun (dihitung per ${formatTanggalIndonesiaLengkap(tglAcuanUmur)})`}
+                            >
+                              {u} Thn
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-xs">-</span>
+                          );
+                        })()}
                       </td>
                       <td className="py-3 px-4 text-xs text-slate-600">
                         {s.tempatLahir}, {s.tglLahir}
@@ -1057,7 +1621,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                   ))}
                   {filteredSiswa.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-xs text-slate-400">
+                      <td colSpan={8} className="py-8 text-center text-xs text-slate-400">
                         Belum ada data siswa yang cocok dengan filter.
                       </td>
                     </tr>
@@ -2239,203 +2803,655 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
         </div>
       )}
 
-      {/* Modal Pratinjau & Konfirmasi Impor Data Siswa */}
-      {importSiswaPreview && (
+      {/* Modal Upload & Pratinjau Tabel Data Siswa */}
+      {(showUploadSiswaModal || importSiswaPreview) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl overflow-hidden flex flex-col my-auto max-h-[90vh]">
-            {/* Modal Header */}
-            <div className="bg-indigo-950 px-6 py-4 text-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-800/80 border border-indigo-700 flex items-center justify-center text-indigo-200 shrink-0">
-                  <FileSpreadsheet className="w-5 h-5" />
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl overflow-hidden flex flex-col my-auto max-h-[92vh]">
+            {!importSiswaPreview ? (
+              /* ================= 1. DIALOG UNGGAH FILE CSV ================= */
+              <>
+                {/* Header Upload */}
+                <div className="bg-indigo-950 px-6 py-4 text-white flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-800/80 border border-indigo-700 flex items-center justify-center text-indigo-200 shrink-0">
+                      <Upload className="w-5 h-5 text-indigo-200" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold">Upload Data Siswa</h2>
+                      <p className="text-xs text-indigo-200 mt-0.5">
+                        Unggah file CSV untuk mengimpor atau memperbarui data siswa secara massal
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowUploadSiswaModal(false);
+                      setUploadError(null);
+                    }}
+                    className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                    title="Tutup"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
-                <div>
-                  <h2 className="text-base font-bold">Pratinjau Impor Data Siswa</h2>
-                  <p className="text-xs text-indigo-200 mt-0.5">
-                    File: <span className="font-mono font-semibold text-white">{importSiswaPreview.filename}</span> • <span className="text-emerald-300 font-bold">{importSiswaPreview.total} siswa terdeteksi</span>
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setImportSiswaPreview(null)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
-                title="Batalkan"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
-              {/* Status Verification Notice */}
-              <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <div className="text-xs text-emerald-950 space-y-1">
-                  <p className="font-bold text-emerald-900">
-                    Format Kolom Berhasil Dipetakan Sesuai Standar Ekspor!
-                  </p>
-                  <p className="text-emerald-800 leading-relaxed">
-                    Sistem secara cerdas mendeteksi kolom NIS, NISN, Nama, Kelas, JK, Tempat/Tgl Lahir, Nama Ortu, dan Alamat. Posisi data tidak akan tertukar atau berantakan.
-                  </p>
-                </div>
-              </div>
+                <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                  {uploadError && (
+                    <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 text-rose-900 text-xs animate-in fade-in">
+                      <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-bold text-rose-950">Gagal Membaca File CSV</div>
+                        <div className="mt-1 whitespace-pre-line leading-relaxed text-rose-800">
+                          {uploadError}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-              {/* Import Mode Selection */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5">
-                <label className="text-xs font-bold text-slate-800 block">
-                  Pilih Cara Penyimpanan ke Sistem:
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <label
-                    className={`p-3 rounded-xl border text-xs cursor-pointer transition-all flex flex-col justify-between ${
-                      importMode === 'merge'
-                        ? 'bg-indigo-50 border-indigo-400 ring-2 ring-indigo-300 text-indigo-950'
-                        : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                  {/* Drag and drop zone */}
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDraggingFile(true);
+                    }}
+                    onDragLeave={() => setIsDraggingFile(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDraggingFile(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) {
+                        processSiswaCsvFile(file);
+                      }
+                    }}
+                    onClick={() => fileInputSiswaRef.current?.click()}
+                    className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 ${
+                      isDraggingFile
+                        ? 'border-indigo-600 bg-indigo-50/70 scale-[1.01]'
+                        : 'border-slate-300 hover:border-indigo-500 hover:bg-slate-50/80 bg-white'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-bold">1. Gabung / Perbarui</span>
-                      <input
-                        type="radio"
-                        name="siswaImportMode"
-                        checked={importMode === 'merge'}
-                        onChange={() => setImportMode('merge')}
-                        className="text-indigo-600 cursor-pointer"
-                      />
+                    <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 shadow-2xs">
+                      <FileSpreadsheet className="w-8 h-8" />
                     </div>
-                    <p className="text-[11px] text-slate-600 leading-relaxed">
-                      Siswa dengan NIS sama diperbarui datanya, siswa baru langsung ditambahkan.
-                    </p>
-                  </label>
-
-                  <label
-                    className={`p-3 rounded-xl border text-xs cursor-pointer transition-all flex flex-col justify-between ${
-                      importMode === 'replace'
-                        ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-300 text-amber-950'
-                        : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-bold">2. Timpa Seluruh Data</span>
-                      <input
-                        type="radio"
-                        name="siswaImportMode"
-                        checked={importMode === 'replace'}
-                        onChange={() => setImportMode('replace')}
-                        className="text-amber-600 cursor-pointer"
-                      />
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-slate-800">
+                        Tarik &amp; letakkan file CSV ke sini, atau{' '}
+                        <span className="text-indigo-600 underline">Pilih File dari Komputer</span>
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Mendukung file <span className="font-mono font-semibold">.csv</span> (pemisah titik koma ';' atau koma ',')
+                      </p>
                     </div>
-                    <p className="text-[11px] text-slate-600 leading-relaxed">
-                      Hapus data lama & ganti dengan file ini. Sangat tepat bila data siswa sebelumnya berantakan.
-                    </p>
-                  </label>
-
-                  <label
-                    className={`p-3 rounded-xl border text-xs cursor-pointer transition-all flex flex-col justify-between ${
-                      importMode === 'append'
-                        ? 'bg-indigo-50 border-indigo-400 ring-2 ring-indigo-300 text-indigo-950'
-                        : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-bold">3. Tambahkan Baru Saja</span>
-                      <input
-                        type="radio"
-                        name="siswaImportMode"
-                        checked={importMode === 'append'}
-                        onChange={() => setImportMode('append')}
-                        className="text-indigo-600 cursor-pointer"
-                      />
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-lg text-xs font-semibold text-indigo-900 mt-1">
+                      <Upload className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Pilih File CSV</span>
                     </div>
-                    <p className="text-[11px] text-slate-600 leading-relaxed">
-                      Masukkan semua baris sebagai siswa baru tanpa memeriksa NIS yang sama.
+                  </div>
+
+                  {/* Format Susunan Kolom Standar */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4.5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <Info className="w-4 h-4 text-indigo-600" />
+                        <span>Format Susunan Kolom Tabel CSV</span>
+                      </h4>
+                      <span className="text-[11px] text-slate-500">Otomatis terpetakan</span>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Sistem cerdas kami otomatis mendeteksi kolom berdasarkan header berikut:
                     </p>
-                  </label>
-                </div>
-              </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+                      {[
+                        '1. No',
+                        '2. NIS',
+                        '3. NISN',
+                        '4. Nama Siswa',
+                        '5. Kelas',
+                        '6. Jenis Kelamin (L/P)',
+                        '7. Tempat Lahir',
+                        '8. Tanggal Lahir',
+                        '9. Nama Ortu / Wali',
+                        '10. Alamat',
+                      ].map((col, idx) => (
+                        <div
+                          key={idx}
+                          className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-mono text-[11px] text-slate-700 shadow-2xs text-center"
+                        >
+                          {col}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="text-[11px] text-emerald-900 bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-start gap-2.5 leading-relaxed">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>
+                        <strong>Kompatibilitas Penuh:</strong> File hasil ekspor dari menu <em>"Unduh Data Siswa"</em> dapat langsung diunggah kembali tanpa modifikasi. Awalan angka nol pada NIS/NISN akan terjaga dan umur siswa otomatis dihitung.
+                      </span>
+                    </div>
+                  </div>
 
-              {/* Table Preview */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-xs font-bold text-slate-700">
-                    Pratinjau {Math.min(10, importSiswaPreview.data.length)} dari {importSiswaPreview.total} Siswa Terbaca:
-                  </h4>
-                  <span className="text-[11px] text-slate-500">
-                    Pastikan kolom telah sesuai urutan
-                  </span>
-                </div>
-
-                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-                  <div className="overflow-x-auto max-h-56">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold sticky top-0">
-                          <th className="py-2.5 px-3 text-center w-10">No</th>
-                          <th className="py-2.5 px-3">NIS</th>
-                          <th className="py-2.5 px-3">NISN</th>
-                          <th className="py-2.5 px-3">Nama Siswa</th>
-                          <th className="py-2.5 px-3 text-center">Kelas</th>
-                          <th className="py-2.5 px-3 text-center">L/P</th>
-                          <th className="py-2.5 px-3">Tempat Lahir</th>
-                          <th className="py-2.5 px-3">Tgl Lahir</th>
-                          <th className="py-2.5 px-3">Nama Ortu / Wali</th>
-                          <th className="py-2.5 px-3">Alamat</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 bg-white">
-                        {importSiswaPreview.data.slice(0, 10).map((row, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50">
-                            <td className="py-2 px-3 text-center text-slate-400">{idx + 1}</td>
-                            <td className="py-2 px-3 font-mono font-bold text-slate-800">{row.nis}</td>
-                            <td className="py-2 px-3 font-mono text-indigo-900">{row.nisn}</td>
-                            <td className="py-2 px-3 font-semibold text-slate-900">{row.nama}</td>
-                            <td className="py-2 px-3 text-center">
-                              <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold text-[11px]">
-                                {row.kelas}
-                              </span>
-                            </td>
-                            <td className="py-2 px-3 text-center font-bold">
-                              {row.jenisKelamin === 'L' ? (
-                                <span className="text-blue-700">L</span>
-                              ) : (
-                                <span className="text-rose-700">P</span>
-                              )}
-                            </td>
-                            <td className="py-2 px-3 text-slate-700">{row.tempatLahir}</td>
-                            <td className="py-2 px-3 text-slate-600 font-mono text-[11px]">{row.tglLahir}</td>
-                            <td className="py-2 px-3 text-slate-800">{row.namaOrtu}</td>
-                            <td className="py-2 px-3 text-slate-600 max-w-[180px] truncate" title={row.alamat}>
-                              {row.alamat}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  {/* Template download shortcuts */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                    <div className="text-xs text-slate-600 font-medium">
+                      Belum memiliki format CSV? Unduh salah satu template contoh siap pakai:
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => downloadSiswaTemplateCsv(';')}
+                        className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-lg shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                        title="Unduh template Excel dengan titik koma"
+                      >
+                        <Download className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Template Excel (;)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => downloadSiswaTemplateCsv(',')}
+                        className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-lg shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                        title="Unduh template standar dengan koma"
+                      >
+                        <Download className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Template Standar (,)</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Modal Footer */}
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
-              <button
-                type="button"
-                onClick={() => setImportSiswaPreview(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
-              >
-                Batalkan
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onImportSiswa(importSiswaPreview.data, importMode);
-                  setImportSiswaPreview(null);
-                }}
-                className="px-5 py-2.5 text-xs font-bold bg-indigo-700 hover:bg-indigo-600 text-white rounded-xl shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
-              >
-                <Check className="w-4 h-4" />
-                <span>Simpan {importSiswaPreview.total} Data Siswa</span>
-              </button>
-            </div>
+                {/* Footer Upload Dialog */}
+                <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex justify-end shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowUploadSiswaModal(false);
+                      setUploadError(null);
+                    }}
+                    className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* ================= 2. PRATINJAU TABEL DATA SISWA ================= */
+              <>
+                {/* Header Pratinjau */}
+                <div className="bg-indigo-950 px-6 py-4 text-white flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-800/80 border border-indigo-700 flex items-center justify-center text-indigo-200 shrink-0">
+                      <FileSpreadsheet className="w-5 h-5 text-indigo-200" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base font-bold">Pratinjau &amp; Validasi Tabel Data Siswa</h2>
+                        <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 rounded-full text-[11px] font-semibold">
+                          {importSiswaPreview.total} Siswa Terbaca
+                        </span>
+                      </div>
+                      <p className="text-xs text-indigo-200 mt-0.5">
+                        File:{' '}
+                        <span className="font-mono font-semibold text-white bg-indigo-900/60 px-1.5 py-0.5 rounded">
+                          {importSiswaPreview.filename}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputSiswaRef.current?.click()}
+                      className="px-3 py-1.5 bg-indigo-800 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+                      title="Ganti File CSV Lain"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Ganti File</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setImportSiswaPreview(null);
+                        setShowUploadSiswaModal(false);
+                      }}
+                      className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                      title="Tutup"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+                  {/* Statistik Cepat Hasil Ekstraksi */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between">
+                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        Total Siswa
+                      </span>
+                      <div className="text-xl font-extrabold text-slate-900 mt-1">
+                        {importSiswaPreview.total}
+                      </div>
+                      <span className="text-[10px] text-slate-500 mt-0.5">Dalam file CSV</span>
+                    </div>
+
+                    <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3 flex flex-col justify-between">
+                      <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">
+                        Laki-laki (L)
+                      </span>
+                      <div className="text-xl font-extrabold text-blue-900 mt-1">
+                        {previewTotalL}{' '}
+                        <span className="text-xs font-normal text-blue-700">
+                          ({importSiswaPreview.total ? Math.round((previewTotalL / importSiswaPreview.total) * 100) : 0}%)
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-blue-700 mt-0.5">Peserta didik putra</span>
+                    </div>
+
+                    <div className="bg-rose-50/70 border border-rose-200 rounded-xl p-3 flex flex-col justify-between">
+                      <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">
+                        Perempuan (P)
+                      </span>
+                      <div className="text-xl font-extrabold text-rose-900 mt-1">
+                        {previewTotalP}{' '}
+                        <span className="text-xs font-normal text-rose-700">
+                          ({importSiswaPreview.total ? Math.round((previewTotalP / importSiswaPreview.total) * 100) : 0}%)
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-rose-700 mt-0.5">Peserta didik putri</span>
+                    </div>
+
+                    <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3 flex flex-col justify-between">
+                      <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">
+                        Sebaran Kelas
+                      </span>
+                      <div className="text-xs font-semibold text-emerald-950 mt-1 line-clamp-2">
+                        {sortedPreviewKelas.length > 0
+                          ? sortedPreviewKelas.map((k) => `Kls ${k} (${previewKelasCounts[k]})`).join(', ')
+                          : 'Semua Kelas'}
+                      </div>
+                      <span className="text-[10px] text-emerald-700 mt-0.5">
+                        {sortedPreviewKelas.length} rombel terdeteksi
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Mode Penyimpanan ke Sistem */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+                    <label className="text-xs font-bold text-slate-800 block">
+                      Pilih Cara Penyimpanan ke Sistem:
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <label
+                        className={`p-3 rounded-xl border text-xs cursor-pointer transition-all flex flex-col justify-between ${
+                          importMode === 'merge'
+                            ? 'bg-indigo-50 border-indigo-400 ring-2 ring-indigo-300 text-indigo-950'
+                            : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="font-bold">1. Gabung / Perbarui (Merge)</span>
+                          <input
+                            type="radio"
+                            name="siswaImportMode"
+                            checked={importMode === 'merge'}
+                            onChange={() => setImportMode('merge')}
+                            className="text-indigo-600 cursor-pointer"
+                          />
+                        </div>
+                        <p className="text-[11px] text-slate-600 leading-relaxed">
+                          Siswa dengan NIS sama diperbarui datanya, siswa baru langsung ditambahkan (Rekomendasi).
+                        </p>
+                      </label>
+
+                      <label
+                        className={`p-3 rounded-xl border text-xs cursor-pointer transition-all flex flex-col justify-between ${
+                          importMode === 'replace'
+                            ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-300 text-amber-950'
+                            : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="font-bold">2. Timpa Seluruh Data (Replace)</span>
+                          <input
+                            type="radio"
+                            name="siswaImportMode"
+                            checked={importMode === 'replace'}
+                            onChange={() => setImportMode('replace')}
+                            className="text-amber-600 cursor-pointer"
+                          />
+                        </div>
+                        <p className="text-[11px] text-slate-600 leading-relaxed">
+                          Hapus data lama &amp; ganti seutuhnya dengan file ini. Tepat jika data sebelumnya berantakan.
+                        </p>
+                      </label>
+
+                      <label
+                        className={`p-3 rounded-xl border text-xs cursor-pointer transition-all flex flex-col justify-between ${
+                          importMode === 'append'
+                            ? 'bg-indigo-50 border-indigo-400 ring-2 ring-indigo-300 text-indigo-950'
+                            : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="font-bold">3. Tambahkan Baru (Append)</span>
+                          <input
+                            type="radio"
+                            name="siswaImportMode"
+                            checked={importMode === 'append'}
+                            onChange={() => setImportMode('append')}
+                            className="text-indigo-600 cursor-pointer"
+                          />
+                        </div>
+                        <p className="text-[11px] text-slate-600 leading-relaxed">
+                          Masukkan seluruh baris sebagai siswa baru tanpa memeriksa nomor NIS yang sama.
+                        </p>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Toolbar Kontrol Tabel Pratinjau */}
+                  <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2.5">
+                    <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+                      {/* Search in preview */}
+                      <div className="relative flex-1 min-w-[180px] max-w-xs">
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                        <input
+                          type="text"
+                          value={previewSearch}
+                          onChange={(e) => {
+                            setPreviewSearch(e.target.value);
+                            setPreviewPage(1);
+                          }}
+                          placeholder="Cari nama, NIS, NISN, ortu..."
+                          className="w-full text-xs pl-8 pr-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                        />
+                        {previewSearch && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPreviewSearch('');
+                              setPreviewPage(1);
+                            }}
+                            className="absolute right-2 top-2 text-slate-400 hover:text-slate-600"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Filter Kelas */}
+                      <select
+                        value={previewKelasFilter}
+                        onChange={(e) => {
+                          setPreviewKelasFilter(e.target.value);
+                          setPreviewPage(1);
+                        }}
+                        className="text-xs py-1.5 px-2.5 border border-slate-300 rounded-lg bg-white text-slate-700 font-medium focus:ring-2 focus:ring-indigo-600"
+                      >
+                        <option value="Semua">Semua Kelas</option>
+                        {sortedPreviewKelas.map((k) => (
+                          <option key={k} value={k}>
+                            Kelas {k} ({previewKelasCounts[k]})
+                          </option>
+                        ))}
+                      </select>
+
+                      {/* Filter JK */}
+                      <select
+                        value={previewJkFilter}
+                        onChange={(e) => {
+                          setPreviewJkFilter(e.target.value);
+                          setPreviewPage(1);
+                        }}
+                        className="text-xs py-1.5 px-2.5 border border-slate-300 rounded-lg bg-white text-slate-700 font-medium focus:ring-2 focus:ring-indigo-600"
+                      >
+                        <option value="Semua">Semua JK</option>
+                        <option value="L">Laki-laki ({previewTotalL})</option>
+                        <option value="P">Perempuan ({previewTotalP})</option>
+                      </select>
+
+                      {(previewSearch || previewKelasFilter !== 'Semua' || previewJkFilter !== 'Semua') && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPreviewSearch('');
+                            setPreviewKelasFilter('Semua');
+                            setPreviewJkFilter('Semua');
+                            setPreviewPage(1);
+                          }}
+                          className="text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1 rounded hover:bg-rose-50 flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>Reset</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-slate-600">
+                      <span className="font-semibold text-slate-700">
+                        {totalPreviewRows} dari {importSiswaPreview.total} siswa
+                      </span>
+                      <span className="text-slate-300">|</span>
+                      <span>Tampilkan:</span>
+                      <select
+                        value={previewRowsPerPage}
+                        onChange={(e) => {
+                          setPreviewRowsPerPage(parseInt(e.target.value, 10));
+                          setPreviewPage(1);
+                        }}
+                        className="text-xs py-1 px-2 border border-slate-300 rounded-md bg-white text-slate-700 font-semibold"
+                      >
+                        <option value="10">10 baris</option>
+                        <option value="25">25 baris</option>
+                        <option value="50">50 baris</option>
+                        <option value="-1">Semua</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* ================= TABEL PRATINJAU RAPI ================= */}
+                  <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs bg-white">
+                    <div className="overflow-x-auto max-h-[380px]">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold sticky top-0 z-10 shadow-2xs">
+                            <th className="py-2.5 px-3 text-center w-12 bg-slate-100">No</th>
+                            <th className="py-2.5 px-3 w-24 bg-slate-100">NIS</th>
+                            <th className="py-2.5 px-3 w-28 bg-slate-100">NISN</th>
+                            <th className="py-2.5 px-3.5 min-w-[170px] bg-slate-100">Nama Siswa</th>
+                            <th className="py-2.5 px-2.5 text-center w-16 bg-slate-100">Kelas</th>
+                            <th className="py-2.5 px-2.5 text-center w-16 bg-slate-100">L/P</th>
+                            <th className="py-2.5 px-2.5 text-center w-20 bg-slate-100" title={`Umur dihitung berdasarkan acuan: ${formatTanggalIndonesiaPendek(tglAcuanUmur)}`}>
+                              Umur
+                            </th>
+                            <th className="py-2.5 px-3 min-w-[150px] bg-slate-100">Tempat, Tgl Lahir</th>
+                            <th className="py-2.5 px-3 min-w-[150px] bg-slate-100">Nama Ortu / Wali</th>
+                            <th className="py-2.5 px-3 min-w-[180px] bg-slate-100">Alamat</th>
+                            <th className="py-2.5 px-2.5 text-center w-20 bg-slate-100">Validasi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 bg-white">
+                          {paginatedImportPreview.length === 0 ? (
+                            <tr>
+                              <td colSpan={11} className="py-8 text-center text-slate-400">
+                                <FileSpreadsheet className="w-8 h-8 mx-auto text-slate-300 mb-1" />
+                                <p className="font-semibold text-slate-600">Tidak ada baris data yang cocok dengan filter pencarian.</p>
+                                <p className="text-[11px] text-slate-400 mt-0.5">Coba ubah kata kunci atau reset filter.</p>
+                              </td>
+                            </tr>
+                          ) : (
+                            paginatedImportPreview.map((row, idx) => {
+                              const globalIdx = previewStartIndex + idx + 1;
+                              const umur = hitungUmurSiswa(row.tglLahir, tglAcuanUmur);
+                              const isComplete = row.nama && row.nis && row.kelas;
+                              return (
+                                <tr key={idx} className="hover:bg-indigo-50/40 transition-colors odd:bg-slate-50/30">
+                                  <td className="py-2 px-3 text-center text-slate-500 font-medium">{globalIdx}</td>
+                                  <td className="py-2 px-3 font-mono font-bold text-slate-900">
+                                    <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[11px] border border-slate-200">
+                                      {row.nis}
+                                    </span>
+                                  </td>
+                                  <td className="py-2 px-3 font-mono text-indigo-900 font-semibold">
+                                    {row.nisn && row.nisn !== '-' ? row.nisn : <span className="text-slate-400">-</span>}
+                                  </td>
+                                  <td className="py-2 px-3.5 font-bold text-slate-900">
+                                    {row.nama}
+                                  </td>
+                                  <td className="py-2 px-2.5 text-center">
+                                    <span className="bg-blue-100 text-blue-900 px-2 py-0.5 rounded-md font-bold text-[11px] border border-blue-200">
+                                      {row.kelas}
+                                    </span>
+                                  </td>
+                                  <td className="py-2 px-2.5 text-center font-bold">
+                                    {row.jenisKelamin === 'L' ? (
+                                      <span className="inline-block px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[11px]">
+                                        L
+                                      </span>
+                                    ) : (
+                                      <span className="inline-block px-1.5 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded text-[11px]">
+                                        P
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="py-2 px-2.5 text-center font-semibold">
+                                    {umur !== null ? (
+                                      <span className="text-indigo-950 bg-indigo-50 px-1.5 py-0.5 rounded text-[11px] border border-indigo-100">
+                                        {umur} th
+                                      </span>
+                                    ) : (
+                                      <span className="text-slate-400">-</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2 px-3 text-slate-700">
+                                    <div className="font-medium text-slate-800">{row.tempatLahir || '-'}</div>
+                                    <div className="text-[10px] text-slate-500 font-mono">{row.tglLahir}</div>
+                                  </td>
+                                  <td className="py-2 px-3 text-slate-800">
+                                    {row.namaOrtu || '-'}
+                                  </td>
+                                  <td className="py-2 px-3 text-slate-600 max-w-[200px] truncate" title={row.alamat}>
+                                    {row.alamat || '-'}
+                                  </td>
+                                  <td className="py-2 px-2.5 text-center">
+                                    {isComplete ? (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                        <Check className="w-3 h-3" />
+                                        <span>Rapi</span>
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                        <AlertCircle className="w-3 h-3" />
+                                        <span>Cek</span>
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Pagination Bar */}
+                    {totalPreviewPages > 1 && (
+                      <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="text-slate-500">
+                          Menampilkan <span className="font-semibold text-slate-800">{previewStartIndex + 1}</span> -{' '}
+                          <span className="font-semibold text-slate-800">
+                            {Math.min(previewStartIndex + paginatedImportPreview.length, totalPreviewRows)}
+                          </span>{' '}
+                          dari <span className="font-semibold text-slate-800">{totalPreviewRows}</span> baris
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            disabled={currentPreviewPage <= 1}
+                            onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}
+                            className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                            title="Halaman Sebelumnya"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+
+                          {Array.from({ length: totalPreviewPages }, (_, i) => i + 1)
+                            .filter((p) => p === 1 || p === totalPreviewPages || Math.abs(p - currentPreviewPage) <= 1)
+                            .map((p, idx, arr) => (
+                              <React.Fragment key={p}>
+                                {idx > 0 && p - arr[idx - 1] > 1 && (
+                                  <span className="px-1 text-slate-400">...</span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewPage(p)}
+                                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer ${
+                                    p === currentPreviewPage
+                                      ? 'bg-indigo-700 text-white shadow-2xs'
+                                      : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                                  }`}
+                                >
+                                  {p}
+                                </button>
+                              </React.Fragment>
+                            ))}
+
+                          <button
+                            type="button"
+                            disabled={currentPreviewPage >= totalPreviewPages}
+                            onClick={() => setPreviewPage((p) => Math.min(totalPreviewPages, p + 1))}
+                            className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                            title="Halaman Selanjutnya"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer Pratinjau */}
+                <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputSiswaRef.current?.click()}
+                      className="px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border border-slate-200 bg-white"
+                    >
+                      Pilih File CSV Lain
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImportSiswaPreview(null);
+                        setShowUploadSiswaModal(false);
+                      }}
+                      className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+                    >
+                      Batalkan
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onImportSiswa(importSiswaPreview.data, importMode);
+                      setImportSiswaPreview(null);
+                      setShowUploadSiswaModal(false);
+                      alert(
+                        `Berhasil menyimpan ${importSiswaPreview.total} data siswa dengan metode ${
+                          importMode === 'merge' ? 'Gabung / Perbarui' : importMode === 'replace' ? 'Timpa Seluruh Data' : 'Tambah Baru'
+                        }!`
+                      );
+                    }}
+                    className="px-5 py-2.5 text-xs font-bold bg-indigo-700 hover:bg-indigo-600 text-white rounded-xl shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>
+                      Simpan {importSiswaPreview.total} Data Siswa ke Sistem (
+                      {importMode === 'merge' ? 'Gabung' : importMode === 'replace' ? 'Timpa' : 'Tambah'})
+                    </span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
