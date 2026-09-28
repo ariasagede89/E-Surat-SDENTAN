@@ -391,6 +391,26 @@ export function exportToWord(
     .absen-ptk-kolektif-sheet {
       page-break-inside: auto !important;
     }
+    .sk-lampiran-table {
+      width: 100% !important;
+      table-layout: fixed !important;
+      mso-table-layout-alt: fixed !important;
+      border-collapse: collapse !important;
+      box-sizing: border-box !important;
+      mso-padding-alt: 2pt 3pt 2pt 3pt !important;
+    }
+    .sk-lampiran-table th, .sk-lampiran-table td {
+      word-wrap: break-word !important;
+      overflow-wrap: break-word !important;
+      word-break: break-word !important;
+      box-sizing: border-box !important;
+      mso-line-break: normal !important;
+    }
+    .sk-lampiran-container {
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+    }
     .text-center { text-align: center; }
     .text-right { text-align: right; }
     .text-justify { text-align: justify; }
@@ -511,9 +531,12 @@ export function printHtmlElement(
       tfoot {
         display: table-footer-group;
       }
-      .ttd-table, .ttd-block {
+      .ttd-table, .ttd-block, .ttd-lampiran-sk-table {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
+      }
+      .no-print {
+        display: none !important;
       }
       p, ol, ul {
         orphans: 2;
@@ -569,6 +592,24 @@ export function printHtmlElement(
     }
     .is-surat-keputusan .nomor-sk {
       font-size: 11pt !important;
+    }
+    .sk-lampiran-table {
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      box-sizing: border-box !important;
+    }
+    .sk-lampiran-table th, .sk-lampiran-table td {
+      word-wrap: break-word !important;
+      overflow-wrap: break-word !important;
+      word-break: break-word !important;
+      box-sizing: border-box !important;
+    }
+    .sk-lampiran-container {
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
     }
   </style>
 </head>
@@ -1245,15 +1286,20 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
 
       badanSurat = `
         <div style="text-align: center; margin: 12pt 0 16pt 0; font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif;">
-          <p style="margin: 0; text-align: center; font-size: 12pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.3px;">KEPUTUSAN KEPALA SEKOLAH DASAR NEGERI 1 PEKUTATAN</p>
+          <p style="margin: 0; text-align: center; font-size: 12pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.3px;">KEPUTUSAN KEPALA ${(schoolNameIsi || 'SEKOLAH DASAR NEGERI 1 PEKUTATAN').toUpperCase()}</p>
           <p class="nomor-sk" style="margin: 2pt 0 0 0; text-align: center; font-size: 11pt; font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif; font-weight: normal;">Nomor: ${surat.noSurat}</p>
+          ${data.adaLampiran && data.lampiranKeterangan ? `
+            <p class="lampiran-keterangan-sk" style="margin: 2pt 0 0 0; text-align: center; font-size: 10pt; font-family: 'Bookman Old Style', serif; font-style: italic; color: #334155;">
+              Lampiran: ${data.lampiranKeterangan}
+            </p>
+          ` : ''}
           <p style="margin: 8pt 0 0 0; text-align: center; font-size: 12pt; font-weight: bold; text-transform: uppercase;">
             TENTANG<br>${data.tentang || surat.perihal}
           </p>
         </div>
 
         <p style="text-align: center; font-weight: bold; font-size: 12pt; margin: 10pt 0;">
-          KEPALA SEKOLAH DASAR NEGERI 1 PEKUTATAN,
+          KEPALA ${(schoolNameIsi || 'SEKOLAH DASAR NEGERI 1 PEKUTATAN').toUpperCase()},
         </p>
 
         <table style="width: 100%; margin-bottom: 10pt; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
@@ -2308,12 +2354,253 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
     .replace(/SD\s*NEGERI\s*1\s*PEKUTATAN/g, 'SDN 1 Pekutatan')
     .replace(/SDN\s*1\s*PEKUTATAN/g, 'SDN 1 Pekutatan');
 
+  // Lampiran Surat Keputusan (SK) jika ada
+  let skLampiranHtml = '';
+  if (isSuratKeputusan) {
+    // Normalisasi lampiran: dukung array lampiranList (multi-lampiran) dan format lampiran tunggal warisan
+    const rawLampiranList: any[] = Array.isArray(data.lampiranList) && data.lampiranList.length > 0
+      ? data.lampiranList
+      : [
+          {
+            id: '1',
+            label: 'LAMPIRAN',
+            subjudul: data.lampiranSubjudul || `RINCIAN PENETAPAN ${data.tentang || surat.perihal}`,
+            pengantar: data.lampiranPengantar || '',
+            mode: data.lampiranMode || (Array.isArray(data.lampiranTabel) && data.lampiranTabel.length > 0 ? 'tabel' : 'teks'),
+            tabelHeader: data.lampiranTabelHeader,
+            tabel: data.lampiranTabel || [],
+            isiTeks: data.lampiranIsiTeks || data.isiTeks || '',
+            catatan: data.lampiranCatatan || '',
+          },
+        ];
+
+    const hasLampiran = Boolean(
+      data.adaLampiran !== false && (
+        data.adaLampiran ||
+        rawLampiranList.some((item) =>
+          (Array.isArray(item.tabel) && item.tabel.length > 0) ||
+          (typeof item.isiTeks === 'string' && item.isiTeks.trim().length > 0) ||
+          (typeof item.subjudul === 'string' && item.subjudul.trim().length > 0)
+        )
+      )
+    );
+
+    if (hasLampiran && rawLampiranList.length > 0) {
+      const isMulti = rawLampiranList.length > 1;
+
+      skLampiranHtml = rawLampiranList.map((lampItem: any, idx: number) => {
+        const romanNumbers = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV'];
+        const defaultRomanLabel = isMulti ? `LAMPIRAN ${romanNumbers[idx] || (idx + 1)}` : 'LAMPIRAN';
+        const lampiranLabel = (lampItem.label && lampItem.label.trim())
+          ? lampItem.label.trim().toUpperCase()
+          : defaultRomanLabel;
+
+        // Resolusi kolom dinamis tabel lampiran
+        const resolvedColumns: any[] = Array.isArray(lampItem.columns) && lampItem.columns.length > 0
+          ? lampItem.columns
+          : [
+              { id: 'c_no', label: lampItem.tabelHeader?.col1 || 'No', width: '5%', align: 'center', key: 'no' },
+              { id: 'c_nama', label: lampItem.tabelHeader?.col2 || 'Nama / NIP', width: '27%', align: 'left', key: 'nama' },
+              { id: 'c_jabatan', label: lampItem.tabelHeader?.col3 || 'Pangkat / Gol / Jabatan', width: '22%', align: 'left', key: 'nipOrJabatan' },
+              { id: 'c_tugas', label: lampItem.tabelHeader?.col4 || 'Uraian Tugas / Kelas Yang Diampu', width: '28%', align: 'left', key: 'tugas' },
+              { id: 'c_keterangan', label: lampItem.tabelHeader?.col5 || 'Keterangan', width: '18%', align: 'left', key: 'keterangan' },
+            ];
+
+        const totalResolvedCols = resolvedColumns.length;
+        const hasNoFirst = totalResolvedCols > 0 && /^no(\.|\b)?$/i.test(resolvedColumns[0].label?.trim() || '');
+        const colWidthList = resolvedColumns.map((col: any, cIdx: number) => {
+          if (col.width) return col.width;
+          if (cIdx === 0 && hasNoFirst) return '6%';
+          const remainingPct = hasNoFirst ? 94 : 100;
+          const otherColsCount = hasNoFirst ? Math.max(1, totalResolvedCols - 1) : totalResolvedCols;
+          return `${(remainingPct / otherColsCount).toFixed(1)}%`;
+        });
+
+        const tabelRows: any[] = Array.isArray(lampItem.tabel) ? lampItem.tabel : [];
+        const hasRows = tabelRows.length > 0;
+        const mode = lampItem.mode || (hasRows ? 'tabel' : 'teks');
+
+        const lampiranTableHtml = (mode === 'tabel' || mode === 'kombinasi' || hasRows) && hasRows ? `
+          <table class="sk-lampiran-table" style="width: 100% !important; max-width: 100% !important; border-collapse: collapse !important; font-size: 9.5pt; margin-top: 8pt; margin-bottom: 12pt; table-layout: fixed !important; box-sizing: border-box !important;" border="1" cellpadding="4" cellspacing="0">
+            <colgroup>
+              ${colWidthList.map((w: string) => `<col style="width: ${w};">`).join('')}
+            </colgroup>
+            <thead>
+              <tr style="background-color: #f8fafc; font-weight: bold; font-family: 'Bookman Old Style', serif;">
+                ${resolvedColumns.map((col: any, cIdx: number) => {
+                  const isCenter = col.align === 'center' || (cIdx === 0 && hasNoFirst);
+                  return `
+                    <th style="border: 1px solid #000; padding: 5pt ${isCenter ? '2pt' : '5pt'}; text-align: ${col.align || (isCenter ? 'center' : 'left')}; vertical-align: middle; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word; box-sizing: border-box;">
+                      ${col.label || `Kolom ${cIdx + 1}`}
+                    </th>
+                  `;
+                }).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${tabelRows.map((r: any, rIdx: number) => `
+                <tr>
+                  ${resolvedColumns.map((col: any, cIdx: number) => {
+                    let cellVal = '';
+                    if (r.cols && r.cols[col.id] !== undefined) {
+                      cellVal = r.cols[col.id];
+                    } else if (col.key && r[col.key] !== undefined) {
+                      cellVal = r[col.key];
+                    } else if (cIdx === 0 && hasNoFirst) {
+                      cellVal = r.no !== undefined && r.no !== '' ? r.no : String(rIdx + 1);
+                    } else if (r.cols && r.cols[col.label] !== undefined) {
+                      cellVal = r.cols[col.label];
+                    }
+
+                    const isCenter = col.align === 'center' || (cIdx === 0 && hasNoFirst);
+                    const isBold = col.key === 'nama' || /nama/i.test(col.label || '');
+
+                    return `
+                      <td style="border: 1px solid #000; padding: 4pt 5pt; text-align: ${col.align || (isCenter ? 'center' : 'left')}; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word; box-sizing: border-box; white-space: pre-wrap; font-size: 9.5pt; line-height: 1.35;">
+                        ${isBold ? `<strong style="display: block; word-wrap: break-word; overflow-wrap: break-word;">${cellVal || '-'}</strong>` : (cellVal || '-')}
+                      </td>
+                    `;
+                  }).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        ` : '';
+
+        const hasUraianList = Array.isArray(lampItem.uraianList) && lampItem.uraianList.length > 0;
+        const lampiranTeksHtml = (mode === 'teks' || mode === 'kombinasi' || (!hasRows && (lampItem.isiTeks || hasUraianList))) && (hasUraianList || lampItem.isiTeks) ? (
+          hasUraianList ? `
+            <div style="text-align: justify; font-size: 11pt; line-height: 1.45; margin-top: 8pt; margin-bottom: 12pt; width: 100%;">
+              ${lampItem.uraianList.map((u: any, uIdx: number) => {
+                const judulHtml = u.judul ? `<div style="font-weight: bold; margin-bottom: 3pt; font-size: 11pt;">${u.judul}</div>` : '';
+                const nomorStr = u.nomor ? u.nomor.trim() : '';
+                if (nomorStr) {
+                  return `
+                    <div style="margin-bottom: 6pt; page-break-inside: avoid;">
+                      ${judulHtml}
+                      <table style="width: 100%; border-collapse: collapse; border: none; font-family: inherit; font-size: 11pt; line-height: 1.45;">
+                        <tr style="border: none;">
+                          <td style="border: none; padding: 0 6pt 0 0; vertical-align: top; width: 26pt; font-weight: 600; text-align: left;">
+                            ${nomorStr}
+                          </td>
+                          <td style="border: none; padding: 0; vertical-align: top; text-align: justify; word-wrap: break-word; overflow-wrap: break-word;">
+                            ${u.teks}
+                          </td>
+                        </tr>
+                      </table>
+                    </div>
+                  `;
+                } else {
+                  return `
+                    <div style="margin-bottom: 6pt; text-align: justify; word-wrap: break-word; overflow-wrap: break-word; page-break-inside: avoid;">
+                      ${judulHtml}
+                      <p style="margin: 0; line-height: 1.45; text-indent: 20pt;">${u.teks}</p>
+                    </div>
+                  `;
+                }
+              }).join('')}
+            </div>
+          ` : `
+            <div style="text-align: justify; font-size: 11pt; line-height: 1.45; margin-top: 8pt; margin-bottom: 12pt; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;">
+              ${lampItem.isiTeks}
+            </div>
+          `
+        ) : '';
+
+        return `
+          <!-- Halaman ${lampiranLabel} Surat Keputusan -->
+          <div class="page-break" style="page-break-before: always; break-before: page; clear: both; margin: 26pt 0 16pt 0; padding-top: 14pt; border-top: 2px dashed #cbd5e1; text-align: center;">
+            <span class="no-print" style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 10px; font-weight: 600; color: #475569; background: #f8fafc; padding: 3px 12px; border-radius: 9999px; border: 1px solid #cbd5e1; display: inline-block; margin-bottom: 8pt; letter-spacing: 0.5px;">
+              --- HALAMAN ${lampiranLabel} KEPUTUSAN KEPALA SEKOLAH ---
+            </span>
+          </div>
+
+          <div class="sk-lampiran-container is-surat-keputusan" style="font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif; font-size: 11pt; line-height: 1.35; color: #000000; width: 100%; max-width: 100%; box-sizing: border-box; margin: 0;">
+            <!-- Header Lampiran (Sisi Kanan Atas) -->
+            <table style="width: 100%; margin-bottom: 14pt; border: none; border-collapse: collapse; font-size: 10pt;" border="0" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="width: 44%; border: none;">&nbsp;</td>
+                <td style="width: 56%; border: none; vertical-align: top;">
+                  <table style="width: 100%; border-collapse: collapse; font-size: 9.5pt; line-height: 1.3;" border="0" cellpadding="1" cellspacing="0">
+                    <tr>
+                      <td style="width: 76pt; font-weight: bold; vertical-align: top; border: none; white-space: nowrap;">${lampiranLabel}</td>
+                      <td style="width: 8pt; font-weight: bold; vertical-align: top; border: none;">:</td>
+                      <td style="font-weight: bold; vertical-align: top; border: none; text-transform: uppercase; word-wrap: break-word;">
+                        ${data.lampiranNomor || `KEPUTUSAN KEPALA ${schoolNameIsi.toUpperCase()}`}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="font-weight: bold; vertical-align: top; border: none;">NOMOR</td>
+                      <td style="font-weight: bold; vertical-align: top; border: none;">:</td>
+                      <td style="font-weight: bold; vertical-align: top; border: none;">${surat.noSurat}</td>
+                    </tr>
+                    <tr>
+                      <td style="font-weight: bold; vertical-align: top; border: none;">TANGGAL</td>
+                      <td style="font-weight: bold; vertical-align: top; border: none;">:</td>
+                      <td style="font-weight: bold; vertical-align: top; border: none;">${tglIndo}</td>
+                    </tr>
+                    <tr>
+                      <td style="font-weight: bold; vertical-align: top; border: none;">TENTANG</td>
+                      <td style="font-weight: bold; vertical-align: top; border: none;">:</td>
+                      <td style="font-weight: bold; vertical-align: top; border: none; text-transform: uppercase; word-wrap: break-word;">
+                        ${data.lampiranTentang || data.tentang || surat.perihal}
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Judul Rincian Lampiran -->
+            <div style="text-align: center; margin: 12pt 0 14pt 0;">
+              <p style="margin: 0; font-size: 11pt; font-weight: bold; text-transform: uppercase; text-decoration: underline; letter-spacing: 0.3px; word-wrap: break-word; overflow-wrap: break-word;">
+                ${lampItem.subjudul || `RINCIAN PENETAPAN ${data.tentang || surat.perihal}`}
+              </p>
+            </div>
+
+            ${lampItem.pengantar ? `
+              <p style="text-align: justify; margin: 0 0 10pt 0; font-size: 10.5pt; line-height: 1.4; word-wrap: break-word; overflow-wrap: break-word;">
+                ${lampItem.pengantar}
+              </p>
+            ` : ''}
+
+            ${lampiranTableHtml}
+            ${lampiranTeksHtml}
+
+            ${lampItem.catatan ? `
+              <div style="font-size: 9.5pt; font-style: italic; margin-top: 6pt; margin-bottom: 10pt; word-wrap: break-word; overflow-wrap: break-word;">
+                Catatan: ${lampItem.catatan}
+              </div>
+            ` : ''}
+
+            <!-- Tanda Tangan Lampiran -->
+            <table class="ttd-lampiran-sk-table" style="width: 100%; margin-top: 20pt; border: none; border-collapse: collapse; font-size: 11pt;" border="0" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="width: 52%; border: none;">&nbsp;</td>
+                <td style="width: 48%; text-align: center; vertical-align: top; border: none;">
+                  <p style="margin: 0 0 2pt 0; text-align: center; font-size: 11pt;">Ditetapkan di : ${sekolah.desa || 'Pekutatan'}</p>
+                  <p style="margin: 0 0 4pt 0; text-align: center; font-size: 11pt;">Pada tanggal : ${tglIndo}</p>
+                  <p style="margin: 0; font-weight: bold; text-align: center; font-size: 11pt;">${defaultJabatanKepsek},</p>
+                  <div style="height: 52pt;">&nbsp;</div>
+                  <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; font-size: 11pt;">${kepsek.nama}</p>
+                  ${kepsek.pangkat ? `<p style="margin: 1.5pt 0 0 0; font-size: 10pt; text-align: center;">${kepsek.pangkat}</p>` : ''}
+                  <p style="margin: 2pt 0 0 0; font-size: 10pt; text-align: center;">NIP. ${kepsek.nip}</p>
+                </td>
+              </tr>
+            </table>
+          </div>
+        `;
+      }).join('\n');
+    }
+  }
+
   return `
     <div class="surat-resmi ${isSuratKeputusan ? 'is-surat-keputusan' : ''}" style="font-family: ${suratFontFamily}; font-size: 12pt; line-height: 1.35; color: #000000;">
       ${kopHtml}
       <div class="surat-body">
         ${cleanBadanSurat}
         ${cleanTtdBlock}
+        ${skLampiranHtml}
       </div>
     </div>
   `;
@@ -2796,6 +3083,7 @@ export interface AbsenGuruOptions {
   ptkPerPage?: number;
   filterKategori?: 'semua' | 'kepala_sekolah' | 'guru' | 'tu';
   showKop?: boolean;
+  workSystem?: '5_hari' | '6_hari';
 }
 
 const NAMA_HARI_INDONESIA = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -2827,6 +3115,7 @@ export function buildAbsenGuruHtml(
   let ptkPerPage = 5;
   let filterKategori: 'semua' | 'kepala_sekolah' | 'guru' | 'tu' = 'semua';
   let showKop = false; // Pilihan utama: cetak presensi tanpa KOP
+  let workSystem: '5_hari' | '6_hari' = '5_hari';
 
   if (typeof bulanOrOptions === 'object') {
     year = bulanOrOptions.year || 2026;
@@ -2837,7 +3126,10 @@ export function buildAbsenGuruHtml(
     ptkPerPage = bulanOrOptions.ptkPerPage || 5;
     filterKategori = bulanOrOptions.filterKategori || 'semua';
     showKop = bulanOrOptions.showKop ?? false;
+    workSystem = bulanOrOptions.workSystem || '5_hari';
   }
+
+  const workSystemLabel = workSystem === '5_hari' ? 'Sistem 5 Hari Kerja (Sabtu & Minggu Libur)' : 'Sistem 6 Hari Kerja (Hanya Minggu Libur)';
 
   // Filter list if requested
   const targetList = filterKategori === 'semua'
@@ -2962,7 +3254,7 @@ export function buildAbsenGuruHtml(
               <strong>Keterangan Presensi Bulan ${bulanNama}:</strong><br/>
               • Hari Kalender: <strong>${totalDays} Hari</strong> &nbsp;|&nbsp;
               • Hari Libur: <strong>${holidayCount} Hari</strong> &nbsp;|&nbsp;
-              • Hari Efektif: <strong>${effectiveDays} Hari</strong><br/>
+              • Hari Efektif: <strong>${effectiveDays} Hari</strong> (${workSystemLabel})<br/>
               <span style="font-size: 6.5pt; color: #475569; font-style: italic;">
                 * Keterangan Simbol: <strong>H</strong> = Hadir, <strong>S</strong> = Sakit, <strong>I</strong> = Izin, <strong>DL</strong> = Dinas Luar, <strong>TK</strong> = Tanpa Keterangan, <strong>L</strong> = Libur Resmi.
               </span>
@@ -3124,7 +3416,7 @@ export function buildAbsenGuruHtml(
               <strong>Keterangan Presensi ${bulanNama}:</strong><br/>
               • Hari Kalender: <strong>${totalDays} Hari</strong> &nbsp;|&nbsp;
               • Hari Libur: <strong>${holidayCount} Hari</strong> &nbsp;|&nbsp;
-              • Hari Kerja Efektif: <strong>${effectiveDays} Hari</strong><br/>
+              • Hari Kerja Efektif: <strong>${effectiveDays} Hari</strong> (${workSystemLabel})<br/>
               <span style="font-size: 6pt; color: #475569; font-style: italic;">
                 * Setiap PTK wajib mengisi jam kehadiran pagi, tanda tangan, jam pulang sore, dan tanda tangan.
               </span>
@@ -3197,6 +3489,7 @@ export interface AbsenSiswaOptions {
   showKop?: boolean;
   orientation?: 'portrait' | 'landscape'; // Default: 'portrait' (Pilihan Utama)
   paperSize?: PaperSize;
+  workSystem?: '5_hari' | '6_hari';
 }
 
 /**
@@ -3221,6 +3514,7 @@ export function buildAbsenSiswaHtml(
   let tahunAjaran = '2026/2027';
   let showKop = false; // Default pilihan utama tanpa KOP
   let orientation: 'portrait' | 'landscape' = 'portrait'; // Default pilihan utama: Potret
+  let workSystem: '5_hari' | '6_hari' = '5_hari';
 
   if (typeof bulanOrOptions === 'object') {
     kelas = bulanOrOptions.kelas || kelas;
@@ -3232,7 +3526,10 @@ export function buildAbsenSiswaHtml(
     tahunAjaran = bulanOrOptions.tahunAjaran || '2026/2027';
     showKop = bulanOrOptions.showKop ?? false;
     orientation = bulanOrOptions.orientation || 'portrait';
+    workSystem = bulanOrOptions.workSystem || '5_hari';
   }
+
+  const workSystemLabel = workSystem === '5_hari' ? 'Sistem 5 Hari Kerja (Sabtu & Minggu Libur)' : 'Sistem 6 Hari Kerja (Hanya Minggu Libur)';
 
   const isPortrait = orientation === 'portrait';
   const filtered = sortSiswa(kelas && kelas !== 'Semua' ? siswaList.filter((s) => s.kelas === kelas) : siswaList);
@@ -3348,7 +3645,7 @@ export function buildAbsenSiswaHtml(
               <strong>Keterangan Presensi:</strong><br/>
               • <strong>H</strong> : Hadir &nbsp;|&nbsp; <strong>S</strong> : Sakit &nbsp;|&nbsp; <strong>I</strong> : Izin &nbsp;|&nbsp; <strong>A</strong> : Alpa &nbsp;|&nbsp; <span style="color: #b91c1c;"><strong>L</strong> : Libur</span><br/>
               • Jumlah Siswa: <strong>L: ${jmlL}</strong>, <strong>P: ${jmlP}</strong>, <strong>Total: ${filtered.length} Orang</strong><br/>
-              • Hari Efektif Sekolah: <strong>${effectiveDays} Hari</strong> (${holidayCount} Hari Libur)
+              • Hari Efektif Sekolah: <strong>${effectiveDays} Hari</strong> (${workSystemLabel}: ${holidayCount} Hari Libur)
             </td>
             <td style="width: 28%; vertical-align: top; text-align: center; border: none; line-height: 1.18;">
               <p style="margin: 0; font-size: 7pt;">Mengetahui,</p>
@@ -3471,7 +3768,7 @@ export function buildAbsenSiswaHtml(
             <strong>Keterangan Presensi:</strong><br/>
             • <strong>H</strong> : Hadir &nbsp;|&nbsp; <strong>S</strong> : Sakit &nbsp;|&nbsp; <strong>I</strong> : Izin &nbsp;|&nbsp; <strong>A</strong> : Alpa &nbsp;|&nbsp; <span style="color: #b91c1c;"><strong>L</strong> : Libur</span><br/>
             • Jumlah Siswa: <strong>L: ${jmlL}</strong>, <strong>P: ${jmlP}</strong>, <strong>Total: ${filtered.length} Orang</strong><br/>
-            • Hari Efektif Sekolah: <strong>${effectiveDays} Hari</strong> (${holidayCount} Hari Libur)
+            • Hari Efektif Sekolah: <strong>${effectiveDays} Hari</strong> (${workSystemLabel}: ${holidayCount} Hari Libur)
           </td>
           <td style="width: 28%; vertical-align: top; text-align: center; border: none; line-height: 1.2;">
             <p style="margin: 0; font-size: 7.5pt;">Mengetahui,</p>

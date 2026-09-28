@@ -25,7 +25,18 @@ import {
   Copy,
   ChevronUp,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
+  Table,
+  Layers,
+  ListPlus,
+  Settings2,
+  Columns,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  ListOrdered,
 } from 'lucide-react';
 import {
   SuratKeluar,
@@ -41,6 +52,11 @@ import {
   RekomendasiSiswaItem,
   RekomendasiPtkItem,
   SptSiswaItem,
+  SkLampiranRow,
+  SkLampiranItem,
+  SkLampiranData,
+  SkTableColumn,
+  SkUraianItem,
 } from '../types';
 import {
   formatTanggalIndonesia,
@@ -129,6 +145,80 @@ const defaultSkMemperhatikanList: SkPointItem[] = [
     id: '2',
     poin: '2.',
     isi: 'Kalender Pendidikan Provinsi Bali Tahun Ajaran 2026/2027.',
+  },
+];
+
+const defaultSkLampiranTabel: SkLampiranRow[] = [
+  {
+    id: '1',
+    no: '1',
+    nama: 'Ni Luh Made Sukarini, S.Pd.SD.',
+    nipOrJabatan: '19790412 200604 2 018 (Pembina, IV/a)',
+    tugas: 'Guru Kelas I (Fase A)',
+    keterangan: '24 Jam / Koordinator P5 Kelas I',
+  },
+  {
+    id: '2',
+    no: '2',
+    nama: 'I Wayan Agus Pratama, S.Pd.',
+    nipOrJabatan: '19840810 200902 1 005 (Penata Tk.I, III/d)',
+    tugas: 'Guru Kelas IV (Fase B)',
+    keterangan: '24 Jam / Pembina Pramuka Siaga',
+  },
+  {
+    id: '3',
+    no: '3',
+    nama: 'Ni Kadek Dwi Yuliani, S.Pd.',
+    nipOrJabatan: '19910214 201903 2 014 (Penata Muda, III/a)',
+    tugas: 'Guru Kelas VI (Fase C)',
+    keterangan: '24 Jam / Pembina UKS & Dokter Kecil',
+  },
+  {
+    id: '4',
+    no: '4',
+    nama: 'I Gusti Ngurah Putu Arta, S.Pd.',
+    nipOrJabatan: '19881125 201502 1 003 (Penata, III/c)',
+    tugas: 'Guru PJOK Kelas I - VI',
+    keterangan: '24 Jam / Pembina Olahraga & Prestasi',
+  },
+];
+
+const toRomanNumerals = (num: number): string => {
+  const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV'];
+  return roman[num - 1] || String(num);
+};
+
+const angkaKeKataIndonesia = (num: number): string => {
+  const kata = ['nol', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas', 'dua belas'];
+  return kata[num] || String(num);
+};
+
+export const defaultSkColumns: SkTableColumn[] = [
+  { id: 'c_no', label: 'No', width: '6%', align: 'center', key: 'no' },
+  { id: 'c_nama', label: 'Nama / NIP', width: '26%', align: 'left', key: 'nama' },
+  { id: 'c_jabatan', label: 'Pangkat / Golongan / Jabatan', width: '22%', align: 'left', key: 'nipOrJabatan' },
+  { id: 'c_tugas', label: 'Tugas Mengajar / Kelas Yang Diampu', width: '26%', align: 'left', key: 'tugas' },
+  { id: 'c_keterangan', label: 'Tugas Tambahan & Beban Mengajar', width: '20%', align: 'left', key: 'keterangan' },
+];
+
+const defaultSkLampiranList: SkLampiranItem[] = [
+  {
+    id: 'lampiran-1',
+    label: 'LAMPIRAN I',
+    subjudul: 'RINCIAN PEMBAGIAN TUGAS GURU DALAM PROSES BELAJAR MENGAJAR DAN TUGAS TAMBAHAN TAHUN AJARAN 2026/2027',
+    pengantar: '',
+    mode: 'tabel',
+    columns: defaultSkColumns,
+    tabelHeader: {
+      col1: 'No',
+      col2: 'Nama / NIP',
+      col3: 'Pangkat / Golongan / Jabatan',
+      col4: 'Tugas Mengajar / Kelas Yang Diampu',
+      col5: 'Tugas Tambahan & Beban Mengajar',
+    },
+    tabel: defaultSkLampiranTabel,
+    isiTeks: '',
+    catatan: 'Keputusan pembagian tugas ini wajib dilaksanakan dengan penuh rasa tanggung jawab sejak tanggal ditetapkan.',
   },
 ];
 
@@ -345,6 +435,46 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     { id: '3', label: 'Ketiga', isi: 'Keputusan ini berlaku sejak tanggal ditetapkan, dengan ketentuan apabila terdapat kekeliruan di kemudian hari akan diadakan perbaikan sebagaimana mestinya.' },
   ]);
 
+  // Lampiran SK Kepala Sekolah (Mendukung Banyak Lampiran)
+  const [skAdaLampiran, setSkAdaLampiran] = useState<boolean>(true);
+  const [skLampiranKeterangan, setSkLampiranKeterangan] = useState<string>('1 (satu) Berkas');
+  const [skLampiranNomor, setSkLampiranNomor] = useState<string>('');
+  const [skLampiranTentang, setSkLampiranTentang] = useState<string>('');
+  const [skLampiranList, setSkLampiranList] = useState<SkLampiranItem[]>(defaultSkLampiranList);
+  const [skActiveLampiranIndex, setSkActiveLampiranIndex] = useState<number>(0);
+  const [showSkColumnSettings, setShowSkColumnSettings] = useState<boolean>(false);
+  const [skUraianViewMode, setSkUraianViewMode] = useState<'daftar' | 'manual'>('daftar');
+
+  const currentActiveLampiran: SkLampiranItem = skLampiranList[skActiveLampiranIndex] || skLampiranList[0] || {
+    id: '1',
+    label: 'LAMPIRAN I',
+    subjudul: '',
+    pengantar: '',
+    mode: 'tabel',
+    columns: defaultSkColumns,
+    tabelHeader: {
+      col1: 'No',
+      col2: 'Nama / NIP',
+      col3: 'Pangkat / Golongan / Jabatan',
+      col4: 'Tugas Mengajar / Kelas Yang Diampu',
+      col5: 'Tugas Tambahan & Beban Mengajar',
+    },
+    tabel: [],
+    isiTeks: '',
+    catatan: '',
+  };
+
+  const updateActiveLampiran = (patch: Partial<SkLampiranItem>) => {
+    setSkLampiranList((prev) => {
+      const copy = [...prev];
+      const targetIdx = skActiveLampiranIndex < copy.length ? skActiveLampiranIndex : 0;
+      if (copy[targetIdx]) {
+        copy[targetIdx] = { ...copy[targetIdx], ...patch };
+      }
+      return copy;
+    });
+  };
+
   // Khusus: Surat Tugas
   const [sptTipePenerima, setSptTipePenerima] = useState<'guru' | 'siswa'>('guru');
   const [sptFormatPembuka, setSptFormatPembuka] = useState<'ttd_kepsek' | 'dasar'>('ttd_kepsek');
@@ -475,6 +605,605 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     }
   }, [initialSelectedNumber]);
 
+  // Helper Resolusi Kolom Lampiran Aktif
+  const getActiveLampiranColumns = (lamp: SkLampiranItem): SkTableColumn[] => {
+    if (Array.isArray(lamp.columns) && lamp.columns.length > 0) {
+      return lamp.columns;
+    }
+    const h = lamp.tabelHeader;
+    return [
+      { id: 'c_no', label: h?.col1 || 'No', width: '6%', align: 'center', key: 'no' },
+      { id: 'c_nama', label: h?.col2 || 'Nama / NIP', width: '26%', align: 'left', key: 'nama' },
+      { id: 'c_jabatan', label: h?.col3 || 'Pangkat / Golongan / Jabatan', width: '22%', align: 'left', key: 'nipOrJabatan' },
+      { id: 'c_tugas', label: h?.col4 || 'Uraian Tugas / Kelas', width: '26%', align: 'left', key: 'tugas' },
+      { id: 'c_keterangan', label: h?.col5 || 'Keterangan', width: '20%', align: 'left', key: 'keterangan' },
+    ];
+  };
+
+  // Helper Baca Nilai Sel Kolom
+  const getLampiranCellValue = (row: SkLampiranRow, col: SkTableColumn, rowIdx: number): string => {
+    if (row.cols && row.cols[col.id] !== undefined) {
+      return row.cols[col.id];
+    }
+    if (col.key && (row as any)[col.key] !== undefined) {
+      return String((row as any)[col.key] ?? '');
+    }
+    if (col.id === 'c_no' || col.key === 'no' || /^(no|nomor)\.?$/i.test(col.label.trim())) {
+      return row.no !== undefined && row.no !== '' ? String(row.no) : String(rowIdx + 1);
+    }
+    if (row.cols && row.cols[col.label] !== undefined) {
+      return row.cols[col.label];
+    }
+    return '';
+  };
+
+  // Helper Pengelolaan Multi-Lampiran SK
+  const handleTambahLampiran = () => {
+    const nextNum = skLampiranList.length + 1;
+    const roman = toRomanNumerals(nextNum);
+    const newItem: SkLampiranItem = {
+      id: String(Date.now() + Math.random()),
+      label: `LAMPIRAN ${roman}`,
+      subjudul: `RINCIAN LAMPIRAN ${roman} KEPUTUSAN KEPALA SEKOLAH`,
+      pengantar: '',
+      mode: 'tabel',
+      columns: defaultSkColumns,
+      tabelHeader: {
+        col1: 'No',
+        col2: 'Nama / NIP',
+        col3: 'Pangkat / Golongan / Jabatan',
+        col4: 'Uraian Tugas / Rincian',
+        col5: 'Keterangan',
+      },
+      tabel: [
+        {
+          id: String(Date.now()),
+          no: '1',
+          nama: '',
+          nipOrJabatan: '',
+          tugas: '',
+          keterangan: '',
+          cols: {
+            c_no: '1',
+            c_nama: '',
+            c_jabatan: '',
+            c_tugas: '',
+            c_keterangan: '',
+          },
+        },
+      ],
+      isiTeks: '',
+      catatan: '',
+    };
+    setSkLampiranList((prev) => [...prev, newItem]);
+    setSkActiveLampiranIndex(skLampiranList.length);
+    setSkLampiranKeterangan(`${nextNum} (${angkaKeKataIndonesia(nextNum)}) Berkas`);
+  };
+
+  const handleHapusLampiran = (idxToDelete: number) => {
+    if (skLampiranList.length <= 1) {
+      alert('Surat Keputusan minimal harus memiliki 1 lembar lampiran jika opsi lampiran aktif.');
+      return;
+    }
+    const updated = skLampiranList.filter((_, i) => i !== idxToDelete);
+    setSkLampiranList(updated);
+    if (skActiveLampiranIndex >= updated.length) {
+      setSkActiveLampiranIndex(updated.length - 1);
+    }
+    const count = updated.length;
+    setSkLampiranKeterangan(count === 1 ? '1 (satu) Berkas' : `${count} (${angkaKeKataIndonesia(count)}) Berkas`);
+  };
+
+  const handleDuplikatLampiran = (idxToDuplicate: number) => {
+    const target = skLampiranList[idxToDuplicate];
+    if (!target) return;
+    const nextNum = skLampiranList.length + 1;
+    const roman = toRomanNumerals(nextNum);
+    const duplicated: SkLampiranItem = {
+      ...target,
+      id: String(Date.now() + Math.random()),
+      label: `LAMPIRAN ${roman}`,
+      subjudul: target.subjudul ? `${target.subjudul} (SALINAN)` : `RINCIAN LAMPIRAN ${roman}`,
+      columns: Array.isArray(target.columns) ? [...target.columns] : defaultSkColumns,
+      tabel: Array.isArray(target.tabel)
+        ? target.tabel.map((r, i) => ({
+            ...r,
+            id: String(Date.now() + i + Math.random()),
+            cols: r.cols ? { ...r.cols } : undefined,
+          }))
+        : [],
+    };
+    setSkLampiranList((prev) => [...prev, duplicated]);
+    setSkActiveLampiranIndex(skLampiranList.length);
+    setSkLampiranKeterangan(`${nextNum} (${angkaKeKataIndonesia(nextNum)}) Berkas`);
+  };
+
+  const handleGeserLampiran = (idx: number, direction: 'prev' | 'next') => {
+    const targetIdx = direction === 'prev' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= skLampiranList.length) return;
+    const updated = [...skLampiranList];
+    const temp = updated[idx];
+    updated[idx] = updated[targetIdx];
+    updated[targetIdx] = temp;
+    setSkLampiranList(updated);
+    setSkActiveLampiranIndex(targetIdx);
+  };
+
+  // Helper Pengelolaan Kolom Dinamis Tabel Lampiran SK
+  const handleTambahKolomSkLampiran = () => {
+    const currentCols = getActiveLampiranColumns(currentActiveLampiran);
+    const newColId = `col_${Date.now()}`;
+    const newColNumber = currentCols.length + 1;
+    const newCol: SkTableColumn = {
+      id: newColId,
+      label: `Kolom ${newColNumber}`,
+      align: 'left',
+      width: 'auto',
+    };
+    const updatedCols = [...currentCols, newCol];
+    updateActiveLampiran({
+      columns: updatedCols,
+      tabelHeader: {
+        col1: updatedCols[0]?.label || 'No',
+        col2: updatedCols[1]?.label || '',
+        col3: updatedCols[2]?.label || '',
+        col4: updatedCols[3]?.label || '',
+        col5: updatedCols[4]?.label || '',
+      },
+    });
+  };
+
+  const handleHapusKolomSkLampiran = (colId: string) => {
+    const currentCols = getActiveLampiranColumns(currentActiveLampiran);
+    if (currentCols.length <= 1) {
+      alert('Tabel lampiran minimal harus memiliki 1 kolom.');
+      return;
+    }
+    const updatedCols = currentCols.filter((c) => c.id !== colId);
+    updateActiveLampiran({
+      columns: updatedCols,
+      tabelHeader: {
+        col1: updatedCols[0]?.label || 'No',
+        col2: updatedCols[1]?.label || '',
+        col3: updatedCols[2]?.label || '',
+        col4: updatedCols[3]?.label || '',
+        col5: updatedCols[4]?.label || '',
+      },
+    });
+  };
+
+  const handleUpdateKolomSkLampiran = (colId: string, updates: Partial<SkTableColumn>) => {
+    const currentCols = getActiveLampiranColumns(currentActiveLampiran);
+    const updatedCols = currentCols.map((c) => (c.id === colId ? { ...c, ...updates } : c));
+    updateActiveLampiran({
+      columns: updatedCols,
+      tabelHeader: {
+        col1: updatedCols[0]?.label || 'No',
+        col2: updatedCols[1]?.label || '',
+        col3: updatedCols[2]?.label || '',
+        col4: updatedCols[3]?.label || '',
+        col5: updatedCols[4]?.label || '',
+      },
+    });
+  };
+
+  const handleGeserKolomSkLampiran = (colIdx: number, direction: 'left' | 'right') => {
+    const currentCols = getActiveLampiranColumns(currentActiveLampiran);
+    const targetIdx = direction === 'left' ? colIdx - 1 : colIdx + 1;
+    if (targetIdx < 0 || targetIdx >= currentCols.length) return;
+    const updatedCols = [...currentCols];
+    const temp = updatedCols[colIdx];
+    updatedCols[colIdx] = updatedCols[targetIdx];
+    updatedCols[targetIdx] = temp;
+    updateActiveLampiran({
+      columns: updatedCols,
+      tabelHeader: {
+        col1: updatedCols[0]?.label || 'No',
+        col2: updatedCols[1]?.label || '',
+        col3: updatedCols[2]?.label || '',
+        col4: updatedCols[3]?.label || '',
+        col5: updatedCols[4]?.label || '',
+      },
+    });
+  };
+
+  const handleTerapkanPresetKolomSkLampiran = (preset: 'standar_5' | 'detail_6' | 'panitia_4' | 'rombel_4' | 'sederhana_3') => {
+    let newCols: SkTableColumn[] = [];
+    if (preset === 'standar_5') {
+      newCols = [
+        { id: 'c_no', label: 'No', width: '6%', align: 'center', key: 'no' },
+        { id: 'c_nama', label: 'Nama / NIP', width: '26%', align: 'left', key: 'nama' },
+        { id: 'c_jabatan', label: 'Pangkat / Golongan / Jabatan', width: '22%', align: 'left', key: 'nipOrJabatan' },
+        { id: 'c_tugas', label: 'Tugas Mengajar / Kelas Yang Diampu', width: '26%', align: 'left', key: 'tugas' },
+        { id: 'c_keterangan', label: 'Tugas Tambahan & Beban Kerja', width: '20%', align: 'left', key: 'keterangan' },
+      ];
+    } else if (preset === 'detail_6') {
+      newCols = [
+        { id: 'c_no', label: 'No', width: '5%', align: 'center', key: 'no' },
+        { id: 'c_nama', label: 'Nama Guru / PTK', width: '24%', align: 'left', key: 'nama' },
+        { id: 'c_nip', label: 'NIP / NUPTK / Gol', width: '18%', align: 'left', key: 'nipOrJabatan' },
+        { id: 'c_jabatan', label: 'Jabatan Pokok', width: '15%', align: 'left' },
+        { id: 'c_tugas', label: 'Mata Pelajaran / Rombel', width: '23%', align: 'left', key: 'tugas' },
+        { id: 'c_keterangan', label: 'Beban Jam (JP) / Ket', width: '15%', align: 'left', key: 'keterangan' },
+      ];
+    } else if (preset === 'panitia_4') {
+      newCols = [
+        { id: 'c_no', label: 'No', width: '6%', align: 'center', key: 'no' },
+        { id: 'c_nama', label: 'Nama Lengkap / NIP', width: '32%', align: 'left', key: 'nama' },
+        { id: 'c_jabatan', label: 'Jabatan Dalam Panitia', width: '26%', align: 'left', key: 'nipOrJabatan' },
+        { id: 'c_tugas', label: 'Uraian Tugas & Tanggung Jawab', width: '36%', align: 'left', key: 'tugas' },
+      ];
+    } else if (preset === 'rombel_4') {
+      newCols = [
+        { id: 'c_no', label: 'No', width: '6%', align: 'center', key: 'no' },
+        { id: 'c_tugas', label: 'Kelas / Rombel', width: '18%', align: 'center', key: 'tugas' },
+        { id: 'c_nama', label: 'Nama Wali Kelas / Pembimbing', width: '42%', align: 'left', key: 'nama' },
+        { id: 'c_jabatan', label: 'NIP / Pangkat Golongan', width: '34%', align: 'left', key: 'nipOrJabatan' },
+      ];
+    } else if (preset === 'sederhana_3') {
+      newCols = [
+        { id: 'c_no', label: 'No', width: '8%', align: 'center', key: 'no' },
+        { id: 'c_nama', label: 'Nama / Uraian Rincian', width: '56%', align: 'left', key: 'nama' },
+        { id: 'c_keterangan', label: 'Keterangan', width: '36%', align: 'left', key: 'keterangan' },
+      ];
+    }
+
+    updateActiveLampiran({
+      columns: newCols,
+      tabelHeader: {
+        col1: newCols[0]?.label || 'No',
+        col2: newCols[1]?.label || '',
+        col3: newCols[2]?.label || '',
+        col4: newCols[3]?.label || '',
+        col5: newCols[4]?.label || '',
+      },
+    });
+  };
+
+  // Helper Ubah Nilai Sel Baris Sesuai Kolom
+  const handleUbahSelSkLampiran = (rowIdx: number, col: SkTableColumn, val: string) => {
+    const currentRows = [...(currentActiveLampiran.tabel || [])];
+    const targetRow = { ...currentRows[rowIdx] };
+    const currentColsMap = { ...(targetRow.cols || {}) };
+    currentColsMap[col.id] = val;
+    targetRow.cols = currentColsMap;
+
+    // Sinkronisasi otomatis ke properti warisan bila cocok
+    if (col.key === 'no' || col.id === 'c_no' || /^(no|nomor)\.?$/i.test(col.label.trim())) {
+      targetRow.no = val;
+    } else if (col.key === 'nama' || col.id === 'c_nama' || /nama/i.test(col.label)) {
+      targetRow.nama = val;
+    } else if (col.key === 'nipOrJabatan' || col.id === 'c_jabatan' || /pangkat|gol|jabatan|nip/i.test(col.label)) {
+      targetRow.nipOrJabatan = val;
+    } else if (col.key === 'tugas' || col.id === 'c_tugas' || /tugas|mapel|uraian/i.test(col.label)) {
+      targetRow.tugas = val;
+    } else if (col.key === 'keterangan' || col.id === 'c_keterangan' || /ket|keterangan|beban|jam|jp/i.test(col.label)) {
+      targetRow.keterangan = val;
+    }
+
+    currentRows[rowIdx] = targetRow;
+    updateActiveLampiran({ tabel: currentRows });
+  };
+
+  const handleTambahBarisSkLampiran = () => {
+    const currentTabel = currentActiveLampiran.tabel || [];
+    const currentCols = getActiveLampiranColumns(currentActiveLampiran);
+    const rowCols: Record<string, string> = {};
+    currentCols.forEach((c) => {
+      if (c.id === 'c_no' || c.key === 'no' || /^(no|nomor)\.?$/i.test(c.label.trim())) {
+        rowCols[c.id] = String(currentTabel.length + 1);
+      } else {
+        rowCols[c.id] = '';
+      }
+    });
+
+    const newRow: SkLampiranRow = {
+      id: String(Date.now() + Math.random()),
+      no: String(currentTabel.length + 1),
+      nama: '',
+      nipOrJabatan: '',
+      tugas: '',
+      keterangan: '',
+      cols: rowCols,
+    };
+    updateActiveLampiran({ tabel: [...currentTabel, newRow] });
+  };
+
+  const handlePilihGuruKeSkLampiran = (guruId: string) => {
+    const g = guruList.find((x) => x.id === guruId);
+    if (!g) return;
+    const currentTabel = currentActiveLampiran.tabel || [];
+    const currentCols = getActiveLampiranColumns(currentActiveLampiran);
+    const rowCols: Record<string, string> = {};
+
+    const noVal = String(currentTabel.length + 1);
+    const namaVal = g.nama;
+    const nipJabatanVal = g.nip ? `${g.nip} (${g.pangkatGol || g.jabatan})` : (g.pangkatGol || g.jabatan);
+    const tugasVal = g.jabatan.includes('Guru') ? `${g.jabatan}` : 'Tenaga Administrasi / Kependidikan';
+    const ketVal = '24 Jam Tatap Muka';
+
+    currentCols.forEach((c) => {
+      if (c.id === 'c_no' || c.key === 'no' || /^(no|nomor)\.?$/i.test(c.label.trim())) {
+        rowCols[c.id] = noVal;
+      } else if (c.id === 'c_nama' || c.key === 'nama' || /nama/i.test(c.label)) {
+        rowCols[c.id] = namaVal;
+      } else if (c.id === 'c_jabatan' || c.key === 'nipOrJabatan' || /pangkat|gol|jabatan|nip/i.test(c.label)) {
+        rowCols[c.id] = nipJabatanVal;
+      } else if (c.id === 'c_tugas' || c.key === 'tugas' || /tugas|mapel|uraian/i.test(c.label)) {
+        rowCols[c.id] = tugasVal;
+      } else if (c.id === 'c_keterangan' || c.key === 'keterangan' || /ket|keterangan|beban|jam|jp/i.test(c.label)) {
+        rowCols[c.id] = ketVal;
+      } else {
+        rowCols[c.id] = '';
+      }
+    });
+
+    const newRow: SkLampiranRow = {
+      id: String(Date.now() + Math.random()),
+      no: noVal,
+      nama: namaVal,
+      nipOrJabatan: nipJabatanVal,
+      tugas: tugasVal,
+      keterangan: ketVal,
+      cols: rowCols,
+    };
+    updateActiveLampiran({ tabel: [...currentTabel, newRow] });
+  };
+
+  const handleMuatSemuaGuruKeSkLampiran = () => {
+    if (guruList.length === 0) return;
+    const currentCols = getActiveLampiranColumns(currentActiveLampiran);
+    const rows: SkLampiranRow[] = guruList.map((g, idx) => {
+      const noVal = String(idx + 1);
+      const namaVal = g.nama;
+      const nipJabatanVal = g.nip ? `${g.nip} (${g.pangkatGol || g.jabatan})` : (g.pangkatGol || g.jabatan);
+      const tugasVal = g.jabatan.includes('Guru') ? `${g.jabatan}` : 'Tenaga Administrasi Sekolah';
+      const ketVal = '24 Jam / Tugas Terkait';
+
+      const rowCols: Record<string, string> = {};
+      currentCols.forEach((c) => {
+        if (c.id === 'c_no' || c.key === 'no' || /^(no|nomor)\.?$/i.test(c.label.trim())) {
+          rowCols[c.id] = noVal;
+        } else if (c.id === 'c_nama' || c.key === 'nama' || /nama/i.test(c.label)) {
+          rowCols[c.id] = namaVal;
+        } else if (c.id === 'c_jabatan' || c.key === 'nipOrJabatan' || /pangkat|gol|jabatan|nip/i.test(c.label)) {
+          rowCols[c.id] = nipJabatanVal;
+        } else if (c.id === 'c_tugas' || c.key === 'tugas' || /tugas|mapel|uraian/i.test(c.label)) {
+          rowCols[c.id] = tugasVal;
+        } else if (c.id === 'c_keterangan' || c.key === 'keterangan' || /ket|keterangan|beban|jam|jp/i.test(c.label)) {
+          rowCols[c.id] = ketVal;
+        } else {
+          rowCols[c.id] = '';
+        }
+      });
+
+      return {
+        id: String(Date.now() + idx),
+        no: noVal,
+        nama: namaVal,
+        nipOrJabatan: nipJabatanVal,
+        tugas: tugasVal,
+        keterangan: ketVal,
+        cols: rowCols,
+      };
+    });
+    updateActiveLampiran({ tabel: rows });
+  };
+
+  const handleTemplatePanitiaSkLampiran = () => {
+    const panitiaCols: SkTableColumn[] = [
+      { id: 'c_no', label: 'No', width: '6%', align: 'center', key: 'no' },
+      { id: 'c_nama', label: 'Nama Lengkap & Gelar', width: '30%', align: 'left', key: 'nama' },
+      { id: 'c_jabatan', label: 'Kedudukan Dalam Panitia', width: '28%', align: 'left', key: 'nipOrJabatan' },
+      { id: 'c_tugas', label: 'Uraian Tugas & Tanggung Jawab', width: '36%', align: 'left', key: 'tugas' },
+    ];
+
+    const panitiaRoles = [
+      { peran: 'Penanggung Jawab', nama: sekolah.kepalaSekolah || 'Kepala Sekolah', ket: 'Kebijakan Umum & Pengarah' },
+      { peran: 'Ketua Panitia', nama: guruList[0]?.nama || 'Guru Senior', ket: 'Koordinasi Pelaksanaan Kegiatan' },
+      { peran: 'Sekretaris', nama: guruList[1]?.nama || 'Guru / Staf TU', ket: 'Administrasi & Notula Kegiatan' },
+      { peran: 'Bendahara', nama: guruList[2]?.nama || 'Bendahara Sekolah', ket: 'Pengelolaan Anggaran & LPJ' },
+      { peran: 'Seksi Acara & Kegiatan', nama: guruList[3]?.nama || 'Dewan Guru', ket: 'Penyusunan Jadwal & Rundown' },
+      { peran: 'Seksi Perlengkapan & Tempat', nama: guruList[4]?.nama || 'Dewan Guru', ket: 'Sarana Prasarana & Tempat' },
+      { peran: 'Seksi Konsumsi', nama: guruList[5]?.nama || 'Dewan Guru', ket: 'Akomodasi & Konsumsi Peserta' },
+    ];
+    const rows: SkLampiranRow[] = panitiaRoles.map((p, idx) => ({
+      id: String(Date.now() + idx),
+      no: String(idx + 1),
+      nama: p.nama,
+      nipOrJabatan: p.peran,
+      tugas: `Pelaksana Seksi / Bagian ${p.peran} (${p.ket})`,
+      keterangan: p.ket,
+      cols: {
+        c_no: String(idx + 1),
+        c_nama: p.nama,
+        c_jabatan: p.peran,
+        c_tugas: `Pelaksana Seksi / Bagian ${p.peran} (${p.ket})`,
+      },
+    }));
+    updateActiveLampiran({
+      subjudul: 'SUSUNAN PANITIA PELAKSANA KEGIATAN SEKOLAH TAHUN 2026',
+      columns: panitiaCols,
+      tabelHeader: {
+        col1: 'No',
+        col2: 'Nama Lengkap & Gelar',
+        col3: 'Kedudukan Dalam Panitia',
+        col4: 'Uraian Tugas & Tanggung Jawab',
+        col5: '',
+      },
+      tabel: rows,
+    });
+  };
+
+  // Helper Konversi Butir Uraian Teks ke String isiTeks
+  const serializeUraianListToText = (list: SkUraianItem[]): string => {
+    return list
+      .map((item) => {
+        const header = item.judul && item.judul.trim() ? `[${item.judul.trim()}]\n` : '';
+        const prefix = item.nomor && item.nomor.trim() ? `${item.nomor.trim()} ` : '';
+        const body = (item.teks || '').trim();
+        if (!body && !header) return '';
+        return `${header}${prefix}${body}`.trim();
+      })
+      .filter((t) => t.length > 0)
+      .join('\n\n');
+  };
+
+  // Helper Baca / Ekstraksi Butir Uraian Lampiran
+  const getActiveLampiranUraianList = (lamp: SkLampiranItem): SkUraianItem[] => {
+    if (Array.isArray(lamp.uraianList) && lamp.uraianList.length > 0) {
+      return lamp.uraianList;
+    }
+    // Jika belum ada array uraianList tapi ada isiTeks, parsing otomatis paragraf
+    if (lamp.isiTeks && lamp.isiTeks.trim().length > 0) {
+      const blocks = lamp.isiTeks.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+      if (blocks.length > 0) {
+        return blocks.map((b, idx) => {
+          let judul = '';
+          let rest = b;
+          const judulMatch = rest.match(/^\[(.*?)\]\s*\n?(.*)$/s);
+          if (judulMatch) {
+            judul = judulMatch[1].trim();
+            rest = judulMatch[2].trim();
+          }
+          const numMatch = rest.match(/^(\d+\.|\w+\.|\-|\*|\([0-9a-zA-Z]+\))\s+(.*)$/s);
+          if (numMatch) {
+            return {
+              id: `u_${idx}_${Date.now()}`,
+              nomor: numMatch[1],
+              judul,
+              teks: numMatch[2],
+            };
+          }
+          return {
+            id: `u_${idx}_${Date.now()}`,
+            nomor: `${idx + 1}.`,
+            judul,
+            teks: rest,
+          };
+        });
+      }
+    }
+    return [];
+  };
+
+  // Helper Tambah Butir Uraian Teks Baru
+  const handleTambahUraianTeks = (tipe: 'angka' | 'huruf' | 'strip' | 'paragraf' = 'angka') => {
+    const currentList = getActiveLampiranUraianList(currentActiveLampiran);
+    let nextNomor = '';
+    if (tipe === 'angka') {
+      nextNomor = `${currentList.length + 1}.`;
+    } else if (tipe === 'huruf') {
+      const charCode = 97 + (currentList.length % 26);
+      nextNomor = `${String.fromCharCode(charCode)}.`;
+    } else if (tipe === 'strip') {
+      nextNomor = '-';
+    } else if (tipe === 'paragraf') {
+      nextNomor = '';
+    }
+
+    const newItem: SkUraianItem = {
+      id: `u_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      nomor: nextNomor,
+      judul: '',
+      teks: '',
+    };
+    const updatedList = [...currentList, newItem];
+    const newIsiTeks = serializeUraianListToText(updatedList);
+    updateActiveLampiran({
+      uraianList: updatedList,
+      isiTeks: newIsiTeks,
+    });
+  };
+
+  // Helper Perbarui Butir Uraian Teks
+  const handleUpdateUraianTeks = (id: string, patch: Partial<SkUraianItem>) => {
+    const currentList = getActiveLampiranUraianList(currentActiveLampiran);
+    const updatedList = currentList.map((item) => (item.id === id ? { ...item, ...patch } : item));
+    const newIsiTeks = serializeUraianListToText(updatedList);
+    updateActiveLampiran({
+      uraianList: updatedList,
+      isiTeks: newIsiTeks,
+    });
+  };
+
+  // Helper Hapus Butir Uraian Teks
+  const handleHapusUraianTeks = (id: string) => {
+    const currentList = getActiveLampiranUraianList(currentActiveLampiran);
+    const updatedList = currentList.filter((item) => item.id !== id);
+    const newIsiTeks = serializeUraianListToText(updatedList);
+    updateActiveLampiran({
+      uraianList: updatedList,
+      isiTeks: newIsiTeks,
+    });
+  };
+
+  // Helper Geser Posisi Butir Uraian
+  const handleGeserUraianTeks = (idx: number, direction: 'up' | 'down') => {
+    const currentList = getActiveLampiranUraianList(currentActiveLampiran);
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= currentList.length) return;
+    const updatedList = [...currentList];
+    const temp = updatedList[idx];
+    updatedList[idx] = updatedList[targetIdx];
+    updatedList[targetIdx] = temp;
+    const newIsiTeks = serializeUraianListToText(updatedList);
+    updateActiveLampiran({
+      uraianList: updatedList,
+      isiTeks: newIsiTeks,
+    });
+  };
+
+  // Helper Duplikat Butir Uraian
+  const handleDuplikatUraianTeks = (idx: number) => {
+    const currentList = getActiveLampiranUraianList(currentActiveLampiran);
+    const target = currentList[idx];
+    if (!target) return;
+    const duplicated: SkUraianItem = {
+      ...target,
+      id: `u_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      nomor: target.nomor ? (target.nomor.match(/^\d+\.?$/) ? `${currentList.length + 1}.` : target.nomor) : '',
+    };
+    const updatedList = [...currentList];
+    updatedList.splice(idx + 1, 0, duplicated);
+    const newIsiTeks = serializeUraianListToText(updatedList);
+    updateActiveLampiran({
+      uraianList: updatedList,
+      isiTeks: newIsiTeks,
+    });
+  };
+
+  // Helper Terapkan Template Uraian SK
+  const handleTerapkanTemplateUraian = (jenis: 'tugas' | 'ketentuan' | 'panitia') => {
+    let templateItems: SkUraianItem[] = [];
+    if (jenis === 'tugas') {
+      templateItems = [
+        { id: `u_1_${Date.now()}`, nomor: '1.', judul: 'Kewajiban Pokok Mengajar', teks: 'Melaksanakan proses belajar mengajar dan membimbing peserta didik sesuai jadwal kurikulum yang berlaku secara efektif dan disiplin.' },
+        { id: `u_2_${Date.now()}`, nomor: '2.', judul: 'Perangkat Administrasi Pembelajaran', teks: 'Menyusun dan mempersiapkan perangkat administrasi pembelajaran (Alur Tujuan Pembelajaran / Silabus, Modul Ajar / RPP, dan Program Semester/Tahunan) sebelum pelaksanaan KBM dimulai.' },
+        { id: `u_3_${Date.now()}`, nomor: '3.', judul: 'Evaluasi & Tindak Lanjut', teks: 'Melakukan evaluasi hasil belajar, analisis ketuntasan asesmen sumatif maupun formatif, serta menyelenggarakan kegiatan remedial dan pengayaan kepada peserta didik.' },
+        { id: `u_4_${Date.now()}`, nomor: '4.', judul: 'Tugas Tambahan & Pelaporan', teks: 'Melaksanakan tugas tambahan yang diamanatkan dengan penuh tanggung jawab dan memberikan laporan pelaksanaan tugas secara tertulis kepada Kepala Sekolah pada akhir semester.' },
+      ];
+    } else if (jenis === 'ketentuan') {
+      templateItems = [
+        { id: `u_1_${Date.now()}`, nomor: '1.', judul: 'Keberlakuan Keputusan', teks: 'Keputusan ini mulai berlaku terhitung sejak tanggal ditetapkan sampai dengan berakhirnya tahun ajaran berjalan.' },
+        { id: `u_2_${Date.now()}`, nomor: '2.', judul: 'Tanggung Jawab Individu', teks: 'Masing-masing pendidik dan tenaga kependidikan bertanggung jawab penuh atas pelaksanaan tugas pokok dan fungsi sebagaimana tercantum dalam lampiran ini.' },
+        { id: `u_3_${Date.now()}`, nomor: '3.', judul: 'Beban Anggaran', teks: 'Segala biaya yang timbul sebagai akibat pelaksanaan keputusan ini dibebankan pada anggaran sekolah yang sah dan relevan (BOS/BOSP).' },
+        { id: `u_4_${Date.now()}`, nomor: '4.', judul: 'Klausul Pembetulan', teks: 'Apabila di kemudian hari ternyata terdapat kekeliruan dalam penetapan keputusan ini, akan diadakan pembetulan dan perbaikan sebagaimana mestinya.' },
+      ];
+    } else if (jenis === 'panitia') {
+      templateItems = [
+        { id: `u_1_${Date.now()}`, nomor: '1.', judul: 'Tugas Pokok Panitia', teks: 'Merencanakan, mempersiapkan, mengoordinasikan, dan melaksanakan seluruh rangkaian kegiatan sesuai dengan petunjuk teknis yang telah disetujui.' },
+        { id: `u_2_${Date.now()}`, nomor: '2.', judul: 'Koordinasi Lintas Seksi', teks: 'Setiap seksi kepanitiaan wajib melakukan koordinasi intensif dengan Ketua Panitia dan Penanggung Jawab demi kelancaran kegiatan.' },
+        { id: `u_3_${Date.now()}`, nomor: '3.', judul: 'Laporan Pertanggungjawaban (LPJ)', teks: 'Panitia pelaksana berkewajiban menyusun dan menyerahkan laporan pertanggungjawaban (LPJ) administrasi dan keuangan paling lambat 14 (empat belas) hari kalender setelah kegiatan berakhir.' },
+      ];
+    }
+    const newIsiTeks = serializeUraianListToText(templateItems);
+    updateActiveLampiran({
+      uraianList: templateItems,
+      isiTeks: newIsiTeks,
+    });
+  };
+
   const openNewSurat = () => {
     setEditingId(null);
     const todayStr = new Date().toISOString().slice(0, 10);
@@ -534,6 +1263,12 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       { id: '2', label: 'Kedua', isi: 'Segala biaya yang timbul akibat pelaksanaan keputusan ini dibebankan pada anggaran yang sesuai.' },
       { id: '3', label: 'Ketiga', isi: 'Keputusan ini berlaku sejak tanggal ditetapkan, dengan ketentuan apabila terdapat kekeliruan di kemudian hari akan diadakan perbaikan sebagaimana mestinya.' },
     ]);
+    setSkAdaLampiran(true);
+    setSkLampiranKeterangan('1 (satu) Berkas');
+    setSkLampiranNomor('');
+    setSkLampiranTentang('');
+    setSkLampiranList(defaultSkLampiranList);
+    setSkActiveLampiranIndex(0);
 
     setSptTipePenerima('guru');
     setSptFormatPembuka('ttd_kepsek');
@@ -830,6 +1565,46 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
           { id: '3', label: 'Ketiga', isi: 'Keputusan ini berlaku sejak tanggal ditetapkan, dengan ketentuan apabila terdapat kekeliruan di kemudian hari akan diadakan perbaikan sebagaimana mestinya.' },
         ]);
       }
+
+      // Lampiran SK (Multi-Lampiran)
+      const hasLampiran = d.adaLampiran !== undefined
+        ? Boolean(d.adaLampiran)
+        : Boolean(
+            (Array.isArray(d.lampiranList) && d.lampiranList.length > 0) ||
+            (Array.isArray(d.lampiranTabel) && d.lampiranTabel.length > 0) ||
+            d.lampiranIsiTeks ||
+            d.lampiranSubjudul
+          );
+      setSkAdaLampiran(hasLampiran);
+      setSkLampiranKeterangan(d.lampiranKeterangan || (hasLampiran ? '1 (satu) Berkas' : '-'));
+      setSkLampiranNomor(d.lampiranNomor || '');
+      setSkLampiranTentang(d.lampiranTentang || d.tentang || '');
+
+      if (Array.isArray(d.lampiranList) && d.lampiranList.length > 0) {
+        setSkLampiranList(d.lampiranList);
+      } else {
+        // Normalisasi format lampiran tunggal sebelumnya
+        setSkLampiranList([
+          {
+            id: 'lampiran-1',
+            label: 'LAMPIRAN I',
+            subjudul: d.lampiranSubjudul || 'RINCIAN PEMBAGIAN TUGAS GURU DALAM PROSES BELAJAR MENGAJAR DAN TUGAS TAMBAHAN TAHUN AJARAN 2026/2027',
+            pengantar: d.lampiranPengantar || '',
+            mode: d.lampiranMode || (Array.isArray(d.lampiranTabel) && d.lampiranTabel.length > 0 ? 'tabel' : d.lampiranIsiTeks ? 'teks' : 'tabel'),
+            tabelHeader: d.lampiranTabelHeader || {
+              col1: 'No',
+              col2: 'Nama / NIP',
+              col3: 'Pangkat / Golongan / Jabatan',
+              col4: 'Tugas Mengajar / Kelas Yang Diampu',
+              col5: 'Tugas Tambahan & Beban Mengajar',
+            },
+            tabel: Array.isArray(d.lampiranTabel) ? d.lampiranTabel : defaultSkLampiranTabel,
+            isiTeks: d.lampiranIsiTeks || '',
+            catatan: d.lampiranCatatan || 'Keputusan pembagian tugas ini wajib dilaksanakan dengan penuh rasa tanggung jawab sejak tanggal ditetapkan.',
+          },
+        ]);
+      }
+      setSkActiveLampiranIndex(0);
     } else if (sk.jenisSurat === 'surat_tugas') {
       const isSiswaTarget = d.tipePenerima === 'siswa' || (Array.isArray(d.siswaDitugaskan) && d.siswaDitugaskan.length > 0 && (!d.pegawaiDitugaskan || d.pegawaiDitugaskan.length === 0));
       setSptTipePenerima(isSiswaTarget ? 'siswa' : 'guru');
@@ -1018,6 +1793,26 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
         memperhatikanList: skMemperhatikanList,
         diktumList: formattedDiktumList,
         memutuskan: formattedDiktumList[0]?.isi || '',
+        // ISIAN LAMPIRAN SK (MULTI-LAMPIRAN)
+        adaLampiran: skAdaLampiran,
+        lampiranKeterangan: skAdaLampiran ? skLampiranKeterangan : '',
+        lampiranNomor: skLampiranNomor,
+        lampiranTentang: skLampiranTentang || skTentang,
+        lampiranList: skAdaLampiran ? skLampiranList : [],
+        // Bidang warisan untuk kompatibilitas penuh:
+        lampiranSubjudul: skLampiranList[0]?.subjudul || '',
+        lampiranPengantar: skLampiranList[0]?.pengantar || '',
+        lampiranMode: skLampiranList[0]?.mode || 'tabel',
+        lampiranTabelHeader: skLampiranList[0]?.tabelHeader || {
+          col1: 'No',
+          col2: 'Nama / NIP',
+          col3: 'Pangkat / Golongan / Jabatan',
+          col4: 'Tugas Mengajar / Kelas Yang Diampu',
+          col5: 'Tugas Tambahan & Beban Mengajar',
+        },
+        lampiranTabel: skAdaLampiran ? (skLampiranList[0]?.tabel || []) : [],
+        lampiranIsiTeks: skAdaLampiran ? (skLampiranList[0]?.isiTeks || '') : '',
+        lampiranCatatan: skAdaLampiran ? (skLampiranList[0]?.catatan || '') : '',
       };
     } else if (jenisSurat === 'surat_tugas') {
       dataKhusus = {
@@ -1475,6 +2270,17 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             {sk.jenisSurat === 'surat_tugas' && (
                               <span className="text-[9px] font-medium text-emerald-800 bg-white/70 px-1 py-0.2 rounded border border-emerald-300">
                                 {sk.dataKhusus?.tipePenerima === 'siswa' || (Array.isArray(sk.dataKhusus?.siswaDitugaskan) && sk.dataKhusus?.siswaDitugaskan.length > 0) ? 'Siswa' : 'Guru'}
+                              </span>
+                            )}
+                            {sk.jenisSurat === 'surat_keputusan' && Boolean(
+                              (Array.isArray(sk.dataKhusus?.lampiranList) && sk.dataKhusus.lampiranList.length > 0) ||
+                              sk.dataKhusus?.adaLampiran ||
+                              (Array.isArray(sk.dataKhusus?.lampiranTabel) && sk.dataKhusus?.lampiranTabel.length > 0) ||
+                              sk.dataKhusus?.lampiranIsiTeks
+                            ) && (
+                              <span className="text-[9px] font-medium text-emerald-900 bg-emerald-200/80 px-1 py-0.2 rounded border border-emerald-300 flex items-center gap-0.5" title="Memiliki Lembar Lampiran SK">
+                                <Paperclip className="w-2.5 h-2.5" />
+                                <span>{Array.isArray(sk.dataKhusus?.lampiranList) && sk.dataKhusus.lampiranList.length > 1 ? `${sk.dataKhusus.lampiranList.length} Lampiran` : 'Terlampir'}</span>
                               </span>
                             )}
                           </span>
@@ -3094,6 +3900,1094 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                           </div>
                         ))}
                       </div>
+                    </div>
+
+                    {/* ISIAN LAMPIRAN SURAT KEPUTUSAN */}
+                    <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3.5 space-y-3 shadow-2xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200/80 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="p-1.5 rounded-lg bg-emerald-700 text-white shadow-2xs">
+                            <Paperclip className="w-4 h-4" />
+                          </span>
+                          <div>
+                            <h4 className="font-bold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5 text-emerald-950">
+                              <span>Isian Lampiran Surat Keputusan (SK)</span>
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900">
+                                Permendagri / Naskah Dinas
+                              </span>
+                            </h4>
+                            <p className="text-[11px] text-slate-500 mt-0.5">
+                              Rincian penetapan (tabel pembagian tugas guru / susunan panitia / narasi) pada lembar lampiran terpisah
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Toggle Sertakan Lampiran */}
+                        <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-lg border border-emerald-300 shadow-2xs hover:bg-emerald-50/60 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={skAdaLampiran}
+                            onChange={(e) => setSkAdaLampiran(e.target.checked)}
+                            className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer"
+                          />
+                          <span className="text-xs font-bold text-slate-800">
+                            {skAdaLampiran ? 'Sertakan Lembar Lampiran' : 'Tanpa Lampiran'}
+                          </span>
+                        </label>
+                      </div>
+
+                      {skAdaLampiran ? (
+                        <div className="space-y-3.5">
+                          {/* 1. Pengaturan Global Lampiran di Naskah Utama */}
+                          <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-2xs space-y-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                <Layers className="w-3.5 h-3.5 text-emerald-700" />
+                                <span>Keterangan Lampiran di Naskah Penetapan SK:</span>
+                              </label>
+                              <div className="flex flex-wrap items-center gap-1">
+                                <span className="text-[10px] text-slate-400 font-medium">Pilihan Cepat:</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setSkLampiranKeterangan('1 (satu) Berkas')}
+                                  className="text-[10px] px-2 py-0.5 rounded bg-slate-100 hover:bg-emerald-100 text-slate-700 font-semibold cursor-pointer border border-slate-200"
+                                >
+                                  1 (satu) Berkas
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setSkLampiranKeterangan(`${skLampiranList.length} (${angkaKeKataIndonesia(skLampiranList.length)}) Berkas`)}
+                                  className="text-[10px] px-2 py-0.5 rounded bg-slate-100 hover:bg-emerald-100 text-slate-700 font-semibold cursor-pointer border border-slate-200"
+                                >
+                                  {skLampiranList.length} Berkas
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setSkLampiranKeterangan('Terlampir')}
+                                  className="text-[10px] px-2 py-0.5 rounded bg-slate-100 hover:bg-emerald-100 text-slate-700 font-semibold cursor-pointer border border-slate-200"
+                                >
+                                  Terlampir
+                                </button>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                              <div>
+                                <input
+                                  type="text"
+                                  value={skLampiranKeterangan}
+                                  onChange={(e) => setSkLampiranKeterangan(e.target.value)}
+                                  placeholder="1 (satu) Berkas / Terlampir"
+                                  className="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                                />
+                                <span className="text-[10px] text-slate-400">Tercantum pada kepala naskah SK</span>
+                              </div>
+                              <div className="sm:col-span-2">
+                                <input
+                                  type="text"
+                                  value={skLampiranTentang}
+                                  onChange={(e) => setSkLampiranTentang(e.target.value)}
+                                  placeholder={skTentang || 'TENTANG PEMBAGIAN TUGAS GURU... (Opsional)'}
+                                  className="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none uppercase"
+                                />
+                                <span className="text-[10px] text-slate-400">Perihal/Tentang pada header lampiran (default mengikuti perihal SK)</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 2. TAB NAVIGASI BANYAK LAMPIRAN (MULTI-LAMPIRAN) */}
+                          <div className="bg-white p-3 rounded-xl border border-emerald-200 shadow-2xs space-y-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                                  <span>Daftar Lembar Lampiran SK</span>
+                                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-bold border border-emerald-300">
+                                    Total: {skLampiranList.length} Lembar
+                                  </span>
+                                </span>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={handleTambahLampiran}
+                                className="px-3 py-1.5 text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                                title="Tambah Lembar Lampiran Baru (Lampiran II, III, dst.)"
+                              >
+                                <Plus className="w-4 h-4" />
+                                <span>Tambah Lampiran Baru</span>
+                              </button>
+                            </div>
+
+                            {/* Daftar Tab Lampiran */}
+                            <div className="flex flex-wrap items-center gap-2">
+                              {skLampiranList.map((lampItem, lIdx) => {
+                                const isActive = lIdx === skActiveLampiranIndex;
+                                const barisCount = Array.isArray(lampItem.tabel) ? lampItem.tabel.length : 0;
+                                return (
+                                  <div
+                                    key={lampItem.id || lIdx}
+                                    className={`flex items-center rounded-lg border transition-all ${
+                                      isActive
+                                        ? 'bg-emerald-700 text-white border-emerald-800 shadow-sm ring-2 ring-emerald-500/20'
+                                        : 'bg-slate-50 hover:bg-emerald-50/60 text-slate-700 border-slate-300'
+                                    }`}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => setSkActiveLampiranIndex(lIdx)}
+                                      className="px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 text-left cursor-pointer"
+                                    >
+                                      <span
+                                        className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                          isActive
+                                            ? 'bg-white text-emerald-800'
+                                            : 'bg-emerald-200 text-emerald-900'
+                                        }`}
+                                      >
+                                        {toRomanNumerals(lIdx + 1)}
+                                      </span>
+                                      <span>{lampItem.label || `Lampiran ${toRomanNumerals(lIdx + 1)}`}</span>
+                                      {lampItem.mode !== 'teks' && (
+                                        <span
+                                          className={`text-[10px] px-1.5 py-0.2 rounded-full font-medium ${
+                                            isActive ? 'bg-emerald-800 text-emerald-100' : 'bg-slate-200 text-slate-700'
+                                          }`}
+                                        >
+                                          {barisCount} baris
+                                        </span>
+                                      )}
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Toolbar Kontrol Lampiran yang Aktif */}
+                            <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-800">
+                                  Sedang Mengedit: <span className="text-emerald-800">{currentActiveLampiran.label || `Lampiran ${toRomanNumerals(skActiveLampiranIndex + 1)}`}</span>
+                                </span>
+                                <span className="text-[10px] text-slate-500 font-medium">
+                                  (Halaman Lampiran #{skActiveLampiranIndex + 1})
+                                </span>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                {/* Geser Kiri / Kanan */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleGeserLampiran(skActiveLampiranIndex, 'prev')}
+                                  disabled={skActiveLampiranIndex === 0}
+                                  className={`p-1 rounded border text-xs flex items-center gap-0.5 ${
+                                    skActiveLampiranIndex === 0
+                                      ? 'text-slate-300 border-slate-200 cursor-not-allowed'
+                                      : 'text-slate-600 hover:text-slate-900 border-slate-300 bg-white hover:bg-slate-100 cursor-pointer'
+                                  }`}
+                                  title="Geser Urutan Lembar Ke Depan"
+                                >
+                                  <ChevronLeft className="w-3.5 h-3.5" />
+                                  <span className="text-[10px]">Geser Kiri</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleGeserLampiran(skActiveLampiranIndex, 'next')}
+                                  disabled={skActiveLampiranIndex === skLampiranList.length - 1}
+                                  className={`p-1 rounded border text-xs flex items-center gap-0.5 ${
+                                    skActiveLampiranIndex === skLampiranList.length - 1
+                                      ? 'text-slate-300 border-slate-200 cursor-not-allowed'
+                                      : 'text-slate-600 hover:text-slate-900 border-slate-300 bg-white hover:bg-slate-100 cursor-pointer'
+                                  }`}
+                                  title="Geser Urutan Lembar Ke Belakang"
+                                >
+                                  <span className="text-[10px]">Geser Kanan</span>
+                                  <ChevronRight className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* Duplikat */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleDuplikatLampiran(skActiveLampiranIndex)}
+                                  className="px-2 py-1 rounded border border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-800 text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                                  title="Salin seluruh isi lembar lampiran ini sebagai lampiran baru"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span>Duplikat</span>
+                                </button>
+
+                                {/* Hapus */}
+                                {skLampiranList.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleHapusLampiran(skActiveLampiranIndex)}
+                                    className="px-2 py-1 rounded border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                                    title="Hapus lembar lampiran ini"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span>Hapus Lembar Ini</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 3. ISIAN RINCIAN LEMBAR LAMPIRAN AKTIF */}
+                          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                              {/* Label Lampiran (misal: LAMPIRAN I) */}
+                              <div className="sm:col-span-4">
+                                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                                  Label / Nomor Lembar Lampiran *
+                                </label>
+                                <input
+                                  type="text"
+                                  value={currentActiveLampiran.label || `LAMPIRAN ${toRomanNumerals(skActiveLampiranIndex + 1)}`}
+                                  onChange={(e) => updateActiveLampiran({ label: e.target.value })}
+                                  placeholder="LAMPIRAN I"
+                                  className="w-full text-xs font-bold border border-slate-300 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none uppercase"
+                                />
+                                <span className="text-[10px] text-slate-400">Tercetak pada header kanan atas lampiran</span>
+                              </div>
+
+                              {/* Subjudul Rincian */}
+                              <div className="sm:col-span-8">
+                                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                                  Subjudul / Judul Rincian Lampiran *
+                                </label>
+                                <input
+                                  type="text"
+                                  value={currentActiveLampiran.subjudul || ''}
+                                  onChange={(e) => updateActiveLampiran({ subjudul: e.target.value })}
+                                  placeholder="RINCIAN PEMBAGIAN TUGAS GURU TAHUN AJARAN 2026/2027"
+                                  className="w-full text-xs font-bold border border-slate-300 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none uppercase"
+                                />
+                                <span className="text-[10px] text-slate-400">Judul rincian pokok di tengah naskah lembar lampiran</span>
+                              </div>
+                            </div>
+
+                            {/* Pilihan Format Mode Lampiran */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                <Table className="w-3.5 h-3.5 text-emerald-700" />
+                                <span>Format Isi Lembar Ini:</span>
+                              </label>
+                              <div className="inline-flex rounded-lg border border-emerald-300 bg-white p-0.5 text-xs font-semibold shadow-2xs">
+                                <button
+                                  type="button"
+                                  onClick={() => updateActiveLampiran({ mode: 'tabel' })}
+                                  className={`px-3 py-1 rounded-md transition-all ${
+                                    (currentActiveLampiran.mode || 'tabel') === 'tabel'
+                                      ? 'bg-emerald-700 text-white shadow-2xs'
+                                      : 'text-slate-600 hover:text-emerald-800'
+                                  }`}
+                                >
+                                  Tabel Rincian Data
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => updateActiveLampiran({ mode: 'teks' })}
+                                  className={`px-3 py-1 rounded-md transition-all ${
+                                    currentActiveLampiran.mode === 'teks'
+                                      ? 'bg-emerald-700 text-white shadow-2xs'
+                                      : 'text-slate-600 hover:text-emerald-800'
+                                  }`}
+                                >
+                                  Uraian Teks Bebas
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => updateActiveLampiran({ mode: 'kombinasi' })}
+                                  className={`px-3 py-1 rounded-md transition-all ${
+                                    currentActiveLampiran.mode === 'kombinasi'
+                                      ? 'bg-emerald-700 text-white shadow-2xs'
+                                      : 'text-slate-600 hover:text-emerald-800'
+                                  }`}
+                                >
+                                  Kombinasi (Teks & Tabel)
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Pengantar Lampiran (Opsional) */}
+                            {(currentActiveLampiran.mode === 'kombinasi' || currentActiveLampiran.pengantar) && (
+                              <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                                  Teks Pengantar Lampiran (Opsional)
+                                </label>
+                                <textarea
+                                  rows={2}
+                                  value={currentActiveLampiran.pengantar || ''}
+                                  onChange={(e) => updateActiveLampiran({ pengantar: e.target.value })}
+                                  placeholder="Berikut rincian pembagian tugas mengajar bagi dewan guru dan tenaga kependidikan tahun ajaran 2026/2027:"
+                                  className="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white"
+                                />
+                              </div>
+                            )}
+
+                            {/* TABEL RINCIAN LAMPIRAN */}
+                            {((currentActiveLampiran.mode || 'tabel') === 'tabel' || currentActiveLampiran.mode === 'kombinasi') && (
+                              <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-200 space-y-3">
+                                {/* Toolbar Tabel & Konten Dinamis */}
+                                {(() => {
+                                    const activeColumns = getActiveLampiranColumns(currentActiveLampiran);
+                                    return (
+                                      <>
+                                        <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="text-xs font-bold text-slate-800">
+                                              Tabel Rincian ({currentActiveLampiran.label || `Lampiran ${skActiveLampiranIndex + 1}`})
+                                            </span>
+                                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold border border-emerald-200">
+                                              {currentActiveLampiran.tabel?.length || 0} baris
+                                            </span>
+                                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-semibold border border-indigo-200">
+                                              {activeColumns.length} kolom
+                                            </span>
+                                          </div>
+
+                                          <div className="flex flex-wrap items-center gap-1.5">
+                                            {/* Tambah Baris */}
+                                            <button
+                                              type="button"
+                                              onClick={handleTambahBarisSkLampiran}
+                                              className="text-xs text-emerald-800 bg-emerald-50 hover:bg-emerald-100 font-bold flex items-center gap-1 px-2.5 py-1 rounded border border-emerald-300 transition-colors shadow-2xs cursor-pointer"
+                                              title="Tambah baris baru ke tabel lampiran ini"
+                                            >
+                                              <Plus className="w-3.5 h-3.5" />
+                                              <span>Tambah Baris</span>
+                                            </button>
+
+                                            {/* Tambah Kolom Baru */}
+                                            <button
+                                              type="button"
+                                              onClick={handleTambahKolomSkLampiran}
+                                              className="text-xs text-indigo-800 bg-indigo-50 hover:bg-indigo-100 font-bold flex items-center gap-1 px-2.5 py-1 rounded border border-indigo-300 transition-colors shadow-2xs cursor-pointer"
+                                              title="Tambah kolom baru ke tabel lampiran ini"
+                                            >
+                                              <Columns className="w-3.5 h-3.5" />
+                                              <span>+ Tambah Kolom</span>
+                                            </button>
+
+                                            {/* Toggle Pengaturan Kolom */}
+                                            <button
+                                              type="button"
+                                              onClick={() => setShowSkColumnSettings(!showSkColumnSettings)}
+                                              className={`text-xs font-bold flex items-center gap-1 px-2.5 py-1 rounded border transition-colors shadow-2xs cursor-pointer ${
+                                                showSkColumnSettings
+                                                  ? 'bg-slate-800 text-white border-slate-900 ring-2 ring-slate-400/30'
+                                                  : 'text-slate-700 bg-white hover:bg-slate-100 border-slate-300'
+                                              }`}
+                                              title="Buka pengaturan rincian & preset kolom tabel"
+                                            >
+                                              <Settings2 className="w-3.5 h-3.5" />
+                                              <span>Pengaturan Kolom ({activeColumns.length})</span>
+                                            </button>
+
+                                            {/* Dropdown Pilih Guru dari Database */}
+                                            <div className="relative">
+                                              <select
+                                                value=""
+                                                onChange={(e) => {
+                                                  if (e.target.value) {
+                                                    handlePilihGuruKeSkLampiran(e.target.value);
+                                                  }
+                                                }}
+                                                className="text-xs text-slate-700 bg-white border border-slate-300 rounded px-2 py-1 font-semibold focus:ring-1 focus:ring-emerald-500 focus:outline-none cursor-pointer"
+                                              >
+                                                <option value="">+ Pilih Guru (Database)...</option>
+                                                {guruList.map((g) => (
+                                                  <option key={g.id} value={g.id}>
+                                                    {g.nama} ({g.jabatan})
+                                                  </option>
+                                                ))}
+                                              </select>
+                                            </div>
+
+                                            {/* Template Otomatis */}
+                                            <button
+                                              type="button"
+                                              onClick={handleMuatSemuaGuruKeSkLampiran}
+                                              className="text-[11px] text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded border border-blue-200 font-semibold transition-colors cursor-pointer"
+                                              title="Muat seluruh data dewan guru ke tabel lampiran ini"
+                                            >
+                                              Muat Semua Guru ({guruList.length})
+                                            </button>
+
+                                            <button
+                                              type="button"
+                                              onClick={handleTemplatePanitiaSkLampiran}
+                                              className="text-[11px] text-amber-800 hover:text-amber-950 bg-amber-50 hover:bg-amber-100 px-2 py-1 rounded border border-amber-200 font-semibold transition-colors cursor-pointer"
+                                              title="Muat susunan panitia kegiatan standar (4 Kolom)"
+                                            >
+                                              Template Panitia
+                                            </button>
+                                          </div>
+                                        </div>
+
+                                        {/* PANEL PENGATURAN KOLOM TABEL (BISA DITAMBAH, DIUBAH, DIHAPUS, DIGESER) */}
+                                        {showSkColumnSettings && (
+                                          <div className="bg-slate-100/90 p-3 rounded-xl border border-indigo-200 space-y-3 animate-in fade-in duration-150">
+                                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                              <div>
+                                                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                                  <Columns className="w-4 h-4 text-indigo-700" />
+                                                  Pengaturan Kolom Tabel ({activeColumns.length} Kolom Aktif)
+                                                </span>
+                                                <p className="text-[10px] text-slate-500 mt-0.5">
+                                                  Anda dapat menambah, menghapus, mengubah judul kolom, mengatur perataan (align), atau memilih template preset di bawah ini.
+                                                </p>
+                                              </div>
+                                              <button
+                                                type="button"
+                                                onClick={handleTambahKolomSkLampiran}
+                                                className="text-xs font-bold bg-indigo-700 hover:bg-indigo-800 text-white px-3 py-1 rounded-md shadow-2xs flex items-center gap-1 cursor-pointer transition-colors"
+                                              >
+                                                <Plus className="w-3.5 h-3.5" />
+                                                <span>Tambah Kolom Baru</span>
+                                              </button>
+                                            </div>
+
+                                            {/* Template Preset Kolom Cepat */}
+                                            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide mr-1">
+                                                Template Preset:
+                                              </span>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleTerapkanPresetKolomSkLampiran('standar_5')}
+                                                className="text-[10px] font-semibold bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-800 border border-slate-300 rounded px-2 py-0.5 transition-colors cursor-pointer"
+                                                title="No, Nama/NIP, Pangkat/Golongan/Jabatan, Uraian Tugas, Keterangan"
+                                              >
+                                                5 Kolom SK Tugas (Standar)
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleTerapkanPresetKolomSkLampiran('detail_6')}
+                                                className="text-[10px] font-semibold bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-800 border border-slate-300 rounded px-2 py-0.5 transition-colors cursor-pointer"
+                                                title="No, Nama PTK, NIP/Gol, Jabatan Pokok, Mapel/Rombel, Beban JP"
+                                              >
+                                                6 Kolom Detail (dengan JP)
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleTerapkanPresetKolomSkLampiran('panitia_4')}
+                                                className="text-[10px] font-semibold bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-800 border border-slate-300 rounded px-2 py-0.5 transition-colors cursor-pointer"
+                                                title="No, Nama/NIP, Jabatan Panitia, Uraian Tugas"
+                                              >
+                                                4 Kolom Panitia
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleTerapkanPresetKolomSkLampiran('rombel_4')}
+                                                className="text-[10px] font-semibold bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-800 border border-slate-300 rounded px-2 py-0.5 transition-colors cursor-pointer"
+                                                title="No, Kelas/Rombel, Nama Wali Kelas, NIP/Golongan"
+                                              >
+                                                4 Kolom Rombel & Wali Kelas
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleTerapkanPresetKolomSkLampiran('sederhana_3')}
+                                                className="text-[10px] font-semibold bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-800 border border-slate-300 rounded px-2 py-0.5 transition-colors cursor-pointer"
+                                                title="No, Uraian, Keterangan"
+                                              >
+                                                3 Kolom Sederhana
+                                              </button>
+                                            </div>
+
+                                            {/* Daftar Kartu Kolom */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 pt-1">
+                                              {activeColumns.map((col, cIdx) => (
+                                                <div
+                                                  key={col.id || cIdx}
+                                                  className="p-2.5 bg-white rounded-lg border border-slate-300 shadow-2xs space-y-1.5"
+                                                >
+                                                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+                                                    <span className="flex items-center gap-1">
+                                                      <span className="w-4 h-4 rounded-full bg-indigo-100 text-indigo-800 flex items-center justify-center text-[10px] font-bold">
+                                                        {cIdx + 1}
+                                                      </span>
+                                                      <span>Kolom #{cIdx + 1}</span>
+                                                    </span>
+                                                    <div className="flex items-center gap-0.5">
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => handleGeserKolomSkLampiran(cIdx, 'left')}
+                                                        disabled={cIdx === 0}
+                                                        className={`p-0.5 rounded ${
+                                                          cIdx === 0
+                                                            ? 'text-slate-200 cursor-not-allowed'
+                                                            : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100 cursor-pointer'
+                                                        }`}
+                                                        title="Geser ke Kiri"
+                                                      >
+                                                        <ChevronLeft className="w-3.5 h-3.5" />
+                                                      </button>
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => handleGeserKolomSkLampiran(cIdx, 'right')}
+                                                        disabled={cIdx === activeColumns.length - 1}
+                                                        className={`p-0.5 rounded ${
+                                                          cIdx === activeColumns.length - 1
+                                                            ? 'text-slate-200 cursor-not-allowed'
+                                                            : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100 cursor-pointer'
+                                                        }`}
+                                                        title="Geser ke Kanan"
+                                                      >
+                                                        <ChevronRight className="w-3.5 h-3.5" />
+                                                      </button>
+                                                      {activeColumns.length > 1 && (
+                                                        <button
+                                                          type="button"
+                                                          onClick={() => handleHapusKolomSkLampiran(col.id)}
+                                                          className="p-0.5 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 cursor-pointer transition-colors"
+                                                          title="Hapus Kolom Ini"
+                                                        >
+                                                          <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                      )}
+                                                    </div>
+                                                  </div>
+
+                                                  <div>
+                                                    <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
+                                                      Judul Kolom:
+                                                    </label>
+                                                    <input
+                                                      type="text"
+                                                      value={col.label}
+                                                      onChange={(e) => handleUpdateKolomSkLampiran(col.id, { label: e.target.value })}
+                                                      placeholder={`Judul Kolom ${cIdx + 1}`}
+                                                      className="w-full text-xs font-bold border border-slate-300 rounded px-2 py-1 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                                                    />
+                                                  </div>
+
+                                                  <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-100">
+                                                    <span className="text-[10px] text-slate-500 font-medium">Perataan:</span>
+                                                    <div className="flex items-center gap-0.5 bg-slate-100 p-0.5 rounded border border-slate-200">
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => handleUpdateKolomSkLampiran(col.id, { align: 'left' })}
+                                                        className={`p-1 rounded ${
+                                                          (col.align || 'left') === 'left' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-400 hover:text-slate-700'
+                                                        }`}
+                                                        title="Rata Kiri"
+                                                      >
+                                                        <AlignLeft className="w-3 h-3" />
+                                                      </button>
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => handleUpdateKolomSkLampiran(col.id, { align: 'center' })}
+                                                        className={`p-1 rounded ${
+                                                          col.align === 'center' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-400 hover:text-slate-700'
+                                                        }`}
+                                                        title="Rata Tengah"
+                                                      >
+                                                        <AlignCenter className="w-3 h-3" />
+                                                      </button>
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => handleUpdateKolomSkLampiran(col.id, { align: 'right' })}
+                                                        className={`p-1 rounded ${
+                                                          col.align === 'right' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-400 hover:text-slate-700'
+                                                        }`}
+                                                        title="Rata Kanan"
+                                                      >
+                                                        <AlignRight className="w-3 h-3" />
+                                                      </button>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* TABEL RESPONSIVE MULTI-KOLOM (OTOMATIS MENYESUAIKAN KOLOM & WRAP TEXT) */}
+                                        <div className="overflow-x-auto border border-slate-300 rounded-lg bg-white shadow-2xs">
+                                          <table className="w-full border-collapse text-xs min-w-[620px]">
+                                            {/* Header Tabel Dinamis */}
+                                            <thead>
+                                              <tr className="bg-slate-100 border-b border-slate-300 text-slate-700 font-bold">
+                                                <th className="p-2 border-r border-slate-200 text-center w-14 bg-slate-200/60 text-[11px]">
+                                                  No/Aksi
+                                                </th>
+                                                {activeColumns.map((col, cIdx) => (
+                                                  <th
+                                                    key={col.id || cIdx}
+                                                    className="p-1.5 border-r border-slate-200 text-left align-top min-w-[130px]"
+                                                  >
+                                                    <div className="space-y-1">
+                                                      <div className="flex items-center justify-between gap-1">
+                                                        <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">
+                                                          Kolom {cIdx + 1}
+                                                        </span>
+                                                        <div className="flex items-center gap-0.5">
+                                                          {cIdx > 0 && (
+                                                            <button
+                                                              type="button"
+                                                              onClick={() => handleGeserKolomSkLampiran(cIdx, 'left')}
+                                                              className="p-0.5 text-slate-400 hover:text-slate-800 rounded hover:bg-slate-200"
+                                                              title="Geser Kolom ke Kiri"
+                                                            >
+                                                              <ChevronLeft className="w-3 h-3" />
+                                                            </button>
+                                                          )}
+                                                          {cIdx < activeColumns.length - 1 && (
+                                                            <button
+                                                              type="button"
+                                                              onClick={() => handleGeserKolomSkLampiran(cIdx, 'right')}
+                                                              className="p-0.5 text-slate-400 hover:text-slate-800 rounded hover:bg-slate-200"
+                                                              title="Geser Kolom ke Kanan"
+                                                            >
+                                                              <ChevronRight className="w-3 h-3" />
+                                                            </button>
+                                                          )}
+                                                          {activeColumns.length > 1 && (
+                                                            <button
+                                                              type="button"
+                                                              onClick={() => handleHapusKolomSkLampiran(col.id)}
+                                                              className="p-0.5 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50"
+                                                              title="Hapus Kolom Ini"
+                                                            >
+                                                              <Trash2 className="w-3 h-3" />
+                                                            </button>
+                                                          )}
+                                                        </div>
+                                                      </div>
+                                                      <input
+                                                        type="text"
+                                                        value={col.label}
+                                                        onChange={(e) => handleUpdateKolomSkLampiran(col.id, { label: e.target.value })}
+                                                        placeholder={`Judul Kolom ${cIdx + 1}`}
+                                                        className="w-full text-xs font-bold border border-slate-300 rounded px-1.5 py-1 bg-white focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                                                      />
+                                                    </div>
+                                                  </th>
+                                                ))}
+                                              </tr>
+                                            </thead>
+
+                                            {/* Body Tabel Dinamis */}
+                                            <tbody className="divide-y divide-slate-200">
+                                              {(currentActiveLampiran.tabel || []).map((row, rIdx) => (
+                                                <tr key={row.id || rIdx} className="hover:bg-slate-50/80 transition-colors">
+                                                  {/* Kontrol Baris & Nomor */}
+                                                  <td className="p-1.5 border-r border-slate-200 text-center align-middle bg-slate-50/50 w-14">
+                                                    <div className="flex flex-col items-center justify-center gap-0.5">
+                                                      <span className="text-[10px] font-bold text-slate-500">#{rIdx + 1}</span>
+                                                      <div className="flex items-center gap-0.5">
+                                                        {rIdx > 0 && (
+                                                          <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                              const currentRows = [...(currentActiveLampiran.tabel || [])];
+                                                              const temp = currentRows[rIdx - 1];
+                                                              currentRows[rIdx - 1] = currentRows[rIdx];
+                                                              currentRows[rIdx] = temp;
+                                                              updateActiveLampiran({ tabel: currentRows });
+                                                            }}
+                                                            className="p-0.5 text-slate-400 hover:text-slate-700"
+                                                            title="Geser Baris Ke Atas"
+                                                          >
+                                                            <ChevronUp className="w-3 h-3" />
+                                                          </button>
+                                                        )}
+                                                        {rIdx < (currentActiveLampiran.tabel?.length || 0) - 1 && (
+                                                          <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                              const currentRows = [...(currentActiveLampiran.tabel || [])];
+                                                              const temp = currentRows[rIdx + 1];
+                                                              currentRows[rIdx + 1] = currentRows[rIdx];
+                                                              currentRows[rIdx] = temp;
+                                                              updateActiveLampiran({ tabel: currentRows });
+                                                            }}
+                                                            className="p-0.5 text-slate-400 hover:text-slate-700"
+                                                            title="Geser Baris Ke Bawah"
+                                                          >
+                                                            <ChevronDown className="w-3 h-3" />
+                                                          </button>
+                                                        )}
+                                                      </div>
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                          const currentRows = (currentActiveLampiran.tabel || []).filter((_, i) => i !== rIdx);
+                                                          updateActiveLampiran({ tabel: currentRows });
+                                                        }}
+                                                        className="p-0.5 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                                        title="Hapus Baris Ini"
+                                                      >
+                                                        <Trash2 className="w-3 h-3" />
+                                                      </button>
+                                                    </div>
+                                                  </td>
+
+                                                  {/* Sel Dinamis Untuk Setiap Kolom (Wrap-Text Otomatis) */}
+                                                  {activeColumns.map((col, cIdx) => {
+                                                    const cellValue = getLampiranCellValue(row, col, rIdx);
+                                                    const isNoCol = cIdx === 0 && (col.id === 'c_no' || col.key === 'no' || /^(no|nomor)\.?$/i.test(col.label.trim()));
+                                                    return (
+                                                      <td key={col.id || cIdx} className="p-1.5 border-r border-slate-200 align-top">
+                                                        <textarea
+                                                          rows={isNoCol ? 1 : 2}
+                                                          value={cellValue}
+                                                          onChange={(e) => handleUbahSelSkLampiran(rIdx, col, e.target.value)}
+                                                          placeholder={col.label}
+                                                          className={`w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white focus:ring-1 focus:ring-emerald-500 focus:outline-none resize-y ${
+                                                            isNoCol
+                                                              ? 'text-center font-bold'
+                                                              : col.align === 'center'
+                                                              ? 'text-center'
+                                                              : col.align === 'right'
+                                                              ? 'text-right'
+                                                              : 'text-left'
+                                                          }`}
+                                                          style={{ minWidth: isNoCol ? '45px' : '110px' }}
+                                                        />
+                                                      </td>
+                                                    );
+                                                  })}
+                                                </tr>
+                                              ))}
+
+                                              {(!currentActiveLampiran.tabel || currentActiveLampiran.tabel.length === 0) && (
+                                                <tr>
+                                                  <td
+                                                    colSpan={activeColumns.length + 1}
+                                                    className="p-6 text-center text-slate-500 text-xs italic bg-slate-50"
+                                                  >
+                                                    Belum ada baris dalam tabel lampiran ini. Klik &quot;+ Tambah Baris&quot; atau &quot;Muat Semua Guru&quot; di atas untuk mengisi data.
+                                                  </td>
+                                                </tr>
+                                              )}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </>
+                                    );
+                                  })()}
+                              </div>
+                            )}
+
+                            {/* URAIAN TEKS BEBAS & BUTIR RINCIAN */}
+                            {(currentActiveLampiran.mode === 'teks' || currentActiveLampiran.mode === 'kombinasi') && (() => {
+                              const activeUraianList = getActiveLampiranUraianList(currentActiveLampiran);
+                              return (
+                                <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200 space-y-3">
+                                  {/* Header & Toolbar Uraian Teks */}
+                                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-200">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                                        <FileText className="w-4 h-4" />
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-xs font-bold text-slate-800">
+                                            Uraian Teks / Narasi ({currentActiveLampiran.label || `Lampiran ${skActiveLampiranIndex + 1}`})
+                                          </span>
+                                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold border border-emerald-200">
+                                            {activeUraianList.length} Butir Teks
+                                          </span>
+                                        </div>
+                                        <p className="text-[10px] text-slate-500">
+                                          Tuliskan uraian butir keputusan, petunjuk teknis, wewenang, hak & kewajiban dalam format butir terstruktur.
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {/* Action Buttons: Tambah Uraian Teks */}
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      {/* Tombol Utama Tambah Uraian Teks */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleTambahUraianTeks('angka')}
+                                        className="text-xs text-white bg-emerald-700 hover:bg-emerald-800 font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors shadow-2xs cursor-pointer"
+                                        title="Tambah butir uraian teks bernomor baru (1., 2., dst.)"
+                                      >
+                                        <Plus className="w-4 h-4" />
+                                        <span>+ Tambah Uraian Teks</span>
+                                      </button>
+
+                                      {/* Pilihan Gaya Penomoran */}
+                                      <div className="flex items-center bg-white border border-slate-300 rounded-lg p-0.5 shadow-2xs">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleTambahUraianTeks('huruf')}
+                                          className="text-[11px] text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 px-2 py-1 rounded font-semibold transition-colors cursor-pointer"
+                                          title="Tambah butir huruf (a., b., c., dst.)"
+                                        >
+                                          + Butir a, b
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleTambahUraianTeks('strip')}
+                                          className="text-[11px] text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 px-2 py-1 rounded font-semibold transition-colors cursor-pointer"
+                                          title="Tambah butir strip (-)"
+                                        >
+                                          + Strip (-)
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleTambahUraianTeks('paragraf')}
+                                          className="text-[11px] text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 px-2 py-1 rounded font-semibold transition-colors cursor-pointer"
+                                          title="Tambah paragraf narasi tanpa nomor"
+                                        >
+                                          + Paragraf
+                                        </button>
+                                      </div>
+
+                                      {/* Toggle Mode: Format Butir vs Teks Utuh */}
+                                      <div className="flex items-center bg-slate-200 p-0.5 rounded-lg text-xs font-semibold">
+                                        <button
+                                          type="button"
+                                          onClick={() => setSkUraianViewMode('daftar')}
+                                          className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer flex items-center gap-1 ${
+                                            skUraianViewMode === 'daftar'
+                                              ? 'bg-white text-emerald-800 shadow-2xs font-bold'
+                                              : 'text-slate-600 hover:text-slate-900'
+                                          }`}
+                                          title="Tampilkan dalam bentuk kartu butir rincian terpisah"
+                                        >
+                                          <ListOrdered className="w-3.5 h-3.5" />
+                                          <span>Mode Butir</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setSkUraianViewMode('manual')}
+                                          className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer flex items-center gap-1 ${
+                                            skUraianViewMode === 'manual'
+                                              ? 'bg-white text-emerald-800 shadow-2xs font-bold'
+                                              : 'text-slate-600 hover:text-slate-900'
+                                          }`}
+                                          title="Tampilkan dalam editor teks multiline utuh"
+                                        >
+                                          <FileText className="w-3.5 h-3.5" />
+                                          <span>Editor Bebas</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Baris Template Instan */}
+                                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] bg-white p-2 rounded-lg border border-slate-200">
+                                    <span className="font-bold text-slate-600 flex items-center gap-1 mr-1">
+                                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                                      Template Cepat:
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleTerapkanTemplateUraian('tugas')}
+                                      className="px-2 py-0.5 rounded border border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100 font-semibold cursor-pointer transition-colors"
+                                    >
+                                      Rincian Tugas Guru & Administrasi
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleTerapkanTemplateUraian('ketentuan')}
+                                      className="px-2 py-0.5 rounded border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-semibold cursor-pointer transition-colors"
+                                    >
+                                      Ketentuan Umum SK & Klausul
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleTerapkanTemplateUraian('panitia')}
+                                      className="px-2 py-0.5 rounded border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 font-semibold cursor-pointer transition-colors"
+                                    >
+                                      Uraian Tanggung Jawab Panitia
+                                    </button>
+                                  </div>
+
+                                  {/* TAMPILAN MODE 1: BUTIR-BUTIR TERSTRUKTUR (KARTU PER POIN/PARAGRAF) */}
+                                  {skUraianViewMode === 'daftar' && (
+                                    <div className="space-y-2.5">
+                                      {activeUraianList.length > 0 ? (
+                                        <div className="space-y-2 max-h-[440px] overflow-y-auto pr-1">
+                                          {activeUraianList.map((item, idx) => (
+                                            <div
+                                              key={item.id || idx}
+                                              className="p-2.5 bg-white rounded-xl border border-slate-300 hover:border-emerald-400 transition-colors shadow-2xs space-y-2"
+                                            >
+                                              {/* Baris Kontrol Atas Butir */}
+                                              <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs">
+                                                <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
+                                                  <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-[10px] shrink-0">
+                                                    {idx + 1}
+                                                  </span>
+                                                  {/* Nomor / Prefix Butir */}
+                                                  <input
+                                                    type="text"
+                                                    value={item.nomor || ''}
+                                                    onChange={(e) => handleUpdateUraianTeks(item.id, { nomor: e.target.value })}
+                                                    placeholder="No (1.)"
+                                                    className="w-14 text-center font-bold text-xs border border-slate-300 rounded px-1.5 py-1 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                                                    title="Label penomoran (misal: 1., 2., a., -, atau kosongkan jika berupa narasi)"
+                                                  />
+                                                  {/* Sub-judul Butir (Opsional) */}
+                                                  <input
+                                                    type="text"
+                                                    value={item.judul || ''}
+                                                    onChange={(e) => handleUpdateUraianTeks(item.id, { judul: e.target.value })}
+                                                    placeholder="Sub-topik / Pokok Bahasan (opsional, contoh: Kewajiban Pokok)..."
+                                                    className="flex-1 text-xs font-semibold border border-slate-300 rounded px-2.5 py-1 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                                                    title="Sub-judul butir yang akan dicetak tebal sebelum teks (opsional)"
+                                                  />
+                                                </div>
+
+                                                {/* Tombol Geser, Duplikat & Hapus */}
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleGeserUraianTeks(idx, 'up')}
+                                                    disabled={idx === 0}
+                                                    className={`p-1 rounded ${
+                                                      idx === 0
+                                                        ? 'text-slate-200 cursor-not-allowed'
+                                                        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100 cursor-pointer'
+                                                    }`}
+                                                    title="Geser Butir ke Atas"
+                                                  >
+                                                    <ChevronUp className="w-3.5 h-3.5" />
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleGeserUraianTeks(idx, 'down')}
+                                                    disabled={idx === activeUraianList.length - 1}
+                                                    className={`p-1 rounded ${
+                                                      idx === activeUraianList.length - 1
+                                                        ? 'text-slate-200 cursor-not-allowed'
+                                                        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100 cursor-pointer'
+                                                    }`}
+                                                    title="Geser Butir ke Bawah"
+                                                  >
+                                                    <ChevronDown className="w-3.5 h-3.5" />
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleDuplikatUraianTeks(idx)}
+                                                    className="p-1 text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 rounded cursor-pointer transition-colors"
+                                                    title="Duplikat Butir Ini"
+                                                  >
+                                                    <Copy className="w-3.5 h-3.5" />
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleHapusUraianTeks(item.id)}
+                                                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded cursor-pointer transition-colors ml-0.5"
+                                                    title="Hapus Butir Ini"
+                                                  >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                  </button>
+                                                </div>
+                                              </div>
+
+                                              {/* Textarea Isi Butir Uraian */}
+                                              <textarea
+                                                rows={2}
+                                                value={item.teks || ''}
+                                                onChange={(e) => handleUpdateUraianTeks(item.id, { teks: e.target.value })}
+                                                placeholder="Tuliskan isi rincian uraian, butir ketentuan, atau petunjuk pelaksanaan tugas di sini..."
+                                                className="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none leading-relaxed bg-white"
+                                              />
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <div className="p-6 text-center border-2 border-dashed border-slate-300 rounded-xl bg-white text-slate-500 space-y-2">
+                                          <FileText className="w-8 h-8 text-slate-400 mx-auto" />
+                                          <p className="text-xs font-semibold text-slate-700">
+                                            Belum ada butir uraian teks pada lampiran ini.
+                                          </p>
+                                          <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+                                            Klik tombol &quot;+ Tambah Uraian Teks&quot; di atas atau pilih salah satu template instan untuk mulai menambahkan isi narasi.
+                                          </p>
+                                        </div>
+                                      )}
+
+                                      {/* Tombol Tambah Butir di Bagian Bawah */}
+                                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-200">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleTambahUraianTeks('angka')}
+                                          className="text-xs text-emerald-800 bg-white hover:bg-emerald-50 border border-emerald-300 font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors shadow-2xs cursor-pointer"
+                                        >
+                                          <Plus className="w-4 h-4 text-emerald-600" />
+                                          <span>+ Tambah Uraian Teks Baru</span>
+                                        </button>
+                                        <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                                          <span>Otomatis terformat rapi sesuai tata naskah dinas.</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* TAMPILAN MODE 2: EDITOR TEKS BEBAS UTUH (MULTILINE) */}
+                                  {skUraianViewMode === 'manual' && (
+                                    <div className="space-y-2">
+                                      <div className="flex items-center justify-between text-[11px] text-slate-500">
+                                        <span>Edit seluruh teks narasi secara langsung:</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const currentText = currentActiveLampiran.isiTeks || '';
+                                            const nextNum = (currentText.match(/^\d+\./gm)?.length || 0) + 1;
+                                            const appendStr = currentText ? `\n\n${nextNum}. ` : `${nextNum}. `;
+                                            const newText = currentText + appendStr;
+                                            updateActiveLampiran({ isiTeks: newText });
+                                          }}
+                                          className="text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-1 cursor-pointer"
+                                        >
+                                          <Plus className="w-3.5 h-3.5" />
+                                          <span>+ Sisipkan Poin Baru di Akhir</span>
+                                        </button>
+                                      </div>
+                                      <textarea
+                                        rows={7}
+                                        value={currentActiveLampiran.isiTeks || ''}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          updateActiveLampiran({ isiTeks: val, uraianList: undefined });
+                                        }}
+                                        placeholder="Tuliskan uraian lampiran, butir-butir pasal, petunjuk teknis pelaksanaan keputusan, atau rincian penetapan dalam bentuk narasi..."
+                                        className="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none leading-relaxed bg-white font-serif"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+
+                            {/* Catatan Kaki Lampiran */}
+                            <div className="bg-slate-50/70 p-2.5 rounded-lg border border-slate-200">
+                              <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                                Catatan Kaki Lampiran Ini (Opsional, Tercetak Sebelum Tanda Tangan)
+                              </label>
+                              <input
+                                type="text"
+                                value={currentActiveLampiran.catatan || ''}
+                                onChange={(e) => updateActiveLampiran({ catatan: e.target.value })}
+                                placeholder="Keputusan pembagian tugas ini wajib dilaksanakan dengan penuh rasa tanggung jawab sejak tanggal ditetapkan."
+                                className="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none italic text-slate-700 bg-white"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Info Format Cetak & Tanda Tangan Lampiran */}
+                          <div className="bg-emerald-100/70 border border-emerald-300 rounded-xl p-3 text-[11px] text-emerald-950 flex items-start gap-2.5">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                            <div className="space-y-0.5">
+                              <strong className="block font-bold">Otomatis Terformat Rapi Sesuai Margin & Tata Naskah Kedinasan</strong>
+                              <p className="text-emerald-900/90 leading-relaxed">
+                                Setiap lembar lampiran dicetak pada <strong>halaman tersendiri</strong> dengan Header Lampiran di sisi kanan atas, kolom tabel dengan <em>wrap-text otomatis</em> agar teks tidak keluar kolom dan presisi dengan margin surat (Kiri 2cm, Kanan 2cm, Atas 1cm, Bawah 2cm), serta pengesahan Tanda Tangan Kepala Sekolah di sisi kanan bawah.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-3 bg-white rounded-lg border border-dashed border-emerald-300 text-center text-xs text-slate-500">
+                          Lampiran dinonaktifkan. Surat Keputusan akan diterbitkan hanya berupa naskah penetapan utama.
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

@@ -202,3 +202,74 @@ export interface AdminAuthConfig {
   lastLogin?: string;
 }
 
+export interface SkTableColumn {
+  id: string;
+  label: string;
+  width?: string;
+  align?: 'left' | 'center' | 'right';
+  key?: string;
+}
+
+export interface SkLampiranRow {
+  id: string;
+  no?: string | number;
+  nama?: string;
+  nipOrJabatan?: string;
+  tugas?: string;
+  keterangan?: string;
+  cols?: Record<string, string>;
+}
+
+export interface SkUraianItem {
+  id: string;
+  nomor?: string;
+  judul?: string;
+  teks: string;
+}
+
+export interface SkLampiranItem {
+  id: string;
+  label?: string; // e.g. "LAMPIRAN I", "LAMPIRAN II"
+  subjudul?: string;
+  pengantar?: string;
+  mode?: 'tabel' | 'teks' | 'kombinasi';
+  // Pengaturan kolom dinamis
+  columns?: SkTableColumn[];
+  tabelHeader?: {
+    col1?: string;
+    col2?: string;
+    col3?: string;
+    col4?: string;
+    col5?: string;
+  };
+  tabel?: SkLampiranRow[];
+  isiTeks?: string;
+  uraianList?: SkUraianItem[];
+  catatan?: string;
+}
+
+export interface SkLampiranData {
+  adaLampiran?: boolean;
+  lampiranKeterangan?: string;
+  lampiranNomor?: string;
+  lampiranTentang?: string;
+  // Dukungan banyak lampiran (Lampiran I, II, dst.)
+  lampiranList?: SkLampiranItem[];
+  // Kompatibilitas mundur lampiran tunggal
+  lampiranSubjudul?: string;
+  lampiranPengantar?: string;
+  lampiranMode?: 'tabel' | 'teks' | 'kombinasi';
+  lampiranTabelHeader?: {
+    col1?: string;
+    col2?: string;
+    col3?: string;
+    col4?: string;
+    col5?: string;
+  };
+  lampiranTabel?: SkLampiranRow[];
+  isiTeks?: string;
+  lampiranIsiTeks?: string;
+  lampiranCatatan?: string;
+}
+
+

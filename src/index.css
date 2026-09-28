@@ -1,1 +1,24 @@
 @import "tailwindcss";
+
+/* Penataan Tabel Lampiran Surat Keputusan: Wrap text rapi & tidak meluber keluar kolom */
+.sk-lampiran-table {
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
+  box-sizing: border-box !important;
+}
+
+.sk-lampiran-table th,
+.sk-lampiran-table td {
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  box-sizing: border-box !important;
+}
+
+.sk-lampiran-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}

@@ -114,6 +114,18 @@ export const SuratModal: React.FC<SuratModalProps> = ({ surat, sekolah, guruList
                 Format Resmi Tanpa Kop Surat (Surat Izin)
               </span>
             )}
+            {surat.jenisSurat === 'surat_keputusan' && Boolean(
+              (Array.isArray(surat.dataKhusus?.lampiranList) && surat.dataKhusus.lampiranList.length > 0) ||
+              surat.dataKhusus?.adaLampiran ||
+              (Array.isArray(surat.dataKhusus?.lampiranTabel) && surat.dataKhusus?.lampiranTabel.length > 0) ||
+              surat.dataKhusus?.lampiranIsiTeks
+            ) && (
+              <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 font-semibold text-[10px]">
+                {Array.isArray(surat.dataKhusus?.lampiranList) && surat.dataKhusus.lampiranList.length > 1
+                  ? `Lengkap dengan ${surat.dataKhusus.lampiranList.length} Lembar Lampiran SK`
+                  : 'Lengkap dengan Lembar Lampiran SK'}
+              </span>
+            )}
             <span className="text-slate-400">|</span>
             <span>Otomatis berlanjut rapi jika lebih dari 1 halaman</span>
           </div>

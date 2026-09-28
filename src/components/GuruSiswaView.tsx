@@ -19,6 +19,8 @@ import {
   Info,
   RotateCcw,
   Check,
+  CheckCheck,
+  Save,
   Settings2,
   ChevronDown,
   ChevronLeft,
@@ -161,18 +163,76 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
   const [showKalenderAcuan, setShowKalenderAcuan] = useState<boolean>(false);
   const [showDownloadSiswaMenu, setShowDownloadSiswaMenu] = useState(false);
 
-  // Helper Hari Libur Default (Hari Minggu)
-  const getInitialSundays = (year: number, month: number) => {
+  // Kunci Penyimpanan Hari Libur & Sistem Hari Kerja (5 Hari Kerja Default)
+  const STORAGE_CUSTOM_HOLIDAYS_KEY = 'sdn1_absen_custom_holidays_map';
+  const STORAGE_WORK_SYSTEM_KEY = 'sdn1_absen_work_system';
+
+  // Helper Hari Libur Default berdasarkan sistem kerja:
+  // Sistem 5 Hari Kerja: Sabtu & Minggu libur otomatis
+  // Sistem 6 Hari Kerja: Hanya Minggu yang libur
+  const getDefaultHolidaysForMonth = (
+    year: number,
+    month: number,
+    sys: '5_hari' | '6_hari' = '5_hari'
+  ): Record<number, string> => {
     const h: Record<number, string> = {};
     const totalDays = new Date(year, month, 0).getDate();
     for (let d = 1; d <= totalDays; d++) {
       const dayOfWeek = new Date(year, month - 1, d).getDay();
       if (dayOfWeek === 0) {
         h[d] = 'Hari Minggu';
+      } else if (sys === '5_hari' && dayOfWeek === 6) {
+        h[d] = 'Hari Sabtu';
       }
     }
     return h;
   };
+
+  const loadHolidaysFromStorage = (
+    year: number,
+    month: number,
+    sys: '5_hari' | '6_hari' = '5_hari'
+  ): Record<number, string> => {
+    try {
+      const raw = localStorage.getItem(STORAGE_CUSTOM_HOLIDAYS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const key = `${year}-${month}`;
+        if (parsed && parsed[key] && typeof parsed[key] === 'object') {
+          return parsed[key];
+        }
+      }
+    } catch (e) {
+      console.error('Gagal memuat hari libur dari storage:', e);
+    }
+    return getDefaultHolidaysForMonth(year, month, sys);
+  };
+
+  const saveHolidaysToStorage = (
+    year: number,
+    month: number,
+    holidaysMap: Record<number, string>
+  ) => {
+    try {
+      const raw = localStorage.getItem(STORAGE_CUSTOM_HOLIDAYS_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      parsed[`${year}-${month}`] = holidaysMap;
+      localStorage.setItem(STORAGE_CUSTOM_HOLIDAYS_KEY, JSON.stringify(parsed));
+      return true;
+    } catch (e) {
+      console.error('Gagal menyimpan hari libur ke storage:', e);
+      return false;
+    }
+  };
+
+  // State Sistem Kerja (Default: 5 Hari Kerja sesuai ketentuan sekolah)
+  const [absenWorkSystem, setAbsenWorkSystem] = useState<'5_hari' | '6_hari'>(() => {
+    try {
+      return (localStorage.getItem(STORAGE_WORK_SYSTEM_KEY) as '5_hari' | '6_hari') || '5_hari';
+    } catch {
+      return '5_hari';
+    }
+  });
 
   // State Cetak Absen & Kalender Libur
   const [showCetakAbsenGuruModal, setShowCetakAbsenGuruModal] = useState(false);
@@ -181,8 +241,10 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
   const [absenYear, setAbsenYear] = useState(2026);
   const [absenMonth, setAbsenMonth] = useState(9); // September
   const [absenHolidays, setAbsenHolidays] = useState<Record<number, string>>(() =>
-    getInitialSundays(2026, 9)
+    loadHolidaysFromStorage(2026, 9, '5_hari')
   );
+  const [holidaySavedStatus, setHolidaySavedStatus] = useState<boolean>(false);
+  const [holidaySuccessToast, setHolidaySuccessToast] = useState<string | null>(null);
 
   // Opsi Cetak PTK (Pendidik & Tenaga Kependidikan)
   // Format kolektif terbagi rapi per lembar F4 Landscape (Format Standar Kedinasan: 5 PTK per lembar)
@@ -200,26 +262,106 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
   const [siswaTahunAjaranCetak, setSiswaTahunAjaranCetak] = useState<string>('2026/2027');
   const [siswaShowKopCetak, setSiswaShowKopCetak] = useState<boolean>(false); // Pilihan utama: Tanpa KOP
 
+  const handleWorkSystemChange = (newSys: '5_hari' | '6_hari') => {
+    setAbsenWorkSystem(newSys);
+    try {
+      localStorage.setItem(STORAGE_WORK_SYSTEM_KEY, newSys);
+    } catch (e) {}
+
+    // Periksa apakah bulan aktif sudah punya custom holiday di storage
+    let hasCustom = false;
+    try {
+      const raw = localStorage.getItem(STORAGE_CUSTOM_HOLIDAYS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed[`${absenYear}-${absenMonth}`]) {
+          hasCustom = true;
+        }
+      }
+    } catch (e) {}
+
+    if (!hasCustom) {
+      const updated = getDefaultHolidaysForMonth(absenYear, absenMonth, newSys);
+      setAbsenHolidays(updated);
+      saveHolidaysToStorage(absenYear, absenMonth, updated);
+    }
+  };
+
   const handleMonthChange = (newMonth: number) => {
     setAbsenMonth(newMonth);
-    setAbsenHolidays(getInitialSundays(absenYear, newMonth));
+    const loaded = loadHolidaysFromStorage(absenYear, newMonth, absenWorkSystem);
+    setAbsenHolidays(loaded);
   };
 
   const handleYearChange = (newYear: number) => {
     setAbsenYear(newYear);
-    setAbsenHolidays(getInitialSundays(newYear, absenMonth));
+    const loaded = loadHolidaysFromStorage(newYear, absenMonth, absenWorkSystem);
+    setAbsenHolidays(loaded);
   };
 
   const handleToggleHoliday = (day: number, note?: string) => {
     setAbsenHolidays((prev) => {
       const copy = { ...prev };
-      if (copy[day]) {
+      if (copy[day] && !note) {
         delete copy[day];
       } else {
         copy[day] = note || 'Hari Libur';
       }
+      saveHolidaysToStorage(absenYear, absenMonth, copy);
       return copy;
     });
+  };
+
+  const handleSetHolidayNote = (day: number, note: string) => {
+    const finalNote = note.trim() || 'Hari Libur';
+    setAbsenHolidays((prev) => {
+      const copy = { ...prev, [day]: finalNote };
+      saveHolidaysToStorage(absenYear, absenMonth, copy);
+      return copy;
+    });
+    setHolidaySuccessToast(`✓ Tanggal ${day} otomatis tersimpan sebagai: "${finalNote}"!`);
+    setTimeout(() => {
+      setHolidaySuccessToast(null);
+    }, 3500);
+  };
+
+  const handleSetBatchHolidayNote = (days: number[], note: string) => {
+    if (days.length === 0) return;
+    const finalNote = note.trim() || 'Hari Libur';
+    setAbsenHolidays((prev) => {
+      const copy = { ...prev };
+      days.forEach((d) => {
+        copy[d] = finalNote;
+      });
+      saveHolidaysToStorage(absenYear, absenMonth, copy);
+      return copy;
+    });
+    const sortedDays = days.slice().sort((a, b) => a - b);
+    const daysLabel = sortedDays.length > 3
+      ? `${sortedDays[0]} s.d. ${sortedDays[sortedDays.length - 1]} (${sortedDays.length} hari)`
+      : sortedDays.join(', ');
+    setHolidaySuccessToast(`✓ Tanggal ${daysLabel} otomatis tersimpan sebagai: "${finalNote}"!`);
+    setTimeout(() => {
+      setHolidaySuccessToast(null);
+    }, 4000);
+  };
+
+  const handleBatchRemoveHoliday = (days: number[]) => {
+    if (days.length === 0) return;
+    setAbsenHolidays((prev) => {
+      const copy = { ...prev };
+      days.forEach((d) => {
+        delete copy[d];
+      });
+      saveHolidaysToStorage(absenYear, absenMonth, copy);
+      return copy;
+    });
+    const sortedDays = days.slice().sort((a, b) => a - b);
+    const daysLabel = sortedDays.join(', ');
+    setHolidaySuccessToast(`✓ Status libur tanggal ${daysLabel} dibatalkan (hari masuk)!`);
+    setTimeout(() => {
+      setHolidaySuccessToast(null);
+    }, 4000);
   };
 
   const handleSetHolidayPreset = (preset: 'minggu' | 'sabtu_minggu' | 'reset') => {
@@ -227,6 +369,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
     const newHolidays: Record<number, string> = {};
     if (preset === 'reset') {
       setAbsenHolidays({});
+      saveHolidaysToStorage(absenYear, absenMonth, {});
       return;
     }
     for (let d = 1; d <= totalDays; d++) {
@@ -238,6 +381,19 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
       }
     }
     setAbsenHolidays(newHolidays);
+    saveHolidaysToStorage(absenYear, absenMonth, newHolidays);
+  };
+
+  const handleSaveHolidays = () => {
+    saveHolidaysToStorage(absenYear, absenMonth, absenHolidays);
+    setHolidaySavedStatus(true);
+    const count = Object.keys(absenHolidays).length;
+    const msg = `Pengaturan hari libur bulan ${NAMA_BULAN_INDONESIA[absenMonth - 1]} ${absenYear} (${count} hari libur) berhasil disimpan permanen!`;
+    setHolidaySuccessToast(msg);
+    setTimeout(() => {
+      setHolidaySavedStatus(false);
+      setHolidaySuccessToast(null);
+    }, 4000);
   };
 
   const openCetakGuruModal = () => {
@@ -264,6 +420,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
       ptkPerPage: ptkPerPageCetak,
       filterKategori: ptkFilterCetak,
       showKop: ptkShowKopCetak,
+      workSystem: absenWorkSystem,
     });
     printLandscapeHtml(
       html,
@@ -288,6 +445,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
         ptkPerPage: ptkPerPageCetak,
         filterKategori: ptkFilterCetak,
         showKop: ptkShowKopCetak,
+        workSystem: absenWorkSystem,
       },
       ptkPaperSizeCetak
     );
@@ -308,6 +466,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
       showKop: siswaShowKopCetak,
       orientation: siswaOrientationCetak,
       paperSize: siswaPaperSizeCetak,
+      workSystem: absenWorkSystem,
     });
 
     if (siswaOrientationCetak === 'portrait') {
@@ -326,6 +485,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
   };
 
   const doExportWordAbsenSiswa = () => {
+    const bulanNama = `${NAMA_BULAN_INDONESIA[absenMonth - 1]} ${absenYear}`;
     exportAbsenSiswaToWord(
       siswaList,
       siswaKelasCetak,
@@ -336,12 +496,14 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
         sekolah,
         year: absenYear,
         month: absenMonth,
+        bulanNama,
         holidays: absenHolidays,
         semester: siswaSemesterCetak,
         tahunAjaran: siswaTahunAjaranCetak,
         showKop: siswaShowKopCetak,
         orientation: siswaOrientationCetak,
         paperSize: siswaPaperSizeCetak,
+        workSystem: absenWorkSystem,
       },
       siswaPaperSizeCetak,
       siswaOrientationCetak
@@ -999,14 +1161,13 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                 <span>Unduh Format PTK</span>
               </button>
 
-              {/* Tombol Cetak & Unduh Presensi PTK (Landscape F4) */}
+              {/* Tombol Cetak & Unduh Presensi PTK */}
               <button
                 onClick={handlePrintAbsenGuru}
                 className="px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                title="Cetak Format Lembar Presensi PTK Landscape F4 / Unduh Ms. Word"
               >
                 <Printer className="w-4 h-4" />
-                <span>Cetak Presensi PTK (Landscape F4)</span>
+                <span>Cetak Presensi PTK</span>
               </button>
 
               {/* Tambah Manual PTK */}
@@ -2086,17 +2247,30 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                     onMonthChange={handleMonthChange}
                     holidays={absenHolidays}
                     onToggleHoliday={handleToggleHoliday}
+                    onSetHolidayNote={handleSetHolidayNote}
+                    onSetBatchHolidayNote={handleSetBatchHolidayNote}
+                    onBatchRemoveHoliday={handleBatchRemoveHoliday}
                     onSetPreset={handleSetHolidayPreset}
+                    workSystem={absenWorkSystem}
+                    onWorkSystemChange={handleWorkSystemChange}
                   />
+
+                  {holidaySuccessToast && (
+                    <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-300 text-xs text-emerald-900 flex items-center gap-2 shadow-xs">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="font-semibold">{holidaySuccessToast}</span>
+                    </div>
+                  )}
 
                   <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1">
                     <div className="font-bold flex items-center gap-1">
                       <Info className="w-3.5 h-3.5 text-amber-700" />
-                      Petunjuk Kostum Hari Libur:
+                      Petunjuk Kostum Hari Libur & Jam Kerja:
                     </div>
                     <p className="text-[11px] leading-relaxed text-amber-800">
-                      Klik tanggal untuk menandai hari libur (merah) atau mengembalikan jadi hari masuk (putih).
-                      Baris tanggal libur pada lembar presensi otomatis diberi arsir warna dan keterangan <strong>LIBUR</strong>.
+                      • Sistem yang digunakan: <strong>{absenWorkSystem === '5_hari' ? '5 Hari Kerja (Sabtu & Minggu Libur Resmi)' : '6 Hari Kerja (Hanya Minggu Libur)'}</strong>.<br/>
+                      • Baris tanggal libur pada lembar presensi otomatis diberi arsir warna dan keterangan <strong>LIBUR</strong>.<br/>
+                      • Untuk menambah tanggal libur khusus (misal: Hari Raya Pagerwesi), klik tanggalnya, isi keterangannya lalu klik <strong>Terapkan</strong> (otomatis tersimpan di kalender & presensi).
                     </p>
                   </div>
                 </div>
@@ -2112,7 +2286,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                       <button
                         type="button"
                         onClick={() => setPtkFilterCetak('semua')}
-                        className={`py-1.5 px-2 rounded-lg text-center transition-colors ${
+                        className={`py-2 px-2.5 rounded-lg text-center transition-colors cursor-pointer ${
                           ptkFilterCetak === 'semua'
                             ? 'bg-white text-slate-900 font-bold shadow-xs'
                             : 'text-slate-600 hover:text-slate-900'
@@ -2123,29 +2297,29 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                       <button
                         type="button"
                         onClick={() => setPtkFilterCetak('guru')}
-                        className={`py-1.5 px-2 rounded-lg text-center transition-colors ${
+                        className={`py-2 px-2.5 rounded-lg text-center transition-colors cursor-pointer ${
                           ptkFilterCetak === 'guru'
                             ? 'bg-emerald-800 text-white font-bold shadow-xs'
                             : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
-                        Hanya Guru ({guruList.filter((g) => g.jenisPtk === 'guru').length})
+                        Guru ({guruList.filter((g) => g.jenisPtk === 'guru').length})
                       </button>
                       <button
                         type="button"
                         onClick={() => setPtkFilterCetak('tu')}
-                        className={`py-1.5 px-2 rounded-lg text-center transition-colors ${
+                        className={`py-2 px-2.5 rounded-lg text-center transition-colors cursor-pointer ${
                           ptkFilterCetak === 'tu'
                             ? 'bg-amber-700 text-white font-bold shadow-xs'
                             : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
-                        Hanya TU ({guruList.filter((g) => g.jenisPtk === 'tu').length})
+                        TU ({guruList.filter((g) => g.jenisPtk === 'tu').length})
                       </button>
                       <button
                         type="button"
                         onClick={() => setPtkFilterCetak('kepala_sekolah')}
-                        className={`py-1.5 px-2 rounded-lg text-center transition-colors ${
+                        className={`py-2 px-2.5 rounded-lg text-center transition-colors cursor-pointer ${
                           ptkFilterCetak === 'kepala_sekolah'
                             ? 'bg-blue-900 text-white font-bold shadow-xs'
                             : 'text-slate-600 hover:text-slate-900'
@@ -2165,43 +2339,26 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                       <button
                         type="button"
                         onClick={() => setPtkShowKopCetak(false)}
-                        className={`p-2.5 rounded-xl border text-left flex items-start gap-2 transition-all ${
+                        className={`py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 transition-all cursor-pointer font-bold text-xs ${
                           !ptkShowKopCetak
-                            ? 'bg-blue-50 border-blue-600 ring-1 ring-blue-600'
-                            : 'bg-white border-slate-200 hover:bg-slate-50'
+                            ? 'bg-blue-900 text-white border-blue-900 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                         }`}
                       >
-                        <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                          !ptkShowKopCetak ? 'border-blue-900 bg-blue-900' : 'border-slate-400'
-                        }`}>
-                          {!ptkShowKopCetak && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-900 flex items-center gap-1">
-                            <span>Tanpa KOP</span>
-                            <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1 py-0.2 rounded font-semibold">Pilihan Utama</span>
-                          </div>
-                          <div className="text-[11px] text-slate-500 mt-0.5">Tabel lebih lega & kolom leluasa</div>
-                        </div>
+                        {!ptkShowKopCetak && <Check className="w-3.5 h-3.5" />}
+                        <span>Tanpa KOP</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setPtkShowKopCetak(true)}
-                        className={`p-2.5 rounded-xl border text-left flex items-start gap-2 transition-all ${
+                        className={`py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 transition-all cursor-pointer font-bold text-xs ${
                           ptkShowKopCetak
-                            ? 'bg-blue-50 border-blue-600 ring-1 ring-blue-600'
-                            : 'bg-white border-slate-200 hover:bg-slate-50'
+                            ? 'bg-blue-900 text-white border-blue-900 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                         }`}
                       >
-                        <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                          ptkShowKopCetak ? 'border-blue-900 bg-blue-900' : 'border-slate-400'
-                        }`}>
-                          {ptkShowKopCetak && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-900">Dengan KOP Resmi</div>
-                          <div className="text-[11px] text-slate-500 mt-0.5">Kop Pemkab & Disdikpora</div>
-                        </div>
+                        {ptkShowKopCetak && <Check className="w-3.5 h-3.5" />}
+                        <span>Dengan KOP</span>
                       </button>
                     </div>
                   </div>
@@ -2215,43 +2372,26 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                       <button
                         type="button"
                         onClick={() => setPtkPaperSizeCetak('F4')}
-                        className={`p-2.5 rounded-xl border text-left flex items-start gap-2 transition-all ${
+                        className={`py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 transition-all cursor-pointer font-bold text-xs ${
                           ptkPaperSizeCetak === 'F4'
-                            ? 'bg-blue-50 border-blue-600 ring-1 ring-blue-600'
-                            : 'bg-white border-slate-200 hover:bg-slate-50'
+                            ? 'bg-blue-900 text-white border-blue-900 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                         }`}
                       >
-                        <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                          ptkPaperSizeCetak === 'F4' ? 'border-blue-900 bg-blue-900' : 'border-slate-400'
-                        }`}>
-                          {ptkPaperSizeCetak === 'F4' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-900 flex items-center gap-1">
-                            <span>F4 / Folio</span>
-                            <span className="text-[10px] bg-blue-200 text-blue-900 px-1 py-0.2 rounded font-semibold">Utama</span>
-                          </div>
-                          <div className="text-[11px] text-slate-500 mt-0.5">21.5 × 33.0 cm (Landscape)</div>
-                        </div>
+                        {ptkPaperSizeCetak === 'F4' && <Check className="w-3.5 h-3.5" />}
+                        <span>F4 / Folio</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setPtkPaperSizeCetak('A4')}
-                        className={`p-2.5 rounded-xl border text-left flex items-start gap-2 transition-all ${
+                        className={`py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 transition-all cursor-pointer font-bold text-xs ${
                           ptkPaperSizeCetak === 'A4'
-                            ? 'bg-blue-50 border-blue-600 ring-1 ring-blue-600'
-                            : 'bg-white border-slate-200 hover:bg-slate-50'
+                            ? 'bg-blue-900 text-white border-blue-900 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                         }`}
                       >
-                        <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                          ptkPaperSizeCetak === 'A4' ? 'border-blue-900 bg-blue-900' : 'border-slate-400'
-                        }`}>
-                          {ptkPaperSizeCetak === 'A4' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-900">A4 Standar</div>
-                          <div className="text-[11px] text-slate-500 mt-0.5">21.0 × 29.7 cm (Landscape)</div>
-                        </div>
+                        {ptkPaperSizeCetak === 'A4' && <Check className="w-3.5 h-3.5" />}
+                        <span>A4</span>
                       </button>
                     </div>
                   </div>
@@ -2260,56 +2400,48 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
                       5. Format Lembar Presensi
                     </label>
-                    <div className="space-y-2">
-                      {/* Opsi 1: Format Kolektif per Lembar (Rekomendasi Utama) */}
+                    <div className="space-y-1.5">
+                      {/* Opsi 1: Format Kolektif per Lembar */}
                       <label
-                        className={`p-3 rounded-xl border flex items-start gap-2.5 cursor-pointer transition-all ${
+                        className={`px-3 py-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                           ptkCetakMode === 'kolektif_per_lembar'
-                            ? 'bg-blue-50/70 border-blue-600 ring-1 ring-blue-600'
+                            ? 'bg-blue-50/80 border-blue-600 ring-1 ring-blue-600'
                             : 'bg-white border-slate-200 hover:bg-slate-50'
                         }`}
                       >
-                        <input
-                          type="radio"
-                          name="ptkCetakMode"
-                          checked={ptkCetakMode === 'kolektif_per_lembar'}
-                          onChange={() => setPtkCetakMode('kolektif_per_lembar')}
-                          className="mt-0.5 text-blue-900 focus:ring-blue-900"
-                        />
-                        <div className="text-xs">
-                          <div className="flex items-center gap-1.5">
-                            <p className="font-bold text-slate-900">Format Harian Terbagi Rapi (Rekomendasi Utama)</p>
-                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">Rapi & Presisi</span>
-                          </div>
-                          <p className="text-slate-600 mt-0.5 leading-relaxed">
-                            Setiap kelipatan 5 PTK memerlukan 1 halaman kertas ({ptkPerPageCetak} PTK per lembar F4 Landscape, misal 10 PTK = 2 halaman, 15 PTK = 3 halaman, dst.). NIP tertera rapi di bawah nama PTK.
-                          </p>
+                        <div className="flex items-center gap-2.5">
+                          <input
+                            type="radio"
+                            name="ptkCetakMode"
+                            checked={ptkCetakMode === 'kolektif_per_lembar'}
+                            onChange={() => setPtkCetakMode('kolektif_per_lembar')}
+                            className="text-blue-900 focus:ring-blue-900 cursor-pointer"
+                          />
+                          <span className="text-xs font-bold text-slate-900">
+                            Format Harian Terbagi Rapi
+                          </span>
                         </div>
+                        {ptkCetakMode === 'kolektif_per_lembar' && (
+                          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <span className="text-[11px] font-semibold text-slate-600">Per Lembar:</span>
+                            <select
+                              value={ptkPerPageCetak}
+                              onChange={(e) => setPtkPerPageCetak(Number(e.target.value))}
+                              className="text-xs bg-white border border-slate-300 rounded-lg px-2 py-0.5 font-bold text-blue-900 focus:outline-none"
+                            >
+                              <option value={5}>5 PTK</option>
+                              <option value={4}>4 PTK</option>
+                              <option value={3}>3 PTK</option>
+                            </select>
+                          </div>
+                        )}
                       </label>
 
-                      {/* Selector Jumlah PTK per Lembar if kolektif_per_lembar */}
-                      {ptkCetakMode === 'kolektif_per_lembar' && (
-                        <div className="pl-6 pt-0.5 pb-1 flex items-center gap-2">
-                          <span className="text-[11px] font-semibold text-slate-600">
-                            Jumlah PTK per lembar:
-                          </span>
-                          <select
-                            value={ptkPerPageCetak}
-                            onChange={(e) => setPtkPerPageCetak(Number(e.target.value))}
-                            className="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1 font-medium text-slate-800 focus:ring-2 focus:ring-blue-800 focus:outline-none"
-                          >
-                            <option value={5}>5 PTK per lembar (Kelipatan 5: 1 Halaman / 5 PTK)</option>
-                            <option value={4}>4 PTK per lembar</option>
-                            <option value={3}>3 PTK per lembar</option>
-                          </select>
-                        </div>
-                      )}
-
-                      {/* Opsi 2: Format Matriks Rekapitulasi Bulanan Resmi (Semua PTK 1 Lembar) */}
+                      {/* Opsi 2: Format Matriks Rekapitulasi */}
                       <label
-                        className={`p-3 rounded-xl border flex items-start gap-2.5 cursor-pointer transition-all ${
+                        className={`px-3 py-2.5 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all ${
                           ptkCetakMode === 'rekap_bulanan'
-                            ? 'bg-blue-50/70 border-blue-600 ring-1 ring-blue-600'
+                            ? 'bg-blue-50/80 border-blue-600 ring-1 ring-blue-600'
                             : 'bg-white border-slate-200 hover:bg-slate-50'
                         }`}
                       >
@@ -2318,24 +2450,18 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                           name="ptkCetakMode"
                           checked={ptkCetakMode === 'rekap_bulanan'}
                           onChange={() => setPtkCetakMode('rekap_bulanan')}
-                          className="mt-0.5 text-blue-900 focus:ring-blue-900"
+                          className="text-blue-900 focus:ring-blue-900 cursor-pointer"
                         />
-                        <div className="text-xs">
-                          <div className="flex items-center gap-1.5">
-                            <p className="font-bold text-slate-900">Format Matriks Rekapitulasi (Semua PTK 1 Lembar)</p>
-                            <span className="text-[10px] bg-blue-100 text-blue-900 font-bold px-1.5 py-0.2 rounded">Resmi Kedinasan</span>
-                          </div>
-                          <p className="text-slate-600 mt-0.5 leading-relaxed">
-                            Menampilkan seluruh nama PTK dalam 1 halaman Landscape F4 dengan matriks tanggal 1 s.d. 31, kolom rekapitulasi kehadiran (H, S, I, DL, TK), dan paraf.
-                          </p>
-                        </div>
+                        <span className="text-xs font-bold text-slate-900">
+                          Format Matriks Rekapitulasi (1 Lembar)
+                        </span>
                       </label>
 
                       {/* Opsi 3: Format Kolektif All-in-One Memanjang */}
                       <label
-                        className={`p-3 rounded-xl border flex items-start gap-2.5 cursor-pointer transition-all ${
+                        className={`px-3 py-2.5 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all ${
                           ptkCetakMode === 'kolektif'
-                            ? 'bg-blue-50/70 border-blue-600 ring-1 ring-blue-600'
+                            ? 'bg-blue-50/80 border-blue-600 ring-1 ring-blue-600'
                             : 'bg-white border-slate-200 hover:bg-slate-50'
                         }`}
                       >
@@ -2344,14 +2470,11 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                           name="ptkCetakMode"
                           checked={ptkCetakMode === 'kolektif'}
                           onChange={() => setPtkCetakMode('kolektif')}
-                          className="mt-0.5 text-blue-900 focus:ring-blue-900"
+                          className="text-blue-900 focus:ring-blue-900 cursor-pointer"
                         />
-                        <div className="text-xs">
-                          <p className="font-bold text-slate-900">Format Harian Seluruh PTK Sekaligus (All-in-One)</p>
-                          <p className="text-slate-500 mt-0.5 leading-relaxed">
-                            Semua nama PTK berjejer ke samping dalam 1 tabel memanjang (jika PTK &gt; 4 orang kolom akan menyempit).
-                          </p>
-                        </div>
+                        <span className="text-xs font-bold text-slate-900">
+                          Format Harian Seluruh PTK (All-in-One)
+                        </span>
                       </label>
                     </div>
                   </div>
@@ -2395,7 +2518,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                       <div className="flex justify-between">
                         <span>Hari Kerja Efektif:</span>
                         <span className="font-bold text-emerald-700">
-                          {Math.max(0, new Date(absenYear, absenMonth, 0).getDate() - Object.keys(absenHolidays).length)} Hari ({Object.keys(absenHolidays).length} Hari Libur)
+                          {Math.max(0, new Date(absenYear, absenMonth, 0).getDate() - Object.keys(absenHolidays).length)} Hari ({absenWorkSystem === '5_hari' ? '5 Hari Kerja' : '6 Hari Kerja'}: {Object.keys(absenHolidays).length} Hari Libur)
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -2437,20 +2560,18 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                 <button
                   type="button"
                   onClick={doExportWordAbsenGuru}
-                  className="px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-950 font-bold text-xs sm:text-sm rounded-xl border border-blue-300 shadow-xs flex items-center gap-2 transition-all hover:shadow"
-                  title="Unduh Lembar Presensi PTK ke file Microsoft Word (.doc) Landscape F4"
+                  className="px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-950 font-bold text-xs sm:text-sm rounded-xl border border-blue-300 shadow-xs flex items-center gap-2 transition-all hover:shadow cursor-pointer"
                 >
                   <FileText className="w-4 h-4 text-blue-800" />
-                  <span>Unduh Ms. Word (.doc)</span>
+                  <span>Unduh Ms. Word</span>
                 </button>
                 <button
                   type="button"
                   onClick={doPrintAbsenGuru}
-                  className="px-5 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-sm flex items-center gap-2 transition-all hover:shadow"
-                  title="Cetak Langsung Presensi PTK Landscape F4"
+                  className="px-5 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-sm flex items-center gap-2 transition-all hover:shadow cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
-                  <span>Cetak Presensi PTK (Landscape {ptkPaperSizeCetak})</span>
+                  <span>Cetak Presensi PTK</span>
                 </button>
               </div>
             </div>
@@ -2516,8 +2637,20 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                     onMonthChange={handleMonthChange}
                     holidays={absenHolidays}
                     onToggleHoliday={handleToggleHoliday}
+                    onSetHolidayNote={handleSetHolidayNote}
+                    onSetBatchHolidayNote={handleSetBatchHolidayNote}
+                    onBatchRemoveHoliday={handleBatchRemoveHoliday}
                     onSetPreset={handleSetHolidayPreset}
+                    workSystem={absenWorkSystem}
+                    onWorkSystemChange={handleWorkSystemChange}
                   />
+
+                  {holidaySuccessToast && (
+                    <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-300 text-xs text-emerald-900 flex items-center gap-2 shadow-xs">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="font-semibold">{holidaySuccessToast}</span>
+                    </div>
+                  )}
 
                   <div className="p-3 bg-red-50 rounded-xl border border-red-200 text-xs text-red-900 space-y-1">
                     <div className="font-bold flex items-center gap-1">
@@ -2525,7 +2658,9 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                       Penandaan Hari Libur Siswa:
                     </div>
                     <p className="text-[11px] leading-relaxed text-red-800">
-                      Kolom tanggal yang ditandai libur pada kalender kecil otomatis diarsir merah muda dengan kode <strong>'L'</strong> pada tabel absensi siswa.
+                      • Sistem yang digunakan: <strong>{absenWorkSystem === '5_hari' ? '5 Hari Kerja (Sabtu & Minggu Otomatis Libur)' : '6 Hari Kerja (Hanya Minggu Libur)'}</strong>.<br/>
+                      • Kolom tanggal yang ditandai libur otomatis diarsir merah muda dengan kode <strong>'L'</strong> pada tabel absensi siswa.<br/>
+                      • Untuk menambahkan libur khusus (misal: Hari Raya Pagerwesi), klik tanggalnya, isi keterangan lalu klik <strong>Terapkan</strong> (otomatis tersimpan di kalender & presensi).
                     </p>
                   </div>
                 </div>
@@ -2551,44 +2686,27 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                         <button
                           type="button"
                           onClick={() => setSiswaOrientationCetak('portrait')}
-                          className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition-all ${
+                          className={`py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 transition-all cursor-pointer font-bold text-xs ${
                             siswaOrientationCetak === 'portrait'
-                              ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-600/30'
-                              : 'bg-white border-slate-200 hover:bg-slate-50'
+                              ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                           }`}
                         >
-                          <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                            siswaOrientationCetak === 'portrait' ? 'border-emerald-700 bg-emerald-700' : 'border-slate-400'
-                          }`}>
-                            {siswaOrientationCetak === 'portrait' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                              <span>Potret</span>
-                              <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded-full font-bold">Utama</span>
-                            </div>
-                            <div className="text-[10.5px] text-slate-500 mt-0.5 leading-tight">Standar buku absen tegak, pas 1 lembar</div>
-                          </div>
+                          {siswaOrientationCetak === 'portrait' && <Check className="w-3.5 h-3.5" />}
+                          <span>Potret</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => setSiswaOrientationCetak('landscape')}
-                          className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition-all ${
+                          className={`py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 transition-all cursor-pointer font-bold text-xs ${
                             siswaOrientationCetak === 'landscape'
-                              ? 'bg-blue-50 border-blue-600 ring-2 ring-blue-600/30'
-                              : 'bg-white border-slate-200 hover:bg-slate-50'
+                              ? 'bg-blue-900 text-white border-blue-900 shadow-xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                           }`}
                         >
-                          <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                            siswaOrientationCetak === 'landscape' ? 'border-blue-900 bg-blue-900' : 'border-slate-400'
-                          }`}>
-                            {siswaOrientationCetak === 'landscape' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-xs font-bold text-slate-900">Lanskap</div>
-                            <div className="text-[10.5px] text-slate-500 mt-0.5 leading-tight">Kolom tanggal lebih lebar memanjang</div>
-                          </div>
+                          {siswaOrientationCetak === 'landscape' && <Check className="w-3.5 h-3.5" />}
+                          <span>Lanskap</span>
                         </button>
                       </div>
                     </div>
@@ -2636,43 +2754,26 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                         <button
                           type="button"
                           onClick={() => setSiswaShowKopCetak(false)}
-                          className={`p-2 rounded-xl border text-left flex items-start gap-2 transition-all ${
+                          className={`py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 transition-all cursor-pointer font-bold text-xs ${
                             !siswaShowKopCetak
-                              ? 'bg-blue-50 border-blue-600 ring-1 ring-blue-600'
-                              : 'bg-white border-slate-200 hover:bg-slate-50'
+                              ? 'bg-blue-900 text-white border-blue-900 shadow-xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                           }`}
                         >
-                          <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                            !siswaShowKopCetak ? 'border-blue-900 bg-blue-900' : 'border-slate-400'
-                          }`}>
-                            {!siswaShowKopCetak && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-slate-900 flex items-center gap-1">
-                              <span>Tanpa KOP</span>
-                              <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1 py-0.2 rounded font-semibold">Utama</span>
-                            </div>
-                            <div className="text-[10.5px] text-slate-500 mt-0.5">Tabel presensi maksimal</div>
-                          </div>
+                          {!siswaShowKopCetak && <Check className="w-3.5 h-3.5" />}
+                          <span>Tanpa KOP</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setSiswaShowKopCetak(true)}
-                          className={`p-2 rounded-xl border text-left flex items-start gap-2 transition-all ${
+                          className={`py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 transition-all cursor-pointer font-bold text-xs ${
                             siswaShowKopCetak
-                              ? 'bg-blue-50 border-blue-600 ring-1 ring-blue-600'
-                              : 'bg-white border-slate-200 hover:bg-slate-50'
+                              ? 'bg-blue-900 text-white border-blue-900 shadow-xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                           }`}
                         >
-                          <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                            siswaShowKopCetak ? 'border-blue-900 bg-blue-900' : 'border-slate-400'
-                          }`}>
-                            {siswaShowKopCetak && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-slate-900">Dengan KOP</div>
-                            <div className="text-[10.5px] text-slate-500 mt-0.5">Kop Resmi Pemkab</div>
-                          </div>
+                          {siswaShowKopCetak && <Check className="w-3.5 h-3.5" />}
+                          <span>Dengan KOP</span>
                         </button>
                       </div>
                     </div>
@@ -2746,7 +2847,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                       <div className="flex justify-between">
                         <span>Hari Efektif Belajar:</span>
                         <span className="font-bold text-emerald-700">
-                          {Math.max(0, new Date(absenYear, absenMonth, 0).getDate() - Object.keys(absenHolidays).length)} Hari ({Object.keys(absenHolidays).length} Hari Libur)
+                          {Math.max(0, new Date(absenYear, absenMonth, 0).getDate() - Object.keys(absenHolidays).length)} Hari ({absenWorkSystem === '5_hari' ? '5 Hari Kerja' : '6 Hari Kerja'}: {Object.keys(absenHolidays).length} Hari Libur)
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -2780,22 +2881,22 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                 <button
                   type="button"
                   onClick={doExportWordAbsenSiswa}
-                  className="px-4 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-2 transition-all hover:border-slate-400"
+                  className="px-4 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-2 transition-all hover:border-slate-400 cursor-pointer"
                 >
                   <FileSpreadsheet className="w-4 h-4 text-blue-600" />
-                  <span>Unduh Word ({siswaOrientationCetak === 'portrait' ? 'Potret' : 'Lanskap'})</span>
+                  <span>Unduh Ms. Word</span>
                 </button>
                 <button
                   type="button"
                   onClick={doPrintAbsenSiswa}
-                  className={`px-5 py-2.5 text-white font-bold text-xs sm:text-sm rounded-xl shadow-sm flex items-center gap-2 transition-all hover:shadow ${
+                  className={`px-5 py-2.5 text-white font-bold text-xs sm:text-sm rounded-xl shadow-sm flex items-center gap-2 transition-all hover:shadow cursor-pointer ${
                     siswaOrientationCetak === 'portrait'
                       ? 'bg-emerald-700 hover:bg-emerald-800'
                       : 'bg-blue-900 hover:bg-blue-800'
                   }`}
                 >
                   <Printer className="w-4 h-4" />
-                  <span>Cetak Presensi Siswa ({siswaOrientationCetak === 'portrait' ? 'Potret' : 'Lanskap'})</span>
+                  <span>Cetak Presensi Siswa</span>
                 </button>
               </div>
             </div>
