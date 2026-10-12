@@ -134,12 +134,13 @@ export const SuratModal: React.FC<SuratModalProps> = ({ surat, sekolah, guruList
             id="surat-print-preview-container"
             className={`bg-white rounded-sm shadow-xl border border-slate-300 w-full text-slate-900 font-serif leading-relaxed ${
               paperSize === 'F4' ? 'max-w-[840px] min-h-[780px]' : 'max-w-[800px] min-h-[700px]'
-            }`}
+            } ${surat.jenisSurat === 'surat_keputusan' ? 'is-surat-keputusan' : ''}`}
             style={{
               paddingTop: '1cm',
               paddingRight: '2cm',
               paddingBottom: '2cm',
               paddingLeft: surat.jenisSurat === 'surat_keputusan' ? '2cm' : '3cm',
+              fontFamily: surat.jenisSurat === 'surat_keputusan' ? "'Bookman Old Style', 'Bookman', 'URW Bookman L', serif" : undefined,
               boxSizing: 'border-box',
             }}
             dangerouslySetInnerHTML={{ __html: htmlContent }}

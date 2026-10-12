@@ -152,34 +152,78 @@ const defaultSkLampiranTabel: SkLampiranRow[] = [
   {
     id: '1',
     no: '1',
-    nama: 'Ni Luh Made Sukarini, S.Pd.SD.',
-    nipOrJabatan: '19790412 200604 2 018 (Pembina, IV/a)',
+    nama: 'Ni Luh Made Sukarini, S.Pd.SD.\nNIP. 19790412 200604 2 018',
+    nip: '19790412 200604 2 018',
+    pangkatGol: 'Pembina, IV/a',
+    jabatan: 'Guru Kelas I',
+    nipOrJabatan: 'Pembina, IV/a',
     tugas: 'Guru Kelas I (Fase A)',
     keterangan: '24 Jam / Koordinator P5 Kelas I',
+    cols: {
+      c_no: '1',
+      c_nama: 'Ni Luh Made Sukarini, S.Pd.SD.\nNIP. 19790412 200604 2 018',
+      c_pangkat: 'Pembina, IV/a',
+      c_jabatan: 'Guru Kelas I',
+      c_tugas: 'Guru Kelas I (Fase A)',
+      c_keterangan: '24 Jam / Koordinator P5 Kelas I',
+    },
   },
   {
     id: '2',
     no: '2',
-    nama: 'I Wayan Agus Pratama, S.Pd.',
-    nipOrJabatan: '19840810 200902 1 005 (Penata Tk.I, III/d)',
+    nama: 'I Wayan Agus Pratama, S.Pd.\nNIP. 19840810 200902 1 005',
+    nip: '19840810 200902 1 005',
+    pangkatGol: 'Penata Tk.I, III/d',
+    jabatan: 'Guru Kelas IV',
+    nipOrJabatan: 'Penata Tk.I, III/d',
     tugas: 'Guru Kelas IV (Fase B)',
     keterangan: '24 Jam / Pembina Pramuka Siaga',
+    cols: {
+      c_no: '2',
+      c_nama: 'I Wayan Agus Pratama, S.Pd.\nNIP. 19840810 200902 1 005',
+      c_pangkat: 'Penata Tk.I, III/d',
+      c_jabatan: 'Guru Kelas IV',
+      c_tugas: 'Guru Kelas IV (Fase B)',
+      c_keterangan: '24 Jam / Pembina Pramuka Siaga',
+    },
   },
   {
     id: '3',
     no: '3',
-    nama: 'Ni Kadek Dwi Yuliani, S.Pd.',
-    nipOrJabatan: '19910214 201903 2 014 (Penata Muda, III/a)',
+    nama: 'Ni Kadek Dwi Yuliani, S.Pd.\nNIP. 19910214 201903 2 014',
+    nip: '19910214 201903 2 014',
+    pangkatGol: 'Penata Muda, III/a',
+    jabatan: 'Guru Kelas VI',
+    nipOrJabatan: 'Penata Muda, III/a',
     tugas: 'Guru Kelas VI (Fase C)',
     keterangan: '24 Jam / Pembina UKS & Dokter Kecil',
+    cols: {
+      c_no: '3',
+      c_nama: 'Ni Kadek Dwi Yuliani, S.Pd.\nNIP. 19910214 201903 2 014',
+      c_pangkat: 'Penata Muda, III/a',
+      c_jabatan: 'Guru Kelas VI',
+      c_tugas: 'Guru Kelas VI (Fase C)',
+      c_keterangan: '24 Jam / Pembina UKS & Dokter Kecil',
+    },
   },
   {
     id: '4',
     no: '4',
-    nama: 'I Gusti Ngurah Putu Arta, S.Pd.',
-    nipOrJabatan: '19881125 201502 1 003 (Penata, III/c)',
+    nama: 'I Gusti Ngurah Putu Arta, S.Pd.\nNIP. 19881125 201502 1 003',
+    nip: '19881125 201502 1 003',
+    pangkatGol: 'Penata, III/c',
+    jabatan: 'Guru PJOK',
+    nipOrJabatan: 'Penata, III/c',
     tugas: 'Guru PJOK Kelas I - VI',
     keterangan: '24 Jam / Pembina Olahraga & Prestasi',
+    cols: {
+      c_no: '4',
+      c_nama: 'I Gusti Ngurah Putu Arta, S.Pd.\nNIP. 19881125 201502 1 003',
+      c_pangkat: 'Penata, III/c',
+      c_jabatan: 'Guru PJOK',
+      c_tugas: 'Guru PJOK Kelas I - VI',
+      c_keterangan: '24 Jam / Pembina Olahraga & Prestasi',
+    },
   },
 ];
 
@@ -194,11 +238,12 @@ const angkaKeKataIndonesia = (num: number): string => {
 };
 
 export const defaultSkColumns: SkTableColumn[] = [
-  { id: 'c_no', label: 'No', width: '6%', align: 'center', key: 'no' },
-  { id: 'c_nama', label: 'Nama / NIP', width: '26%', align: 'left', key: 'nama' },
-  { id: 'c_jabatan', label: 'Pangkat / Golongan / Jabatan', width: '22%', align: 'left', key: 'nipOrJabatan' },
-  { id: 'c_tugas', label: 'Tugas Mengajar / Kelas Yang Diampu', width: '26%', align: 'left', key: 'tugas' },
-  { id: 'c_keterangan', label: 'Tugas Tambahan & Beban Mengajar', width: '20%', align: 'left', key: 'keterangan' },
+  { id: 'c_no', label: 'No', width: '5%', align: 'center', key: 'no' },
+  { id: 'c_nama', label: 'Nama / NIP', width: '25%', align: 'left', key: 'nama' },
+  { id: 'c_pangkat', label: 'Pangkat / Golongan', width: '14%', align: 'left', key: 'pangkatGol' },
+  { id: 'c_jabatan', label: 'Jabatan', width: '15%', align: 'left', key: 'jabatan' },
+  { id: 'c_tugas', label: 'Tugas Mengajar / Kelas Yang Diampu', width: '23%', align: 'left', key: 'tugas' },
+  { id: 'c_keterangan', label: 'Tugas Tambahan & Beban Kerja', width: '18%', align: 'left', key: 'keterangan' },
 ];
 
 const defaultSkLampiranList: SkLampiranItem[] = [
@@ -212,9 +257,9 @@ const defaultSkLampiranList: SkLampiranItem[] = [
     tabelHeader: {
       col1: 'No',
       col2: 'Nama / NIP',
-      col3: 'Pangkat / Golongan / Jabatan',
-      col4: 'Tugas Mengajar / Kelas Yang Diampu',
-      col5: 'Tugas Tambahan & Beban Mengajar',
+      col3: 'Pangkat / Golongan',
+      col4: 'Jabatan',
+      col5: 'Tugas Mengajar / Kelas Yang Diampu',
     },
     tabel: defaultSkLampiranTabel,
     isiTeks: '',
@@ -353,6 +398,135 @@ export const TEMPLATE_SURAT_PENGANTAR_DOKUMEN = [
   },
 ];
 
+export interface TemplateIntiSuratKeterangan {
+  id: string;
+  judul: string;
+  badge: 'Guru/PTK' | 'Siswa' | 'Umum';
+  kategori: 'guru' | 'siswa' | 'umum';
+  deskripsi: string;
+  generateTeks: (namaSekolah: string) => string;
+}
+
+export const TEMPLATE_INTI_SURAT_KETERANGAN: TemplateIntiSuratKeterangan[] = [
+  {
+    id: 'ptk_aktif_berkelakuan_baik',
+    judul: 'Pendidik / Tendik Aktif & Berkelakuan Baik (Default Guru)',
+    badge: 'Guru/PTK',
+    kategori: 'guru',
+    deskripsi: 'Pendidik/tenaga kependidikan aktif serta berkelakuan baik dan taat segala tata tertib sekolah',
+    generateTeks: (namaSekolah: string) =>
+      `Adalah benar pendidik / tenaga kependidikan aktif pada ${namaSekolah} Tahun Ajaran 2026/2027 dan berkelakuan baik serta mentaati segala tata tertib sekolah.`,
+  },
+  {
+    id: 'ptk_tugas_pembelajaran',
+    judul: 'Melaksanakan Beban Kerja & Tugas Pembelajaran',
+    badge: 'Guru/PTK',
+    kategori: 'guru',
+    deskripsi: 'Keterangan aktif melaksanakan proses belajar mengajar dan memenuhi beban kerja jam mengajar',
+    generateTeks: (namaSekolah: string) =>
+      `Adalah benar yang bersangkutan secara aktif melaksanakan tugas pokok pembelajaran / bimbingan pada ${namaSekolah} dan memenuhi beban kerja yang ditentukan pada Tahun Ajaran 2026/2027.`,
+  },
+  {
+    id: 'ptk_bebas_hukuman_disiplin',
+    judul: 'Bebas Hukuman Disiplin Pegawai (PNS / PPPK / Honorer)',
+    badge: 'Guru/PTK',
+    kategori: 'guru',
+    deskripsi: 'Keterangan tidak pernah dijatuhi sanksi hukuman disiplin sedang maupun berat',
+    generateTeks: (namaSekolah: string) =>
+      `Adalah benar yang bersangkutan selama menjalankan tugas sebagai pendidik / tenaga kependidikan pada ${namaSekolah} tidak pernah dijatuhi hukuman disiplin tingkat sedang maupun berat, serta senantiasa menjunjung tinggi integritas profesi dan mematuhi peraturan perundang-undangan.`,
+  },
+  {
+    id: 'ptk_masa_pengabdian',
+    judul: 'Masa Kerja & Pengabdian Terus-Menerus',
+    badge: 'Guru/PTK',
+    kategori: 'guru',
+    deskripsi: 'Keterangan masa pengabdian tugas secara terus-menerus di satuan pendidikan',
+    generateTeks: (namaSekolah: string) =>
+      `Adalah benar yang bersangkutan telah melaksanakan tugas pengabdian secara terus-menerus sebagai pendidik / tenaga kependidikan pada ${namaSekolah} terhitung sejak awal penugasan sampai dengan saat ini dengan dedikasi dan loyalitas yang baik.`,
+  },
+  {
+    id: 'ptk_dispensasi_tugas_luar',
+    judul: 'Dispensasi / Tugas Kedinasan Luar',
+    badge: 'Guru/PTK',
+    kategori: 'guru',
+    deskripsi: 'Keterangan izin dispensasi mengikuti agenda kedinasan resmi di luar sekolah',
+    generateTeks: (namaSekolah: string) =>
+      `Adalah benar yang bersangkutan merupakan pendidik aktif pada ${namaSekolah} yang diberikan izin / dispensasi tugas dinas luar untuk mengikuti kegiatan kedinasan resmi dan peningkatan mutu pendidikan.`,
+  },
+  {
+    id: 'siswa_aktif_berkelakuan_baik',
+    judul: 'Peserta Didik Aktif & Berkelakuan Baik (Default Siswa)',
+    badge: 'Siswa',
+    kategori: 'siswa',
+    deskripsi: 'Siswa terdaftar aktif tahun ajaran berjalan, berkelakuan baik dan taat tata tertib',
+    generateTeks: (namaSekolah: string) =>
+      `Adalah benar peserta didik yang terdaftar aktif pada ${namaSekolah} Tahun Ajaran 2026/2027 dan berkelakuan baik serta mentaati segala tata tertib sekolah.`,
+  },
+  {
+    id: 'siswa_pip_simpel',
+    judul: 'Penerima Bantuan PIP & Rekening SimPel',
+    badge: 'Siswa',
+    kategori: 'siswa',
+    deskripsi: 'Pengurusan rekening SimPel dan pencairan dana bantuan Program Indonesia Pintar (PIP)',
+    generateTeks: (namaSekolah: string) =>
+      `Adalah benar nama tersebut di atas merupakan peserta didik aktif pada ${namaSekolah} Tahun Ajaran 2026/2027 yang diusulkan / tercatat sebagai penerima bantuan Program Indonesia Pintar (PIP) dan belum pernah melakukan aktivasi buku rekening SimPel.`,
+  },
+  {
+    id: 'siswa_mutasi_pindah',
+    judul: 'Pindah Sekolah / Mutasi Keluar Siswa',
+    badge: 'Siswa',
+    kategori: 'siswa',
+    deskripsi: 'Keterangan siswa mutasi keluar dan tidak sedang menjalani sanksi pelanggaran tata tertib',
+    generateTeks: (namaSekolah: string) =>
+      `Adalah benar peserta didik tersebut di atas pernah bersekolah dan terdaftar aktif pada ${namaSekolah} sampai dengan surat ini dikeluarkan, serta tidak sedang menjalani sanksi pelanggaran tata tertib sekolah.`,
+  },
+  {
+    id: 'siswa_rekomendasi_prestasi',
+    judul: 'Siswa Berprestasi & Rekomendasi Lomba',
+    badge: 'Siswa',
+    kategori: 'siswa',
+    deskripsi: 'Rekomendasi mengikuti kompetisi, olimpiade, lomba, atau beasiswa berprestasi',
+    generateTeks: (namaSekolah: string) =>
+      `Adalah benar yang bersangkutan merupakan peserta didik berprestasi pada ${namaSekolah} dengan rekam jejak akademik dan sikap terpuji, serta direkomendasikan secara penuh untuk mengikuti ajang kegiatan / seleksi tersebut.`,
+  },
+  {
+    id: 'siswa_ekonomi_prasejahtera',
+    judul: 'Kondisi Ekonomi Prasejahtera (Keringanan Biaya)',
+    badge: 'Siswa',
+    kategori: 'siswa',
+    deskripsi: 'Keterangan siswa prasejahtera untuk pertimbangan bantuan atau beasiswa daerah',
+    generateTeks: (namaSekolah: string) =>
+      `Adalah benar peserta didik tersebut di atas berasal dari keluarga dengan kondisi ekonomi prasejahtera dan layak mendapatkan pertimbangan khusus bantuan biaya pendidikan dari instansi / pihak terkait.`,
+  },
+  {
+    id: 'siswa_tunjangan_anak',
+    judul: 'Tunjangan Anak / Masih Bersekolah (KP4)',
+    badge: 'Siswa',
+    kategori: 'siswa',
+    deskripsi: 'Lampiran pengurusan tunjangan anak PNS/PPPK/Karyawan (belum menikah/bekerja)',
+    generateTeks: (namaSekolah: string) =>
+      `Adalah benar anak tersebut di atas masih aktif bersekolah pada ${namaSekolah}, belum menikah, belum bekerja, dan masih menjadi tanggungan penuh orang tua untuk keperluan pengurusan tunjangan keluarga (KP4).`,
+  },
+  {
+    id: 'siswa_pengganti_dokumen',
+    judul: 'Pengganti Sementara Dokumen / Ijazah Hilang',
+    badge: 'Umum',
+    kategori: 'umum',
+    deskripsi: 'Keterangan alumni/siswa sebagai bukti pengganti sementara dokumen yang hilang/rusak',
+    generateTeks: (namaSekolah: string) =>
+      `Adalah benar yang bersangkutan adalah lulusan / pernah menempuh pendidikan pada ${namaSekolah} berdasarkan arsip catatan buku induk sekolah, dan surat ini diterbitkan sebagai keterangan resmi pengganti sementara dokumen yang hilang/rusak.`,
+  },
+  {
+    id: 'bebas_administrasi_perpus',
+    judul: 'Bebas Tanggungan Perpustakaan & Administrasi',
+    badge: 'Umum',
+    kategori: 'umum',
+    deskripsi: 'Keterangan telah menyelesaikan kewajiban administrasi dan tidak ada pinjaman buku',
+    generateTeks: (namaSekolah: string) =>
+      `Adalah benar yang bersangkutan telah menyelesaikan seluruh kewajiban administrasi sekolah, tidak memiliki tanggungan pinjaman buku perpustakaan maupun kewajiban lainnya pada ${namaSekolah}.`,
+  },
+];
+
 export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
   suratKeluarList,
   arsipList,
@@ -409,6 +583,8 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
   const [ketAlamat, setKetAlamat] = useState('');
   const [ketKeperluan, setKetKeperluan] = useState('');
   const [ketSubjekList, setKetSubjekList] = useState<SubjekKeteranganItem[]>([]);
+  const [ketIntiSurat, setKetIntiSurat] = useState('');
+  const [ketFilterKategoriTemplate, setKetFilterKategoriTemplate] = useState<'sesuai' | 'guru' | 'siswa' | 'semua'>('sesuai');
 
   // Khusus: Surat Undangan
   const [undHariTanggal, setUndHariTanggal] = useState('');
@@ -807,44 +983,78 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     });
   };
 
-  const handleTerapkanPresetKolomSkLampiran = (preset: 'standar_5' | 'detail_6' | 'panitia_4' | 'rombel_4' | 'sederhana_3') => {
+  const handleAutoBalanceColumnWidths = () => {
+    const currentCols = getActiveLampiranColumns(currentActiveLampiran);
+    if (currentCols.length === 0) return;
+    const total = currentCols.reduce((sum, c) => sum + (parseFloat(c.width || '20') || 20), 0);
+    if (total <= 0) return;
+    const updated = currentCols.map((c) => {
+      const cur = parseFloat(c.width || '20') || 20;
+      const pct = Math.round((cur / total) * 100);
+      return { ...c, width: `${pct}%` };
+    });
+    // Menyelaraskan sisa pembulatan agar tepat 100%
+    const newSum = updated.reduce((sum, c) => sum + (parseInt(c.width || '0', 10) || 0), 0);
+    const diff = 100 - newSum;
+    if (diff !== 0 && updated.length > 1) {
+      const targetIdx = updated.findIndex((c) => (c.key === 'tugas' || c.key === 'nama')) !== -1 
+        ? updated.findIndex((c) => (c.key === 'tugas' || c.key === 'nama')) 
+        : updated.length - 1;
+      const currentVal = parseInt(updated[targetIdx].width || '0', 10) || 0;
+      updated[targetIdx].width = `${currentVal + diff}%`;
+    }
+    updateActiveLampiran({
+      columns: updated,
+    });
+  };
+
+  const handleTerapkanPresetKolomSkLampiran = (preset: 'standar_6' | 'standar_5' | 'detail_6' | 'panitia_4' | 'rombel_4' | 'sederhana_3') => {
     let newCols: SkTableColumn[] = [];
-    if (preset === 'standar_5') {
+    if (preset === 'standar_6') {
       newCols = [
-        { id: 'c_no', label: 'No', width: '6%', align: 'center', key: 'no' },
-        { id: 'c_nama', label: 'Nama / NIP', width: '26%', align: 'left', key: 'nama' },
-        { id: 'c_jabatan', label: 'Pangkat / Golongan / Jabatan', width: '22%', align: 'left', key: 'nipOrJabatan' },
-        { id: 'c_tugas', label: 'Tugas Mengajar / Kelas Yang Diampu', width: '26%', align: 'left', key: 'tugas' },
-        { id: 'c_keterangan', label: 'Tugas Tambahan & Beban Kerja', width: '20%', align: 'left', key: 'keterangan' },
+        { id: 'c_no', label: 'No', width: '5%', align: 'center', key: 'no' },
+        { id: 'c_nama', label: 'Nama / NIP', width: '25%', align: 'left', key: 'nama' },
+        { id: 'c_pangkat', label: 'Pangkat / Golongan', width: '14%', align: 'left', key: 'pangkatGol' },
+        { id: 'c_jabatan', label: 'Jabatan', width: '15%', align: 'left', key: 'jabatan' },
+        { id: 'c_tugas', label: 'Tugas Mengajar / Kelas Yang Diampu', width: '23%', align: 'left', key: 'tugas' },
+        { id: 'c_keterangan', label: 'Tugas Tambahan & Beban Kerja', width: '18%', align: 'left', key: 'keterangan' },
+      ];
+    } else if (preset === 'standar_5') {
+      newCols = [
+        { id: 'c_no', label: 'No', width: '5%', align: 'center', key: 'no' },
+        { id: 'c_nama', label: 'Nama / NIP', width: '28%', align: 'left', key: 'nama' },
+        { id: 'c_pangkat', label: 'Pangkat / Golongan', width: '15%', align: 'left', key: 'pangkatGol' },
+        { id: 'c_tugas', label: 'Tugas Mengajar / Kelas Yang Diampu', width: '28%', align: 'left', key: 'tugas' },
+        { id: 'c_keterangan', label: 'Tugas Tambahan & Beban Kerja', width: '24%', align: 'left', key: 'keterangan' },
       ];
     } else if (preset === 'detail_6') {
       newCols = [
         { id: 'c_no', label: 'No', width: '5%', align: 'center', key: 'no' },
-        { id: 'c_nama', label: 'Nama Guru / PTK', width: '24%', align: 'left', key: 'nama' },
-        { id: 'c_nip', label: 'NIP / NUPTK / Gol', width: '18%', align: 'left', key: 'nipOrJabatan' },
-        { id: 'c_jabatan', label: 'Jabatan Pokok', width: '15%', align: 'left' },
+        { id: 'c_nama', label: 'Nama / NIP', width: '25%', align: 'left', key: 'nama' },
+        { id: 'c_pangkat', label: 'Pangkat / Golongan', width: '14%', align: 'left', key: 'pangkatGol' },
+        { id: 'c_jabatan', label: 'Jabatan Pokok', width: '15%', align: 'left', key: 'jabatan' },
         { id: 'c_tugas', label: 'Mata Pelajaran / Rombel', width: '23%', align: 'left', key: 'tugas' },
-        { id: 'c_keterangan', label: 'Beban Jam (JP) / Ket', width: '15%', align: 'left', key: 'keterangan' },
+        { id: 'c_keterangan', label: 'Beban Jam (JP) / Ket', width: '18%', align: 'left', key: 'keterangan' },
       ];
     } else if (preset === 'panitia_4') {
       newCols = [
         { id: 'c_no', label: 'No', width: '6%', align: 'center', key: 'no' },
-        { id: 'c_nama', label: 'Nama Lengkap / NIP', width: '32%', align: 'left', key: 'nama' },
-        { id: 'c_jabatan', label: 'Jabatan Dalam Panitia', width: '26%', align: 'left', key: 'nipOrJabatan' },
-        { id: 'c_tugas', label: 'Uraian Tugas & Tanggung Jawab', width: '36%', align: 'left', key: 'tugas' },
+        { id: 'c_nama', label: 'Nama / NIP', width: '32%', align: 'left', key: 'nama' },
+        { id: 'c_jabatan', label: 'Jabatan Dalam Panitia', width: '24%', align: 'left', key: 'nipOrJabatan' },
+        { id: 'c_tugas', label: 'Uraian Tugas & Tanggung Jawab', width: '38%', align: 'left', key: 'tugas' },
       ];
     } else if (preset === 'rombel_4') {
       newCols = [
         { id: 'c_no', label: 'No', width: '6%', align: 'center', key: 'no' },
-        { id: 'c_tugas', label: 'Kelas / Rombel', width: '18%', align: 'center', key: 'tugas' },
-        { id: 'c_nama', label: 'Nama Wali Kelas / Pembimbing', width: '42%', align: 'left', key: 'nama' },
-        { id: 'c_jabatan', label: 'NIP / Pangkat Golongan', width: '34%', align: 'left', key: 'nipOrJabatan' },
+        { id: 'c_tugas', label: 'Kelas / Rombel', width: '16%', align: 'center', key: 'tugas' },
+        { id: 'c_nama', label: 'Nama Wali Kelas / NIP', width: '44%', align: 'left', key: 'nama' },
+        { id: 'c_pangkat', label: 'Pangkat / Golongan', width: '34%', align: 'left', key: 'pangkatGol' },
       ];
     } else if (preset === 'sederhana_3') {
       newCols = [
         { id: 'c_no', label: 'No', width: '8%', align: 'center', key: 'no' },
-        { id: 'c_nama', label: 'Nama / Uraian Rincian', width: '56%', align: 'left', key: 'nama' },
-        { id: 'c_keterangan', label: 'Keterangan', width: '36%', align: 'left', key: 'keterangan' },
+        { id: 'c_nama', label: 'Nama / Uraian Rincian', width: '54%', align: 'left', key: 'nama' },
+        { id: 'c_keterangan', label: 'Keterangan', width: '38%', align: 'left', key: 'keterangan' },
       ];
     }
 
@@ -868,12 +1078,17 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     currentColsMap[col.id] = val;
     targetRow.cols = currentColsMap;
 
-    // Sinkronisasi otomatis ke properti warisan bila cocok
+    // Sinkronisasi otomatis ke properti baris
     if (col.key === 'no' || col.id === 'c_no' || /^(no|nomor)\.?$/i.test(col.label.trim())) {
       targetRow.no = val;
     } else if (col.key === 'nama' || col.id === 'c_nama' || /nama/i.test(col.label)) {
       targetRow.nama = val;
-    } else if (col.key === 'nipOrJabatan' || col.id === 'c_jabatan' || /pangkat|gol|jabatan|nip/i.test(col.label)) {
+    } else if (col.key === 'pangkatGol' || col.id === 'c_pangkat' || (/pangkat|golongan/i.test(col.label) && !/jabatan/i.test(col.label))) {
+      targetRow.pangkatGol = val;
+      targetRow.nipOrJabatan = val;
+    } else if (col.key === 'jabatan' || col.id === 'c_jabatan' || (/jabatan/i.test(col.label) && !/pangkat/i.test(col.label))) {
+      targetRow.jabatan = val;
+    } else if (col.key === 'nipOrJabatan') {
       targetRow.nipOrJabatan = val;
     } else if (col.key === 'tugas' || col.id === 'c_tugas' || /tugas|mapel|uraian/i.test(col.label)) {
       targetRow.tugas = val;
@@ -901,6 +1116,9 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       id: String(Date.now() + Math.random()),
       no: String(currentTabel.length + 1),
       nama: '',
+      nip: '',
+      pangkatGol: '',
+      jabatan: '',
       nipOrJabatan: '',
       tugas: '',
       keterangan: '',
@@ -917,18 +1135,25 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     const rowCols: Record<string, string> = {};
 
     const noVal = String(currentTabel.length + 1);
-    const namaVal = g.nama;
-    const nipJabatanVal = g.nip ? `${g.nip} (${g.pangkatGol || g.jabatan})` : (g.pangkatGol || g.jabatan);
+    const namaNipVal = g.nip ? `${g.nama}\nNIP. ${g.nip}` : `${g.nama}\n-`;
+    const pangkatVal = g.pangkatGol || '-';
+    const jabatanVal = g.jabatan || 'Guru';
     const tugasVal = g.jabatan.includes('Guru') ? `${g.jabatan}` : 'Tenaga Administrasi / Kependidikan';
     const ketVal = '24 Jam Tatap Muka';
 
     currentCols.forEach((c) => {
       if (c.id === 'c_no' || c.key === 'no' || /^(no|nomor)\.?$/i.test(c.label.trim())) {
         rowCols[c.id] = noVal;
-      } else if (c.id === 'c_nama' || c.key === 'nama' || /nama/i.test(c.label)) {
-        rowCols[c.id] = namaVal;
-      } else if (c.id === 'c_jabatan' || c.key === 'nipOrJabatan' || /pangkat|gol|jabatan|nip/i.test(c.label)) {
-        rowCols[c.id] = nipJabatanVal;
+      } else if (c.id === 'c_nama' || /nama.*nip|nip.*nama/i.test(c.label) || (c.key === 'nama' && /nip/i.test(c.label))) {
+        rowCols[c.id] = namaNipVal;
+      } else if (c.key === 'nama' || /nama/i.test(c.label)) {
+        rowCols[c.id] = g.nama;
+      } else if (c.id === 'c_pangkat' || c.key === 'pangkatGol' || (/pangkat|golongan/i.test(c.label) && !/jabatan/i.test(c.label))) {
+        rowCols[c.id] = pangkatVal;
+      } else if (c.id === 'c_jabatan' || c.key === 'jabatan' || (/jabatan/i.test(c.label) && !/pangkat/i.test(c.label))) {
+        rowCols[c.id] = jabatanVal;
+      } else if (/pangkat|gol/i.test(c.label) && /jabatan/i.test(c.label)) {
+        rowCols[c.id] = `${pangkatVal} (${jabatanVal})`;
       } else if (c.id === 'c_tugas' || c.key === 'tugas' || /tugas|mapel|uraian/i.test(c.label)) {
         rowCols[c.id] = tugasVal;
       } else if (c.id === 'c_keterangan' || c.key === 'keterangan' || /ket|keterangan|beban|jam|jp/i.test(c.label)) {
@@ -941,8 +1166,11 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     const newRow: SkLampiranRow = {
       id: String(Date.now() + Math.random()),
       no: noVal,
-      nama: namaVal,
-      nipOrJabatan: nipJabatanVal,
+      nama: namaNipVal,
+      nip: g.nip || '',
+      pangkatGol: pangkatVal,
+      jabatan: jabatanVal,
+      nipOrJabatan: pangkatVal,
       tugas: tugasVal,
       keterangan: ketVal,
       cols: rowCols,
@@ -955,8 +1183,9 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     const currentCols = getActiveLampiranColumns(currentActiveLampiran);
     const rows: SkLampiranRow[] = guruList.map((g, idx) => {
       const noVal = String(idx + 1);
-      const namaVal = g.nama;
-      const nipJabatanVal = g.nip ? `${g.nip} (${g.pangkatGol || g.jabatan})` : (g.pangkatGol || g.jabatan);
+      const namaNipVal = g.nip ? `${g.nama}\nNIP. ${g.nip}` : `${g.nama}\n-`;
+      const pangkatVal = g.pangkatGol || '-';
+      const jabatanVal = g.jabatan || 'Guru';
       const tugasVal = g.jabatan.includes('Guru') ? `${g.jabatan}` : 'Tenaga Administrasi Sekolah';
       const ketVal = '24 Jam / Tugas Terkait';
 
@@ -964,10 +1193,16 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       currentCols.forEach((c) => {
         if (c.id === 'c_no' || c.key === 'no' || /^(no|nomor)\.?$/i.test(c.label.trim())) {
           rowCols[c.id] = noVal;
-        } else if (c.id === 'c_nama' || c.key === 'nama' || /nama/i.test(c.label)) {
-          rowCols[c.id] = namaVal;
-        } else if (c.id === 'c_jabatan' || c.key === 'nipOrJabatan' || /pangkat|gol|jabatan|nip/i.test(c.label)) {
-          rowCols[c.id] = nipJabatanVal;
+        } else if (c.id === 'c_nama' || /nama.*nip|nip.*nama/i.test(c.label) || (c.key === 'nama' && /nip/i.test(c.label))) {
+          rowCols[c.id] = namaNipVal;
+        } else if (c.key === 'nama' || /nama/i.test(c.label)) {
+          rowCols[c.id] = g.nama;
+        } else if (c.id === 'c_pangkat' || c.key === 'pangkatGol' || (/pangkat|golongan/i.test(c.label) && !/jabatan/i.test(c.label))) {
+          rowCols[c.id] = pangkatVal;
+        } else if (c.id === 'c_jabatan' || c.key === 'jabatan' || (/jabatan/i.test(c.label) && !/pangkat/i.test(c.label))) {
+          rowCols[c.id] = jabatanVal;
+        } else if (/pangkat|gol/i.test(c.label) && /jabatan/i.test(c.label)) {
+          rowCols[c.id] = `${pangkatVal} (${jabatanVal})`;
         } else if (c.id === 'c_tugas' || c.key === 'tugas' || /tugas|mapel|uraian/i.test(c.label)) {
           rowCols[c.id] = tugasVal;
         } else if (c.id === 'c_keterangan' || c.key === 'keterangan' || /ket|keterangan|beban|jam|jp/i.test(c.label)) {
@@ -980,8 +1215,11 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       return {
         id: String(Date.now() + idx),
         no: noVal,
-        nama: namaVal,
-        nipOrJabatan: nipJabatanVal,
+        nama: namaNipVal,
+        nip: g.nip || '',
+        pangkatGol: pangkatVal,
+        jabatan: jabatanVal,
+        nipOrJabatan: pangkatVal,
         tugas: tugasVal,
         keterangan: ketVal,
         cols: rowCols,
@@ -1240,6 +1478,10 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     setKetAlamat('');
     setKetKeperluan('Syarat Pencairan Beasiswa PIP');
     setKetSubjekList([]);
+    const defaultSchoolName = formatNamaSekolahIsi(sekolah?.namaSekolah);
+    setKetIntiSurat(
+      `Adalah benar peserta didik yang terdaftar aktif pada ${defaultSchoolName} Tahun Ajaran 2026/2027 dan berkelakuan baik serta mentaati segala tata tertib sekolah.`
+    );
 
     setUndHariTanggal('Senin, 14 September 2026');
     setUndWaktu('09.00 WITA - Selesai');
@@ -1432,6 +1674,12 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       setIjinTipeDurasi(isMultiple ? 'rentang' : 'satu_hari');
       setIjinGuruPengganti(d.guruPengganti || '');
     } else if (sk.jenisSurat === 'surat_keterangan') {
+      const isGuru = d.jenisSubjek === 'guru';
+      const defaultSchoolName = formatNamaSekolahIsi(sekolah?.namaSekolah);
+      const defaultInti = isGuru
+        ? `Adalah benar pendidik / tenaga kependidikan aktif pada ${defaultSchoolName} Tahun Ajaran 2026/2027 dan berkelakuan baik serta mentaati segala tata tertib sekolah.`
+        : `Adalah benar peserta didik yang terdaftar aktif pada ${defaultSchoolName} Tahun Ajaran 2026/2027 dan berkelakuan baik serta mentaati segala tata tertib sekolah.`;
+
       setKetJenisSubjek(d.jenisSubjek || 'siswa');
       setKetNama(d.namaSubjek || '');
       setKetNisnNip(d.nisnNip || '');
@@ -1440,6 +1688,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       setKetNamaOrtu(d.namaOrtu || '');
       setKetAlamat(d.alamat || '');
       setKetKeperluan(d.keperluan || '');
+      setKetIntiSurat(d.intiSurat || defaultInti);
       if (Array.isArray(d.subjekList) && d.subjekList.length > 0) {
         setKetSubjekList(d.subjekList);
       } else if (d.namaSubjek) {
@@ -1750,6 +1999,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
         namaOrtu: activeSubjekList[0]?.namaOrtu || ketNamaOrtu,
         alamat: activeSubjekList[0]?.alamat || ketAlamat,
         keperluan: ketKeperluan,
+        intiSurat: ketIntiSurat,
         subjekList: activeSubjekList,
       };
 
@@ -3034,7 +3284,14 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             type="radio"
                             name="ketJenis"
                             checked={ketJenisSubjek === 'siswa'}
-                            onChange={() => setKetJenisSubjek('siswa')}
+                            onChange={() => {
+                              setKetJenisSubjek('siswa');
+                              const schoolName = formatNamaSekolahIsi(sekolah?.namaSekolah);
+                              const defGuru = `Adalah benar pendidik / tenaga kependidikan aktif pada ${schoolName} Tahun Ajaran 2026/2027 dan berkelakuan baik serta mentaati segala tata tertib sekolah.`;
+                              if (!ketIntiSurat.trim() || ketIntiSurat.trim() === defGuru.trim()) {
+                                setKetIntiSurat(`Adalah benar peserta didik yang terdaftar aktif pada ${schoolName} Tahun Ajaran 2026/2027 dan berkelakuan baik serta mentaati segala tata tertib sekolah.`);
+                              }
+                            }}
                           />
                           <span className="font-medium">Siswa</span>
                         </label>
@@ -3043,7 +3300,14 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             type="radio"
                             name="ketJenis"
                             checked={ketJenisSubjek === 'guru'}
-                            onChange={() => setKetJenisSubjek('guru')}
+                            onChange={() => {
+                              setKetJenisSubjek('guru');
+                              const schoolName = formatNamaSekolahIsi(sekolah?.namaSekolah);
+                              const defSiswa = `Adalah benar peserta didik yang terdaftar aktif pada ${schoolName} Tahun Ajaran 2026/2027 dan berkelakuan baik serta mentaati segala tata tertib sekolah.`;
+                              if (!ketIntiSurat.trim() || ketIntiSurat.trim() === defSiswa.trim()) {
+                                setKetIntiSurat(`Adalah benar pendidik / tenaga kependidikan aktif pada ${schoolName} Tahun Ajaran 2026/2027 dan berkelakuan baik serta mentaati segala tata tertib sekolah.`);
+                              }
+                            }}
                           />
                           <span className="font-medium">Guru / PTK</span>
                         </label>
@@ -3422,6 +3686,193 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                           ))}
                         </div>
                       )}
+                    </div>
+
+                    {/* Inti Surat / Kalimat Pernyataan Keterangan */}
+                    <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-3.5 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <label className="block font-bold text-slate-900 text-xs uppercase tracking-wide flex items-center gap-1.5 text-emerald-900">
+                            <FileText className="w-4 h-4 text-emerald-600" />
+                            Inti Surat / Kalimat Pernyataan Keterangan *
+                          </label>
+                          <p className="text-[11px] text-slate-600 mt-0.5">
+                            Pilih salah satu template resmi di bawah atau edit kalimat pernyataan ini secara bebas sesuai keperluan instansi.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const schoolName = formatNamaSekolahIsi(sekolah?.namaSekolah);
+                            if (ketJenisSubjek === 'guru') {
+                              setKetIntiSurat(
+                                `Adalah benar pendidik / tenaga kependidikan aktif pada ${schoolName} Tahun Ajaran 2026/2027 dan berkelakuan baik serta mentaati segala tata tertib sekolah.`
+                              );
+                            } else {
+                              setKetIntiSurat(
+                                `Adalah benar peserta didik yang terdaftar aktif pada ${schoolName} Tahun Ajaran 2026/2027 dan berkelakuan baik serta mentaati segala tata tertib sekolah.`
+                              );
+                            }
+                          }}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-emerald-800 bg-white border border-emerald-300 rounded-lg hover:bg-emerald-100/80 transition-colors shadow-xs shrink-0 self-start sm:self-auto cursor-pointer"
+                          title="Kembalikan kalimat inti ke template standar default"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Reset Default ({ketJenisSubjek === 'guru' ? 'Guru' : 'Siswa'})</span>
+                        </button>
+                      </div>
+
+                      {/* Dropdown Menu Pilihan Lengkap Semua Template */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                            <span>Pilih dari Daftar Template Inti Surat:</span>
+                          </label>
+                          <span className="text-[10px] text-slate-500">
+                            Tersedia {TEMPLATE_INTI_SURAT_KETERANGAN.length} template siap pakai
+                          </span>
+                        </div>
+                        <select
+                          className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white text-xs text-slate-800 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                          onChange={(e) => {
+                            const found = TEMPLATE_INTI_SURAT_KETERANGAN.find((t) => t.id === e.target.value);
+                            if (found) {
+                              const schoolName = formatNamaSekolahIsi(sekolah?.namaSekolah);
+                              setKetIntiSurat(found.generateTeks(schoolName));
+                            }
+                          }}
+                          value=""
+                        >
+                          <option value="" disabled>-- Klik untuk memilih template inti surat --</option>
+                          <optgroup label="📋 Template Pendidik / Guru & Tenaga Kependidikan (PTK)">
+                            {TEMPLATE_INTI_SURAT_KETERANGAN.filter((t) => t.kategori === 'guru').map((t) => (
+                              <option key={t.id} value={t.id}>
+                                [Guru] {t.judul}
+                              </option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="🎓 Template Siswa / Peserta Didik">
+                            {TEMPLATE_INTI_SURAT_KETERANGAN.filter((t) => t.kategori === 'siswa').map((t) => (
+                              <option key={t.id} value={t.id}>
+                                [Siswa] {t.judul}
+                              </option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="🏛️ Template Dokumen & Keterangan Umum">
+                            {TEMPLATE_INTI_SURAT_KETERANGAN.filter((t) => t.kategori === 'umum').map((t) => (
+                              <option key={t.id} value={t.id}>
+                                [Umum] {t.judul}
+                              </option>
+                            ))}
+                          </optgroup>
+                        </select>
+                      </div>
+
+                      {/* Tombol Cepat Pilihan Template Sesuai Subjek */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-emerald-950 uppercase tracking-wider">
+                            Tombol Cepat Template ({ketJenisSubjek === 'guru' ? 'Guru / PTK' : 'Siswa'}):
+                          </span>
+                          <div className="flex items-center gap-1 text-[10px]">
+                            <button
+                              type="button"
+                              onClick={() => setKetFilterKategoriTemplate('sesuai')}
+                              className={`px-1.5 py-0.5 rounded ${
+                                ketFilterKategoriTemplate === 'sesuai' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-600 hover:bg-slate-200'
+                              }`}
+                            >
+                              Sesuai Subjek
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setKetFilterKategoriTemplate('guru')}
+                              className={`px-1.5 py-0.5 rounded ${
+                                ketFilterKategoriTemplate === 'guru' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-600 hover:bg-slate-200'
+                              }`}
+                            >
+                              Semua Guru
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setKetFilterKategoriTemplate('siswa')}
+                              className={`px-1.5 py-0.5 rounded ${
+                                ketFilterKategoriTemplate === 'siswa' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-600 hover:bg-slate-200'
+                              }`}
+                            >
+                              Semua Siswa
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setKetFilterKategoriTemplate('semua')}
+                              className={`px-1.5 py-0.5 rounded ${
+                                ketFilterKategoriTemplate === 'semua' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-600 hover:bg-slate-200'
+                              }`}
+                            >
+                              Tampilkan Semua
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1 bg-white/70 rounded-lg border border-emerald-100">
+                          {TEMPLATE_INTI_SURAT_KETERANGAN
+                            .filter((t) => {
+                              if (ketFilterKategoriTemplate === 'sesuai') {
+                                return ketJenisSubjek === 'guru'
+                                  ? t.kategori === 'guru' || t.kategori === 'umum'
+                                  : t.kategori === 'siswa' || t.kategori === 'umum';
+                              }
+                              if (ketFilterKategoriTemplate === 'guru') return t.kategori === 'guru';
+                              if (ketFilterKategoriTemplate === 'siswa') return t.kategori === 'siswa';
+                              return true;
+                            })
+                            .map((t) => {
+                              const schoolName = formatNamaSekolahIsi(sekolah?.namaSekolah);
+                              const isCurrent = ketIntiSurat.trim() === t.generateTeks(schoolName).trim();
+                              return (
+                                <button
+                                  key={t.id}
+                                  type="button"
+                                  onClick={() => setKetIntiSurat(t.generateTeks(schoolName))}
+                                  className={`text-[11px] px-2.5 py-1 rounded-md border transition-all text-left flex items-center gap-1.5 cursor-pointer ${
+                                    isCurrent
+                                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs font-semibold'
+                                      : 'bg-white text-slate-700 border-slate-200 hover:bg-emerald-50 hover:border-emerald-300'
+                                  }`}
+                                  title={t.deskripsi}
+                                >
+                                  {isCurrent && <Check className="w-3 h-3 text-white shrink-0" />}
+                                  <span>{t.judul}</span>
+                                </button>
+                              );
+                            })}
+                        </div>
+                      </div>
+
+                      {/* Textarea Isian Inti Surat (Bisa Diedit Bebas) */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs font-semibold text-slate-800">
+                            Isi Kalimat Inti Surat (Bisa Diedit Bebas):
+                          </label>
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            {ketIntiSurat.length} karakter
+                          </span>
+                        </div>
+                        <textarea
+                          rows={3}
+                          required
+                          value={ketIntiSurat}
+                          onChange={(e) => setKetIntiSurat(e.target.value)}
+                          placeholder="Contoh: Adalah benar pendidik / tenaga kependidikan aktif pada SDN 1 Pekutatan..."
+                          className="w-full border border-emerald-300 rounded-lg p-2.5 bg-white text-xs text-slate-800 leading-relaxed focus:ring-2 focus:ring-emerald-600 focus:outline-none focus:border-emerald-600 font-serif"
+                        />
+                        <p className="text-[10px] text-slate-500 mt-1 italic">
+                          * Teks di atas akan dicetak tepat di bawah data identitas dan sebelum kalimat keperluan. Anda dapat mengedit teks ini secara bebas, atau menekan Enter bila ingin membuat paragraf baru.
+                        </p>
+                      </div>
                     </div>
 
                     <div>
@@ -4354,6 +4805,14 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                               </span>
                                               <button
                                                 type="button"
+                                                onClick={() => handleTerapkanPresetKolomSkLampiran('standar_6')}
+                                                className="text-[10px] font-bold bg-emerald-100 hover:bg-emerald-200 text-emerald-950 border border-emerald-300 rounded px-2.5 py-1 transition-colors cursor-pointer shadow-2xs"
+                                                title="No (5%), Nama/NIP (25%), Pangkat/Golongan (14%), Jabatan (15%), Tugas Mengajar (23%), Keterangan (18%)"
+                                              >
+                                                ⭐ 6 Kolom SK Tugas Resmi (Standar)
+                                              </button>
+                                              <button
+                                                type="button"
                                                 onClick={() => handleTerapkanPresetKolomSkLampiran('standar_5')}
                                                 className="text-[10px] font-semibold bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-800 border border-slate-300 rounded px-2 py-0.5 transition-colors cursor-pointer"
                                                 title="No, Nama/NIP, Pangkat/Golongan/Jabatan, Uraian Tugas, Keterangan"
@@ -4393,6 +4852,41 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                                 3 Kolom Sederhana
                                               </button>
                                             </div>
+
+                                            {/* Baris Ringkasan Total Persentase Kolom & Tombol Seimbangkan Otomatis */}
+                                            {(() => {
+                                              const totalPct = activeColumns.reduce((sum, c) => sum + (parseInt(c.width || "20", 10) || 0), 0);
+                                              const isPerfect = totalPct === 100;
+                                              return (
+                                                <div className={`p-2.5 rounded-lg border flex flex-wrap items-center justify-between gap-2 text-xs ${
+                                                  isPerfect ? "bg-emerald-50 border-emerald-300 text-emerald-900" : "bg-amber-50 border-amber-300 text-amber-900"
+                                                }`}>
+                                                  <div className="flex items-center gap-2">
+                                                    <span className={`w-2.5 h-2.5 rounded-full ${isPerfect ? "bg-emerald-600 ring-2 ring-emerald-300" : "bg-amber-500 ring-2 ring-amber-300"}`} />
+                                                    <span className="font-bold">
+                                                      Total Ukuran Kolom: <strong className="text-sm font-extrabold">{totalPct}%</strong>
+                                                    </span>
+                                                    {isPerfect ? (
+                                                      <span className="text-[11px] text-emerald-800 font-semibold bg-emerald-100/90 px-2 py-0.5 rounded-full">
+                                                        ✓ Pas 100% Sempurna (Sesuai Ukuran Tabel)
+                                                      </span>
+                                                    ) : (
+                                                      <span className="text-[11px] text-amber-900 font-semibold bg-amber-100/90 px-2 py-0.5 rounded-full">
+                                                        {totalPct < 100 ? `Kurang ${100 - totalPct}% agar penuh` : `Kelebihan ${totalPct - 100}%`}
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  <button
+                                                    type="button"
+                                                    onClick={handleAutoBalanceColumnWidths}
+                                                    className="px-3 py-1 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg font-bold text-xs text-slate-800 shadow-2xs transition-colors cursor-pointer flex items-center gap-1.5"
+                                                    title="Seimbangkan otomatis proporsi kolom agar pas 100%"
+                                                  >
+                                                    ⚖️ Seimbangkan Otomatis ke 100%
+                                                  </button>
+                                                </div>
+                                              );
+                                            })()}
 
                                             {/* Daftar Kartu Kolom */}
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 pt-1">
@@ -4461,6 +4955,68 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                                     />
                                                   </div>
 
+                                                  {/* OPSI MENGATUR PERSENTASE UKURAN KOLOM */}
+                                                  <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 space-y-1.5">
+                                                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-600">
+                                                      <span>Persentase Ukuran:</span>
+                                                      <span className="text-indigo-700 font-extrabold text-xs">{col.width || "20%"}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5">
+                                                      <input
+                                                        type="number"
+                                                        min={3}
+                                                        max={85}
+                                                        value={parseInt(col.width || "20", 10) || 20}
+                                                        onChange={(e) => {
+                                                          const val = Math.max(2, Math.min(95, parseInt(e.target.value, 10) || 5));
+                                                          handleUpdateKolomSkLampiran(col.id, { width: `${val}%` });
+                                                        }}
+                                                        className="w-14 text-xs font-bold border border-slate-300 rounded px-1.5 py-0.5 text-center bg-white focus:ring-1 focus:ring-indigo-500"
+                                                      />
+                                                      <span className="text-xs font-bold text-slate-600">%</span>
+                                                      <div className="flex items-center gap-0.5 ml-auto">
+                                                        <button
+                                                          type="button"
+                                                          onClick={() => {
+                                                            const cur = parseInt(col.width || "20", 10) || 20;
+                                                            handleUpdateKolomSkLampiran(col.id, { width: `${Math.max(3, cur - 1)}%` });
+                                                          }}
+                                                          className="px-1.5 py-0.5 text-[10px] font-bold bg-white hover:bg-slate-100 text-slate-700 rounded border border-slate-300 cursor-pointer"
+                                                          title="Kurangi 1%"
+                                                        >
+                                                          -1%
+                                                        </button>
+                                                        <button
+                                                          type="button"
+                                                          onClick={() => {
+                                                            const cur = parseInt(col.width || "20", 10) || 20;
+                                                            handleUpdateKolomSkLampiran(col.id, { width: `${Math.min(90, cur + 1)}%` });
+                                                          }}
+                                                          className="px-1.5 py-0.5 text-[10px] font-bold bg-white hover:bg-slate-100 text-slate-700 rounded border border-slate-300 cursor-pointer"
+                                                          title="Tambah 1%"
+                                                        >
+                                                          +1%
+                                                        </button>
+                                                      </div>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-1 pt-0.5">
+                                                      {["5%", "10%", "14%", "15%", "18%", "23%", "25%", "28%"].map((wPreset) => (
+                                                        <button
+                                                          key={wPreset}
+                                                          type="button"
+                                                          onClick={() => handleUpdateKolomSkLampiran(col.id, { width: wPreset })}
+                                                          className={`text-[9px] px-1.5 py-0.2 rounded border transition-colors cursor-pointer ${
+                                                            (col.width || "20%") === wPreset
+                                                              ? "bg-indigo-700 text-white border-indigo-800 font-bold"
+                                                              : "bg-white hover:bg-indigo-50 text-slate-600 border-slate-200"
+                                                          }`}
+                                                        >
+                                                          {wPreset}
+                                                        </button>
+                                                      ))}
+                                                    </div>
+                                                  </div>
+
                                                   <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-100">
                                                     <span className="text-[10px] text-slate-500 font-medium">Perataan:</span>
                                                     <div className="flex items-center gap-0.5 bg-slate-100 p-0.5 rounded border border-slate-200">
@@ -4515,6 +5071,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                                   <th
                                                     key={col.id || cIdx}
                                                     className="p-1.5 border-r border-slate-200 text-left align-top min-w-[130px]"
+                                                    style={{ width: col.width || "auto" }}
                                                   >
                                                     <div className="space-y-1">
                                                       <div className="flex items-center justify-between gap-1">
@@ -4561,6 +5118,25 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                                         placeholder={`Judul Kolom ${cIdx + 1}`}
                                                         className="w-full text-xs font-bold border border-slate-300 rounded px-1.5 py-1 bg-white focus:ring-1 focus:ring-emerald-500 focus:outline-none"
                                                       />
+                                                      {/* Pengatur Ukuran Persentase Langsung pada Header Kolom */}
+                                                      <div className="flex items-center justify-between gap-1 pt-0.5 text-[10px]">
+                                                        <span className="text-slate-400 font-medium">Lebar:</span>
+                                                        <div className="flex items-center gap-0.5">
+                                                          <input
+                                                            type="number"
+                                                            min={3}
+                                                            max={85}
+                                                            value={parseInt(col.width || "20", 10) || 20}
+                                                            onChange={(e) => {
+                                                              const val = Math.max(2, Math.min(95, parseInt(e.target.value, 10) || 5));
+                                                              handleUpdateKolomSkLampiran(col.id, { width: `${val}%` });
+                                                            }}
+                                                            className="w-11 text-[11px] font-bold border border-slate-300 rounded px-1 py-0.2 text-center bg-slate-50 hover:bg-white focus:bg-white focus:ring-1 focus:ring-indigo-500"
+                                                            title="Ubah persentase lebar kolom ini"
+                                                          />
+                                                          <span className="font-bold text-slate-500">%</span>
+                                                        </div>
+                                                      </div>
                                                     </div>
                                                   </th>
                                                 ))}

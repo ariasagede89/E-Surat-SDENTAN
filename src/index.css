@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Standar Tipografi Surat Keputusan (SK): Semua teks menggunakan Bookman Old Style */
+.is-surat-keputusan,
+.is-surat-keputusan *,
+.surat-resmi.is-surat-keputusan,
+.surat-resmi.is-surat-keputusan * {
+  font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif !important;
+}
+
 /* Penataan Tabel Lampiran Surat Keputusan: Wrap text rapi & tidak meluber keluar kolom */
 .sk-lampiran-table {
   width: 100% !important;
@@ -15,10 +23,12 @@
   overflow-wrap: break-word !important;
   word-break: break-word !important;
   box-sizing: border-box !important;
+  font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif !important;
 }
 
 .sk-lampiran-container {
   width: 100% !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
+  font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif !important;
 }

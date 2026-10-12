@@ -214,6 +214,9 @@ export interface SkLampiranRow {
   id: string;
   no?: string | number;
   nama?: string;
+  nip?: string;
+  pangkatGol?: string;
+  jabatan?: string;
   nipOrJabatan?: string;
   tugas?: string;
   keterangan?: string;

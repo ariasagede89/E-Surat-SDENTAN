@@ -229,7 +229,8 @@ export function exportToWord(
   const isSuratKeputusanDoc =
     htmlContent.includes('is-surat-keputusan') ||
     htmlContent.includes('Bookman') ||
-    filename.toLowerCase().includes('surat_keputusan');
+    htmlContent.includes('KEPUTUSAN KEPALA') ||
+    /surat.*keputusan|sk/i.test(filename);
 
   const defaultWordFont = isSuratKeputusanDoc
     ? "'Bookman Old Style', 'Bookman', 'URW Bookman L', serif"
@@ -544,7 +545,7 @@ export function printHtmlElement(
       }
     }
     body {
-      font-family: 'Tinos', 'Times New Roman', serif;
+      font-family: ${isSuratKeputusan ? "'Bookman Old Style', 'Bookman', 'URW Bookman L', serif" : "'Tinos', 'Times New Roman', serif"};
       font-size: 12pt;
       line-height: 1.35;
       color: #000000;
@@ -553,6 +554,11 @@ export function printHtmlElement(
       margin: 0 auto;
       box-sizing: border-box;
     }
+    ${isSuratKeputusan ? `
+    body, body *, .surat-resmi, .surat-resmi *, table, th, td, p, div, span {
+      font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif !important;
+    }
+    ` : ''}
     p {
       margin-top: 0;
       margin-bottom: 4pt;
@@ -1154,6 +1160,16 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
         `;
       }
 
+      const defaultIntiSurat = `Adalah benar ${isMulti ? (isSiswa ? 'peserta didik yang terdaftar aktif' : 'pendidik / tenaga kependidikan aktif') : (isSiswa ? 'peserta didik yang terdaftar aktif' : 'pendidik / tenaga kependidikan aktif')} pada ${schoolNameIsi} Tahun Ajaran 2026/2027 dan berkelakuan baik serta mentaati segala tata tertib sekolah.`;
+      const rawIntiSurat = (data.intiSurat || '').trim() || defaultIntiSurat;
+
+      const intiSuratHtml = rawIntiSurat
+        .split('\n')
+        .map((p: string) => p.trim())
+        .filter((p: string) => p.length > 0)
+        .map((p: string) => `<p style="text-align: justify; margin-bottom: 8pt; line-height: 1.4; font-size: 12pt;">${p}</p>`)
+        .join('');
+
       badanSurat = `
         <div style="text-align: center; margin: 12pt 0 16pt 0;">
           <p style="margin: 0; text-align: center; font-size: 12pt; font-weight: bold; text-decoration: underline;">SURAT KETERANGAN</p>
@@ -1162,9 +1178,7 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
 
         ${subjekHtml}
 
-        <p style="text-align: justify; margin-bottom: 8pt; line-height: 1.4; font-size: 12pt;">
-          Adalah benar ${isMulti ? (isSiswa ? 'peserta didik yang terdaftar aktif' : 'pendidik / tenaga kependidikan aktif') : (isSiswa ? 'peserta didik yang terdaftar aktif' : 'pendidik / tenaga kependidikan aktif')} pada ${schoolNameIsi} Tahun Ajaran 2026/2027 dan berkelakuan baik serta mentaati segala tata tertib sekolah.
-        </p>
+        ${intiSuratHtml}
 
         ${data.keperluan ? `
         <p style="text-align: justify; margin-bottom: 8pt; line-height: 1.4; font-size: 12pt;">
@@ -2400,18 +2414,19 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
           ? lampItem.columns
           : [
               { id: 'c_no', label: lampItem.tabelHeader?.col1 || 'No', width: '5%', align: 'center', key: 'no' },
-              { id: 'c_nama', label: lampItem.tabelHeader?.col2 || 'Nama / NIP', width: '27%', align: 'left', key: 'nama' },
-              { id: 'c_jabatan', label: lampItem.tabelHeader?.col3 || 'Pangkat / Gol / Jabatan', width: '22%', align: 'left', key: 'nipOrJabatan' },
-              { id: 'c_tugas', label: lampItem.tabelHeader?.col4 || 'Uraian Tugas / Kelas Yang Diampu', width: '28%', align: 'left', key: 'tugas' },
-              { id: 'c_keterangan', label: lampItem.tabelHeader?.col5 || 'Keterangan', width: '18%', align: 'left', key: 'keterangan' },
+              { id: 'c_nama', label: lampItem.tabelHeader?.col2 || 'Nama / NIP', width: '25%', align: 'left', key: 'nama' },
+              { id: 'c_pangkat', label: lampItem.tabelHeader?.col3 || 'Pangkat / Golongan', width: '14%', align: 'left', key: 'pangkatGol' },
+              { id: 'c_jabatan', label: lampItem.tabelHeader?.col4 || 'Jabatan', width: '15%', align: 'left', key: 'jabatan' },
+              { id: 'c_tugas', label: lampItem.tabelHeader?.col5 || 'Tugas Mengajar / Kelas', width: '23%', align: 'left', key: 'tugas' },
+              { id: 'c_keterangan', label: lampItem.tabelHeader?.col6 || 'Tugas Tambahan & Beban Kerja', width: '18%', align: 'left', key: 'keterangan' },
             ];
 
         const totalResolvedCols = resolvedColumns.length;
         const hasNoFirst = totalResolvedCols > 0 && /^no(\.|\b)?$/i.test(resolvedColumns[0].label?.trim() || '');
         const colWidthList = resolvedColumns.map((col: any, cIdx: number) => {
-          if (col.width) return col.width;
-          if (cIdx === 0 && hasNoFirst) return '6%';
-          const remainingPct = hasNoFirst ? 94 : 100;
+          if (col.width) return col.width.endsWith('%') || col.width.endsWith('px') || col.width.endsWith('pt') ? col.width : `${col.width}%`;
+          if (cIdx === 0 && hasNoFirst) return '5%';
+          const remainingPct = hasNoFirst ? 95 : 100;
           const otherColsCount = hasNoFirst ? Math.max(1, totalResolvedCols - 1) : totalResolvedCols;
           return `${(remainingPct / otherColsCount).toFixed(1)}%`;
         });
@@ -2421,16 +2436,17 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
         const mode = lampItem.mode || (hasRows ? 'tabel' : 'teks');
 
         const lampiranTableHtml = (mode === 'tabel' || mode === 'kombinasi' || hasRows) && hasRows ? `
-          <table class="sk-lampiran-table" style="width: 100% !important; max-width: 100% !important; border-collapse: collapse !important; font-size: 9.5pt; margin-top: 8pt; margin-bottom: 12pt; table-layout: fixed !important; box-sizing: border-box !important;" border="1" cellpadding="4" cellspacing="0">
+          <table class="sk-lampiran-table" style="width: 100% !important; max-width: 100% !important; border-collapse: collapse !important; font-size: 9.5pt; margin-top: 8pt; margin-bottom: 12pt; table-layout: fixed !important; box-sizing: border-box !important; font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif;" border="1" cellpadding="4" cellspacing="0">
             <colgroup>
               ${colWidthList.map((w: string) => `<col style="width: ${w};">`).join('')}
             </colgroup>
             <thead>
-              <tr style="background-color: #f8fafc; font-weight: bold; font-family: 'Bookman Old Style', serif;">
+              <tr style="background-color: #f8fafc; font-weight: bold; font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif;">
                 ${resolvedColumns.map((col: any, cIdx: number) => {
                   const isCenter = col.align === 'center' || (cIdx === 0 && hasNoFirst);
+                  const w = colWidthList[cIdx] || 'auto';
                   return `
-                    <th style="border: 1px solid #000; padding: 5pt ${isCenter ? '2pt' : '5pt'}; text-align: ${col.align || (isCenter ? 'center' : 'left')}; vertical-align: middle; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word; box-sizing: border-box;">
+                    <th style="border: 1px solid #000; padding: 5pt ${isCenter ? '2pt' : '5pt'}; text-align: ${col.align || (isCenter ? 'center' : 'left')}; vertical-align: middle; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word; box-sizing: border-box; width: ${w} !important; max-width: ${w}; font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif;">
                       ${col.label || `Kolom ${cIdx + 1}`}
                     </th>
                   `;
@@ -2439,7 +2455,7 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
             </thead>
             <tbody>
               ${tabelRows.map((r: any, rIdx: number) => `
-                <tr>
+                <tr style="font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif;">
                   ${resolvedColumns.map((col: any, cIdx: number) => {
                     let cellVal = '';
                     if (r.cols && r.cols[col.id] !== undefined) {
@@ -2452,12 +2468,101 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
                       cellVal = r.cols[col.label];
                     }
 
+                    // Deteksi dan penataan tipe kolom
                     const isCenter = col.align === 'center' || (cIdx === 0 && hasNoFirst);
-                    const isBold = col.key === 'nama' || /nama/i.test(col.label || '');
+                    const isNamaNipCol = /nama.*nip|nip.*nama/i.test(col.label || '') ||
+                      (col.key === 'nama' && (/nip/i.test(col.label || '') || Boolean(r.nip)));
+                    const isPangkatGolCol = /pangkat|golongan/i.test(col.label || '') && !/jabatan/i.test(col.label || '');
+                    const isJabatanCol = /jabatan/i.test(col.label || '') && !/pangkat|golongan/i.test(col.label || '');
+                    const w = colWidthList[cIdx] || 'auto';
+
+                    let renderedContent = '';
+
+                    // 1. Kolom Nama / NIP: Nama di atas (tebal), NIP diletakkan rapi di bawah Nama
+                    if (isNamaNipCol) {
+                      let namaText = cellVal || r.nama || '';
+                      let nipText = r.nip || '';
+
+                      if (!nipText && namaText.includes('\n')) {
+                        const splitted = namaText.split('\n').map((s: string) => s.trim()).filter(Boolean);
+                        namaText = splitted[0] || '';
+                        nipText = splitted.slice(1).join(' ');
+                      } else if (!nipText && /NIP[\.:\s]/i.test(namaText)) {
+                        const parts = namaText.split(/NIP[\.:\s]+/i);
+                        namaText = parts[0].replace(/[\/,\-\(\)]+$/, '').trim();
+                        nipText = parts[1] ? parts[1].replace(/[\)]+$/, '').trim() : '';
+                      } else if (!nipText && /\b(19\d{6}\s*\d{6}\s*[12]\s*\d{3}|20\d{6}\s*\d{6}\s*[12]\s*\d{3}|\d{18})\b/.test(namaText)) {
+                        const m = namaText.match(/\b(19\d{6}\s*\d{6}\s*[12]\s*\d{3}|20\d{6}\s*\d{6}\s*[12]\s*\d{3}|\d{18})\b/);
+                        if (m) {
+                          nipText = m[1].trim();
+                          namaText = namaText.replace(m[0], '').replace(/[\/\(\)\-\:\,]+$/, '').trim();
+                        }
+                      }
+
+                      // Format NIP dengan awalan NIP. jika berupa angka valid
+                      const cleanNip = nipText.trim();
+                      const formattedNip = cleanNip && cleanNip !== '-'
+                        ? (cleanNip.toUpperCase().startsWith('NIP') ? cleanNip : `NIP. ${cleanNip}`)
+                        : (cleanNip === '-' ? '-' : '');
+
+                      renderedContent = `
+                        <div style="font-weight: bold; line-height: 1.25; word-wrap: break-word; overflow-wrap: break-word; font-family: 'Bookman Old Style', serif;">
+                          ${namaText || '-'}
+                        </div>
+                        ${formattedNip ? `
+                          <div style="font-size: 8.5pt; font-weight: normal; color: #1e293b; margin-top: 2.5pt; line-height: 1.2; word-wrap: break-word; overflow-wrap: break-word; font-family: 'Bookman Old Style', serif;">
+                            ${formattedNip}
+                          </div>
+                        ` : ''}
+                      `;
+                    }
+                    // 2. Kolom Pangkat / Golongan: Jangan digabung dengan Jabatan
+                    else if (isPangkatGolCol) {
+                      let pg = cellVal || r.pangkatGol || '';
+                      if (!pg && r.nipOrJabatan) {
+                        const parenMatch = r.nipOrJabatan.match(/\((.*?)\)/);
+                        if (parenMatch && /pembina|penata|pengatur|juru|gol|\b[IVXLCDM]+\/[a-e]\b/i.test(parenMatch[1])) {
+                          pg = parenMatch[1].trim();
+                        }
+                      }
+                      // Bersihkan dari NIP dan Jabatan
+                      pg = pg.replace(/(?:NIP\.?\s*)?[0-9\s\-]{12,}/gi, '').trim();
+                      pg = pg.replace(/\s*[-–]\s*(?:Guru|Kepala|Tenaga|Staf).*$/i, '').trim();
+                      pg = pg.replace(/^[\(\)\-\,\/]+|[\(\)\-\,\/]+$/g, '').trim();
+
+                      renderedContent = `
+                        <div style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3; font-family: 'Bookman Old Style', serif;">
+                          ${pg || '-'}
+                        </div>
+                      `;
+                    }
+                    // 3. Kolom Jabatan: Rapi dan terpisah dari Pangkat & Golongan
+                    else if (isJabatanCol) {
+                      let jbt = cellVal || r.jabatan || '';
+                      // Bersihkan dari NIP dan Pangkat jika ada
+                      jbt = jbt.replace(/(?:NIP\.?\s*)?[0-9\s\-]{12,}/gi, '').trim();
+                      jbt = jbt.replace(/\((?:Pembina|Penata|Pengatur|Juru|[IVXLCDM]+\/[a-e]).*?\)/gi, '').trim();
+                      jbt = jbt.replace(/^(?:Pembina|Penata|Pengatur|Juru)[^,\n]*,\s*[IVXLCDM]+\/[a-e]\s*[-–]?\s*/gi, '').trim();
+                      jbt = jbt.replace(/^[\(\)\-\,\/\s]+|[\(\)\-\,\/\s]+$/g, '').trim();
+
+                      renderedContent = `
+                        <div style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3; font-family: 'Bookman Old Style', serif;">
+                          ${jbt || '-'}
+                        </div>
+                      `;
+                    }
+                    // 4. Kolom umum lainnya
+                    else {
+                      renderedContent = `
+                        <div style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3; font-family: 'Bookman Old Style', serif;">
+                          ${cellVal || '-'}
+                        </div>
+                      `;
+                    }
 
                     return `
-                      <td style="border: 1px solid #000; padding: 4pt 5pt; text-align: ${col.align || (isCenter ? 'center' : 'left')}; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word; box-sizing: border-box; white-space: pre-wrap; font-size: 9.5pt; line-height: 1.35;">
-                        ${isBold ? `<strong style="display: block; word-wrap: break-word; overflow-wrap: break-word;">${cellVal || '-'}</strong>` : (cellVal || '-')}
+                      <td style="border: 1px solid #000; padding: 4pt 5pt; text-align: ${col.align || (isCenter ? 'center' : 'left')}; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word; box-sizing: border-box; width: ${w} !important; max-width: ${w}; font-size: 9.5pt; line-height: 1.35; font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif;">
+                        ${renderedContent}
                       </td>
                     `;
                   }).join('')}
