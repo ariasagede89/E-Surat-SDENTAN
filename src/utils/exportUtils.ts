@@ -2317,6 +2317,60 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
       }
       break;
     }
+
+    case 'surat_eksternal': {
+      const lampiranInfo = surat.lampiranNama
+        ? `<div style="margin-top: 10pt; padding: 6pt 10pt; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4pt; font-size: 11pt;">
+             <strong>Berkas Dokumen Terlampir:</strong> ${surat.lampiranNama} ${surat.lampiranUkuran ? `(${surat.lampiranUkuran})` : ''}
+           </div>`
+        : '';
+
+      badanSurat = `
+        <div style="text-align: center; margin: 12pt 0 16pt 0;">
+          <p style="margin: 0; text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px;">LEMBAR PENCATATAN SURAT KELUAR EKSTERNAL</p>
+          <p class="nomor-surat" style="margin: 2pt 0 0 0; text-align: center; font-size: 11pt;">Nomor: ${surat.noSurat}</p>
+        </div>
+
+        <p style="text-align: justify; margin: 0 0 10pt 0; line-height: 1.45; font-size: 12pt;">
+          Surat ini merupakan naskah dinas keluar resmi yang diterbitkan dan dicatat dalam Buku Agenda Surat Keluar ${schoolNameIsi} untuk keperluan eksternal (di luar template sistem), dengan rincian data sebagai berikut:
+        </p>
+
+        <table style="width: 100%; margin-bottom: 12pt; border: none; border-collapse: collapse; line-height: 1.5; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="width: 140pt; vertical-align: top; border: none; padding: 2.5pt 0;">Kode & Klasifikasi</td>
+            <td style="width: 15pt; vertical-align: top; border: none; padding: 2.5pt 0;">:</td>
+            <td style="vertical-align: top; border: none; padding: 2.5pt 0; font-family: monospace; font-weight: bold;">[${surat.kodeKlasifikasi}] ${surat.namaKlasifikasi}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">Tanggal Surat</td>
+            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">:</td>
+            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">${tglIndo}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">Tujuan / Kepada</td>
+            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">:</td>
+            <td style="vertical-align: top; border: none; padding: 2.5pt 0; font-weight: bold;">${surat.tujuan || '-'}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">Perihal Surat</td>
+            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">:</td>
+            <td style="vertical-align: top; border: none; padding: 2.5pt 0; font-weight: bold;">${surat.perihal}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">Keterangan Naskah</td>
+            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">:</td>
+            <td style="vertical-align: top; border: none; padding: 2.5pt 0; text-align: justify;">${surat.isiSurat || data.keterangan || 'Naskah surat dibuat dan disusun di luar sistem (format eksternal / mandiri). Nomor surat resmi tercatat di sistem buku agenda surat keluar.'}</td>
+          </tr>
+        </table>
+
+        ${lampiranInfo}
+
+        <p style="text-align: justify; margin-top: 12pt; line-height: 1.45; font-size: 11pt; color: #475569; font-style: italic;">
+          * Lembar pencatatan ini membuktikan keabsahan alokasi nomor surat keluar resmi sesuai Permendagri No. 83 Tahun 2022 pada ${schoolNameIsi}.
+        </p>
+      `;
+      break;
+    }
   }
 
   // Tanda Tangan Block: Menggunakan tabel 2 kolom (Kiri kosong 52%, Kanan isi TTD 48%) agar di MS Word tetap berada di kanan dan tidak terpotong

@@ -1094,7 +1094,12 @@ export default function App() {
         totalSuratKeluar={suratKeluarList.length}
         suratKeluarList={suratKeluarList}
         arsipList={arsipList}
+        guruList={guruList}
         onSelectNumber={handleSelectNumberForSurat}
+        onAddSuratKeluar={handleAddSuratKeluar}
+        onAddArsip={handleAddArsip}
+        onSuccessNotice={(msg) => showToast(msg, 'success')}
+        onNavigateToSuratKeluar={() => setActiveTab('surat_keluar')}
       />
 
       {/* Global Modal: Pratinjau Surat & Cetak MS Word / PDF */}

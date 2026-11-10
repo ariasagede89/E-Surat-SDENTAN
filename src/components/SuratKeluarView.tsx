@@ -37,6 +37,7 @@ import {
   AlignCenter,
   AlignRight,
   ListOrdered,
+  ExternalLink,
 } from 'lucide-react';
 import {
   SuratKeluar,
@@ -722,6 +723,9 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
   const [rekPtkPertimbangan, setRekPtkPertimbangan] = useState(
     'Bahwa yang bersangkutan memiliki loyalitas, integritas, kedisiplinan yang tinggi, serta rekam jejak kinerja yang sangat baik dan tidak sedang menjalani sanksi hukuman disiplin kedinasan.'
   );
+
+  // Khusus: Surat Eksternal (Luar Sistem)
+  const [eksternalKeterangan, setEksternalKeterangan] = useState('');
 
   // Delete Confirmation Modal State
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -1646,6 +1650,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     setRekPtkUnitKerja(initPtkItem.unitKerja || 'SD Negeri 1 Pekutatan');
     setRekPtkKeperluan('Mengikuti Seleksi Program Pendidikan Profesi Guru (PPG) Guru Tertentu / Calon Guru Penggerak');
     setRekPtkPertimbangan('');
+    setEksternalKeterangan('');
 
     setShowFormModal(true);
   };
@@ -1946,6 +1951,9 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
         setRekSiswaKeperluan(d.keperluanRekomendasi || sk.perihal || '');
         setRekSiswaPertimbangan(d.dasarPertimbangan || '');
       }
+    } else if (sk.jenisSurat === 'surat_eksternal') {
+      const d = sk.dataKhusus || {};
+      setEksternalKeterangan(d.keterangan || sk.isiSurat || '');
     }
 
     setShowFormModal(true);
@@ -2191,6 +2199,11 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
           finalTujuan = finalPtkList[0].nama;
         }
       }
+    } else if (jenisSurat === 'surat_eksternal') {
+      dataKhusus = {
+        isEksternal: true,
+        keterangan: eksternalKeterangan || '',
+      };
     }
 
     const resolvedKepsek = resolveKepalaSekolahData(sekolah, guruList);
@@ -2429,6 +2442,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                 <option value="surat_tugas">Surat Tugas (SPT)</option>
                 <option value="surat_pengantar">Surat Pengantar</option>
                 <option value="surat_rekomendasi">Surat Rekomendasi</option>
+                <option value="surat_eksternal">Surat Eksternal (Luar Sistem)</option>
               </select>
 
               <button
@@ -2507,7 +2521,10 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       surat_tugas: 'Surat Tugas (SPT)',
                       surat_pengantar: 'Surat Pengantar',
                       surat_rekomendasi: 'Surat Rekomendasi',
+                      surat_eksternal: 'Surat Eksternal (Luar Sistem)',
                     };
+
+                    const isEksternal = sk.jenisSurat === 'surat_eksternal';
 
                     return (
                       <tr key={sk.id} className="hover:bg-slate-50/70 transition-colors">
@@ -2515,7 +2532,14 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                           {idx + 1}
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1 w-max">
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 w-max ${
+                              isEksternal
+                                ? 'bg-indigo-100 text-indigo-900 border-indigo-200'
+                                : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                            }`}
+                          >
+                            {isEksternal && <ExternalLink className="w-2.5 h-2.5" />}
                             <span>{labelJenisMap[sk.jenisSurat] || sk.jenisSurat}</span>
                             {sk.jenisSurat === 'surat_tugas' && (
                               <span className="text-[9px] font-medium text-emerald-800 bg-white/70 px-1 py-0.2 rounded border border-emerald-300">
@@ -2861,6 +2885,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                     { id: 'surat_tugas', label: '5. Surat Perintah Tugas (SPT)' },
                     { id: 'surat_pengantar', label: '6. Surat Pengantar' },
                     { id: 'surat_rekomendasi', label: '7. Surat Rekomendasi' },
+                    { id: 'surat_eksternal', label: '8. Surat Eksternal (Luar Sistem)' },
                   ].map((fmt) => (
                     <button
                       type="button"
@@ -2904,6 +2929,9 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             setPerihal('Surat Rekomendasi Pendidik dan Tenaga Kependidikan');
                             setTujuan(rekPtkNama || 'PTK');
                           }
+                        } else if (newJenis === 'surat_eksternal') {
+                          setPerihal('Surat Dinas Eksternal');
+                          setTujuan('');
                         }
                       }}
                       className={`py-2 px-2.5 text-xs font-semibold rounded-lg text-left transition-all border ${
@@ -7543,6 +7571,39 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                         </div>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Khusus: Surat Eksternal (Luar Sistem) */}
+                {jenisSurat === 'surat_eksternal' && (
+                  <div className="p-4 bg-indigo-50/60 border border-indigo-200 rounded-xl space-y-3">
+                    <div className="flex items-center gap-2 pb-2 border-b border-indigo-200 text-indigo-950 font-bold text-xs uppercase tracking-wide">
+                      <ExternalLink className="w-4 h-4 text-indigo-600" />
+                      <span>Keterangan Surat Eksternal (Dibuat di Luar Sistem)</span>
+                    </div>
+
+                    <div className="p-3 bg-white border border-indigo-100 rounded-lg text-xs text-indigo-950 space-y-1">
+                      <p className="font-semibold flex items-center gap-1.5 text-indigo-800">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        Pencatatan Nomor Surat Resmi di Buku Agenda Sekolah
+                      </p>
+                      <p className="text-[11px] text-slate-600 leading-relaxed">
+                        Surat fisik atau berkas digital dibuat di aplikasi eksternal (Microsoft Word, Google Docs, Canva, dsb.). Nomor surat ini telah resmi diregistrasi pada buku agenda sistem agar penomoran urut tetap teratur dan tercatat rapi.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Keterangan Tambahan / Ringkasan Isi Surat Eksternal
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={eksternalKeterangan}
+                        onChange={(e) => setEksternalKeterangan(e.target.value)}
+                        placeholder="Contoh: Berkas proposal/permohonan kerjasama dibuat di Word dan dikirimkan langsung ke kantor dinas terkait..."
+                        className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-indigo-600 focus:outline-none"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
