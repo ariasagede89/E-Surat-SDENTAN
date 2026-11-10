@@ -4,8 +4,8 @@ import {
   getAdminAuthFromFirestore,
 } from '../firebase/firestoreService';
 
-export const DEFAULT_ADMIN_USERNAME = 'admin';
-export const DEFAULT_ADMIN_PASSWORD = 'admin1234';
+export const DEFAULT_ADMIN_USERNAME = 'Admin';
+export const DEFAULT_ADMIN_PASSWORD = 'Ariasa123';
 
 const STORAGE_ADMIN_CREDS_KEY = 'esurat_admin_creds';
 const LEGACY_STORAGE_KEY = 'simas_admin_creds';
@@ -37,7 +37,7 @@ export function setCachedAdminCredentials(creds: AdminCredentials): void {
 
 /**
  * Mendapatkan kredensial akun admin (Kepala Sekolah & TU).
- * Bawaan default: nama = admin, password = admin1234
+ * Bawaan default: nama = Admin, password = Ariasa123
  */
 export function getStoredAdminCredentials(): AdminCredentials {
   if (inMemoryCreds) {
@@ -48,6 +48,21 @@ export function getStoredAdminCredentials(): AdminCredentials {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed?.username && parsed?.password) {
+        // Otomatis migrasikan kredensial lama bawaan sistem (admin/admin1234) ke kredensial baru (Admin/Ariasa123)
+        if (parsed.username.toLowerCase() === 'admin' && parsed.password === 'admin1234') {
+          inMemoryCreds = {
+            username: DEFAULT_ADMIN_USERNAME,
+            password: DEFAULT_ADMIN_PASSWORD,
+          };
+          setCachedAdminCredentials(inMemoryCreds);
+          syncAdminAuthToFirestore({
+            username: DEFAULT_ADMIN_USERNAME,
+            password: DEFAULT_ADMIN_PASSWORD,
+            updatedAt: new Date().toISOString(),
+          }).catch(() => {});
+          return inMemoryCreds;
+        }
+
         inMemoryCreds = {
           username: parsed.username.trim(),
           password: parsed.password,
@@ -154,7 +169,7 @@ export function saveAdminPassword(newPassword: string): boolean {
 }
 
 /**
- * Reset kata sandi admin ke bawaan (admin1234)
+ * Reset kata sandi admin ke bawaan (Admin / Ariasa123)
  */
 export async function resetAdminPasswordToDefault(): Promise<void> {
   const def = {
@@ -199,6 +214,17 @@ export async function verifyAdminLoginAsync(userInput: string, passInput: string
   try {
     const cloudAuth = await getAdminAuthFromFirestore();
     if (cloudAuth && cloudAuth.username && cloudAuth.password) {
+      // Jika di Firestore masih tersimpan kredensial bawaan lama (admin/admin1234), migrasikan ke Admin/Ariasa123
+      if (cloudAuth.username.toLowerCase() === 'admin' && cloudAuth.password === 'admin1234') {
+        cloudAuth.username = DEFAULT_ADMIN_USERNAME;
+        cloudAuth.password = DEFAULT_ADMIN_PASSWORD;
+        syncAdminAuthToFirestore({
+          username: DEFAULT_ADMIN_USERNAME,
+          password: DEFAULT_ADMIN_PASSWORD,
+          updatedAt: new Date().toISOString(),
+        }).catch(() => {});
+      }
+
       setCachedAdminCredentials(cloudAuth);
       const inputUser = (userInput || '').trim().toLowerCase();
       const targetUser = cloudAuth.username.toLowerCase();

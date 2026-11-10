@@ -144,7 +144,7 @@ export const PengaturanView: React.FC<PengaturanViewProps> = ({
   };
 
   const handleResetAdminCreds = async () => {
-    if (confirm('Kembalikan nama pengguna dan kata sandi admin ke pengaturan awal sistem (admin / admin1234)?')) {
+    if (confirm(`Kembalikan nama pengguna dan kata sandi admin ke pengaturan awal sistem (${DEFAULT_ADMIN_USERNAME} / ${DEFAULT_ADMIN_PASSWORD})?`)) {
       setSavingCreds(true);
       await resetAdminPasswordToDefault();
       const def = getStoredAdminCredentials();

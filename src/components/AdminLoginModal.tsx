@@ -133,7 +133,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Contoh: admin"
+                  placeholder="Contoh: Admin"
                   className="w-full pl-9.5 pr-3 py-2 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-blue-800 transition-all font-medium"
                 />
               </div>

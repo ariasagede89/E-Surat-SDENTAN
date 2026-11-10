@@ -33,6 +33,7 @@ import {
   syncSettingsToFirestore,
   subscribeToSettings,
   subscribeToAdminAuth,
+  syncAdminAuthToFirestore,
   purgeDummyDocsFromFirestore,
   clearFirestoreCollection,
   syncAllLocalDataToFirestore,
@@ -57,7 +58,13 @@ import {
 } from './data/initialData';
 import { compareSuratKeluarDesc, compareSuratMasukDesc } from './utils/numberGenerator';
 import { sortSiswa } from './utils/csvUtils';
-import { getActiveUserRole, logoutAdmin, setCachedAdminCredentials } from './utils/authUtils';
+import {
+  getActiveUserRole,
+  logoutAdmin,
+  setCachedAdminCredentials,
+  DEFAULT_ADMIN_USERNAME,
+  DEFAULT_ADMIN_PASSWORD,
+} from './utils/authUtils';
 import { BerandaView } from './components/BerandaView';
 import { SuratMasukView } from './components/SuratMasukView';
 import { SuratKeluarView } from './components/SuratKeluarView';
@@ -100,7 +107,7 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Akses Pengguna: Bawaan 'guru' tanpa login saat web dibuka.
-  // Akun Admin (Kepala Sekolah & TU) login dengan user: admin, pass: admin1234
+  // Akun Admin (Kepala Sekolah & TU) login dengan user: Admin, pass: Ariasa123
   const [userRole, setUserRole] = useState<UserRole>(() => getActiveUserRole());
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
   const [loginNoticeMessage, setLoginNoticeMessage] = useState<string>('');
@@ -332,6 +339,20 @@ export default function App() {
 
     const unsubAdminAuth = subscribeToAdminAuth((data) => {
       if (data && data.username && data.password) {
+        // Otomatis migrasikan kredensial lama bawaan (admin / admin1234) ke kredensial baru (Admin / Ariasa123)
+        if (data.username.toLowerCase() === 'admin' && data.password === 'admin1234') {
+          syncAdminAuthToFirestore({
+            username: DEFAULT_ADMIN_USERNAME,
+            password: DEFAULT_ADMIN_PASSWORD,
+            updatedAt: new Date().toISOString(),
+          }).catch(() => {});
+          setCachedAdminCredentials({
+            username: DEFAULT_ADMIN_USERNAME,
+            password: DEFAULT_ADMIN_PASSWORD,
+          });
+          return;
+        }
+
         setCachedAdminCredentials({
           username: data.username,
           password: data.password,
