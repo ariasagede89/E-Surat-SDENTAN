@@ -21,13 +21,13 @@ import {
   Trash2,
 } from 'lucide-react';
 import {
-  cariKlasifikasi,
   generateNomorSurat,
   getBulanRomawi,
   getNextNomorUrut,
   formatNomorUrut,
   resolveYear,
 } from '../utils/numberGenerator';
+import { KLASIFIKASI_MENDAGRI_83_2022 } from '../data/klasifikasiMendagri';
 import {
   KlasifikasiMendagriItem,
   PengaturanSekolah,
@@ -71,12 +71,8 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
   const [step, setStep] = useState<'pilih_nomor' | 'form_eksternal'>('pilih_nomor');
 
   // Generator State
-  const [activeKategori, setActiveKategori] = useState<
-    'Semua' | 'Pendidikan Dasar' | 'Kepegawaian'
-  >('Semua');
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedItem, setSelectedItem] = useState<KlasifikasiMendagriItem>(() => {
-    return cariKlasifikasi('', 'Pendidikan Dasar')[0];
+    return KLASIFIKASI_MENDAGRI_83_2022[0];
   });
   const [tanggalSurat, setTanggalSurat] = useState(() => new Date().toISOString().slice(0, 10));
 
@@ -121,8 +117,6 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
   }, [isOpen, suratKeluarList, arsipList, totalSuratKeluar]);
 
   if (!isOpen) return null;
-
-  const filteredItems = cariKlasifikasi(searchTerm, activeKategori);
   const dateObj = new Date(tanggalSurat);
   const nomorSuratOtomatis = generateNomorSurat(
     selectedItem.kode,
@@ -258,17 +252,17 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden flex flex-col max-h-[92vh] animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl lg:max-w-5xl overflow-hidden flex flex-col max-h-[94vh] animate-fade-in">
         {/* ======================================================== */}
         {/* STEP 1: GENERATOR & PEMILIHAN PENGGUNAAN NOMOR SURAT     */}
         {/* ======================================================== */}
         {step === 'pilih_nomor' && (
           <>
             {/* Header Modal */}
-            <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 px-6 py-4 text-white flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-800/80 rounded-xl text-amber-300 shadow-xs">
+            <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 px-6 sm:px-8 py-5 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="p-2.5 bg-blue-800/80 rounded-xl text-amber-300 shadow-xs">
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
@@ -281,7 +275,7 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-blue-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                className="p-2 rounded-lg text-blue-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                 title="Tutup"
               >
                 <X className="w-5 h-5" />
@@ -289,24 +283,24 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
             </div>
 
             {/* Live Result Preview Box */}
-            <div className="p-4 sm:p-5 bg-gradient-to-b from-blue-50/90 to-indigo-50/50 border-b border-blue-100">
-              <div className="text-xs font-semibold text-blue-950 mb-1.5 flex items-center justify-between">
+            <div className="p-5 sm:p-6 bg-gradient-to-b from-blue-50/90 to-indigo-50/50 border-b border-blue-100">
+              <div className="text-xs font-semibold text-blue-950 mb-2 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
-                  <Tag className="w-3.5 h-3.5 text-blue-700" />
+                  <Tag className="w-4 h-4 text-blue-700" />
                   <span>Nomor Surat Resmi Dihasilkan:</span>
                 </span>
-                <span className="text-[11px] text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full font-mono font-semibold">
+                <span className="text-xs text-blue-700 bg-blue-100 px-2.5 py-0.5 rounded-full font-mono font-semibold">
                   Bulan Romawi: {getBulanRomawi(dateObj)}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 bg-white border-2 border-blue-300 rounded-xl px-4 py-2.5 font-mono font-bold text-sm sm:text-lg text-blue-950 shadow-inner select-all truncate">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 bg-white border-2 border-blue-300 rounded-xl px-4 sm:px-5 py-3 sm:py-3.5 font-mono font-bold text-base sm:text-xl text-blue-950 shadow-inner select-all truncate">
                   {nomorSuratOtomatis}
                 </div>
                 <button
                   type="button"
                   onClick={handleCopy}
-                  className={`px-3 py-2.5 rounded-xl font-medium text-xs sm:text-sm flex items-center gap-1.5 transition-all shadow-sm cursor-pointer shrink-0 ${
+                  className={`px-4 py-3 sm:py-3.5 rounded-xl font-semibold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-sm cursor-pointer shrink-0 ${
                     copied
                       ? 'bg-emerald-600 text-white'
                       : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 hover:border-slate-400'
@@ -318,20 +312,20 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                 </button>
               </div>
 
-              <div className="mt-2 text-xs text-slate-600 flex flex-wrap gap-2 items-center">
+              <div className="mt-2.5 text-xs text-slate-600 flex flex-wrap gap-2 items-center">
                 <span className="font-semibold text-blue-900">Perihal Klasifikasi:</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-200 font-medium text-slate-800">
+                <span className="bg-white px-2.5 py-1 rounded-lg border border-slate-200 font-medium text-slate-800 text-xs">
                   [{selectedItem.kode}] {selectedItem.uraian}
                 </span>
               </div>
             </div>
 
             {/* Form Settings for Date, Number, & Classification */}
-            <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="p-5 sm:p-7 overflow-y-auto flex-1 space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-blue-700" />
+                  <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-blue-700" />
                     <span>Tanggal Surat</span>
                   </label>
                   <input
@@ -342,222 +336,116 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                       setTanggalSurat(newTgl);
                       setNomorUrut(calculateSeq(newTgl));
                     }}
-                    className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full text-sm sm:text-base border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
                   />
-                  <p className="text-[11px] text-blue-700 mt-1 font-medium">
+                  <p className="text-[11px] sm:text-xs text-blue-700 mt-1 font-medium">
                     Tahun Surat: {dateObj.getFullYear()} (Penomoran mulai 001 di setiap awal tahun)
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                  <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
                     <span>Nomor Urut Surat Keluar (Th {dateObj.getFullYear()})</span>
                   </label>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <input
                       type="number"
                       min="1"
                       value={nomorUrut}
                       onChange={(e) => setNomorUrut(parseInt(e.target.value) || 1)}
-                      className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 font-mono bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                      className="w-full text-sm sm:text-base border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 font-mono font-bold bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
                     />
                     <button
                       type="button"
                       onClick={() => setNomorUrut(calculateSeq(tanggalSurat))}
-                      className="text-xs text-blue-700 hover:text-blue-900 whitespace-nowrap bg-blue-50 hover:bg-blue-100 font-semibold px-2.5 py-2 rounded-lg border border-blue-200 transition-colors cursor-pointer"
+                      className="text-xs sm:text-sm text-blue-700 hover:text-blue-900 whitespace-nowrap bg-blue-50 hover:bg-blue-100 font-semibold px-3 py-2.5 sm:py-3 rounded-xl border border-blue-200 transition-colors cursor-pointer shadow-2xs"
                       title={`Hitung otomatis nomor urut berikutnya untuk tahun ${dateObj.getFullYear()}`}
                     >
                       Otomatis #{formatNomorUrut(calculateSeq(tanggalSurat))}
                     </button>
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-1 italic">
+                  <p className="text-[11px] sm:text-xs text-slate-500 mt-1 italic">
                     * Otomatis membaca nomor tertinggi dari Surat Keluar & Buku Arsip.
                   </p>
                 </div>
               </div>
 
-              {/* Classification Selection Tabs */}
+              {/* Dropdown Kode Klasifikasi Surat Keluar */}
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5 text-blue-700" />
-                    <span>Pilih Kode Klasifikasi Permendagri 83/2022</span>
-                  </label>
-                  <span className="text-xs text-slate-500 font-medium">
-                    Ditemukan: {filteredItems.length} kode
+                <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <BookOpen className="w-4 h-4 text-blue-700" />
+                    <span>Kode Klasifikasi Surat Keluar</span>
                   </span>
-                </div>
+                  <span className="text-xs text-slate-500 font-mono">
+                    Kode: <strong className="text-blue-900">{selectedItem.kode}</strong>
+                  </span>
+                </label>
 
-                {/* Filter Buttons */}
-                <div className="flex gap-1.5 p-1 bg-slate-100 rounded-xl mb-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setActiveKategori('Semua')}
-                    className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                      activeKategori === 'Semua'
-                        ? 'bg-white text-blue-950 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Semua
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveKategori('Pendidikan Dasar')}
-                    className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                      activeKategori === 'Pendidikan Dasar'
-                        ? 'bg-white text-blue-950 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <BookOpen className="w-3.5 h-3.5" />
-                    Pendidikan Dasar (400.3)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveKategori('Kepegawaian')}
-                    className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                      activeKategori === 'Kepegawaian'
-                        ? 'bg-white text-blue-950 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <UserCheck className="w-3.5 h-3.5" />
-                    Kepegawaian (800)
-                  </button>
-                </div>
+                <select
+                  value={selectedItem.kode}
+                  onChange={(e) => {
+                    const found = KLASIFIKASI_MENDAGRI_83_2022.find((k) => k.kode === e.target.value);
+                    if (found) setSelectedItem(found);
+                  }}
+                  className="w-full text-sm sm:text-base border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 bg-white text-slate-900 font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
+                >
+                  <optgroup label="── Pendidikan Dasar (400.3) ──">
+                    {KLASIFIKASI_MENDAGRI_83_2022.filter((k) => k.kategori === 'Pendidikan Dasar').map((k) => (
+                      <option key={k.kode} value={k.kode}>
+                        [{k.kode}] {k.uraian}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="── Kepegawaian (800) ──">
+                    {KLASIFIKASI_MENDAGRI_83_2022.filter((k) => k.kategori === 'Kepegawaian').map((k) => (
+                      <option key={k.kode} value={k.kode}>
+                        [{k.kode}] {k.uraian}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="── Klasifikasi Lainnya ──">
+                    {KLASIFIKASI_MENDAGRI_83_2022.filter((k) => k.kategori !== 'Pendidikan Dasar' && k.kategori !== 'Kepegawaian').map((k) => (
+                      <option key={k.kode} value={k.kode}>
+                        [{k.kode}] {k.uraian}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
 
-                {/* Search Input */}
-                <div className="relative mb-2.5">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Cari kode (misal: 400.3.5, 400.3.10, 800.1.11.1) atau nama urusan..."
-                    className="w-full text-xs sm:text-sm pl-9 pr-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                </div>
-
-                {/* List of Codes */}
-                <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 max-h-44 sm:max-h-52 overflow-y-auto">
-                  {filteredItems.map((item) => {
-                    const isSelected = selectedItem.kode === item.kode;
-                    return (
-                      <button
-                        type="button"
-                        key={item.kode}
-                        onClick={() => setSelectedItem(item)}
-                        className={`w-full text-left p-2.5 transition-colors flex items-start gap-3 cursor-pointer ${
-                          isSelected
-                            ? 'bg-blue-50/90 border-l-4 border-blue-600'
-                            : 'hover:bg-slate-50'
-                        }`}
-                      >
-                        <span
-                          className={`font-mono font-bold text-xs px-2 py-0.5 rounded shrink-0 ${
-                            item.kategori === 'Pendidikan Dasar'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
-                          {item.kode}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-slate-800 leading-tight">
-                            {item.uraian}
-                          </p>
-                          {item.subUraian && (
-                            <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                              {item.subUraian}
-                            </p>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                  {filteredItems.length === 0 && (
-                    <div className="p-4 text-center text-xs text-slate-400">
-                      Tidak ada kode klasifikasi yang cocok dengan kata kunci.
-                    </div>
-                  )}
-                </div>
+                {selectedItem.subUraian && (
+                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                    {selectedItem.subUraian}
+                  </p>
+                )}
               </div>
 
-              {/* ============================================================= */}
-              {/* KETIKA NOMOR SURAT DIAJUKAN: PILIHAN CARA PENGGUNAAN NOMOR   */}
-              {/* ============================================================= */}
+              {/* Tombol Penggunaan Nomor Surat */}
               <div className="pt-2">
-                <div className="p-4 bg-gradient-to-r from-slate-50 via-blue-50/50 to-indigo-50/40 border border-slate-200/90 rounded-2xl space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                    <span className="text-xs font-bold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-amber-500" />
-                      <span>Ajukan & Pilih Penggunaan Nomor Surat Ini:</span>
-                    </span>
-                    <span className="text-[11px] text-blue-800 font-semibold bg-blue-100/90 px-2 py-0.5 rounded-md w-max">
-                      Kedua pilihan tetap dicatat ke buku agenda
-                    </span>
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={handleUseForTemplate}
+                    className="py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Template Sistem</span>
+                  </button>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* PILIHAN 1: Buat Surat Sesuai Template di Sistem */}
-                    <button
-                      type="button"
-                      onClick={handleUseForTemplate}
-                      className="p-3.5 bg-white hover:bg-emerald-50/50 border-2 border-emerald-500 hover:border-emerald-600 rounded-xl text-left transition-all shadow-xs group cursor-pointer flex flex-col justify-between"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
-                            Template Sistem
-                          </span>
-                          <FileText className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
-                        </div>
-                        <div className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-emerald-950">
-                          Gunakan untuk Buat Surat
-                        </div>
-                        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                          Buat surat sesuai template di sistem (Surat Tugas, Undangan, Keterangan, SK, Pengantar, Rekomendasi).
-                        </p>
-                      </div>
-                      <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">
-                        <span>Pilih Template Sistem</span>
-                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </button>
-
-                    {/* PILIHAN 2: Buat Surat Eksternal (Tidak Ada di Sistem) */}
-                    <button
-                      type="button"
-                      onClick={handleOpenExternalForm}
-                      className="p-3.5 bg-white hover:bg-indigo-50/50 border-2 border-indigo-500 hover:border-indigo-600 rounded-xl text-left transition-all shadow-xs group cursor-pointer flex flex-col justify-between"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded-md bg-indigo-100 text-indigo-800 border border-indigo-200">
-                            Luar Sistem
-                          </span>
-                          <ExternalLink className="w-4 h-4 text-indigo-600 group-hover:scale-110 transition-transform" />
-                        </div>
-                        <div className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-indigo-950">
-                          Gunakan untuk Buat Surat Eksternal
-                        </div>
-                        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                          Buat surat tidak ada di sistem (dibuat di MS Word / fisik / format khusus). Nomor langsung dicatat resmi.
-                        </p>
-                      </div>
-                      <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-700">
-                        <span>Catat Surat Eksternal</span>
-                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={handleOpenExternalForm}
+                    className="py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span>Surat Eksternal</span>
+                  </button>
                 </div>
               </div>
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
               <button
                 type="button"
                 onClick={onClose}
@@ -565,9 +453,6 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
               >
                 Tutup
               </button>
-              <div className="text-xs text-slate-500 italic hidden sm:block">
-                Pilih salah satu tombol di atas untuk mengajukan dan mencatat nomor surat ini.
-              </div>
             </div>
           </>
         )}
@@ -626,17 +511,17 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
             </div>
 
             {/* Body Form */}
-            <div className="p-5 overflow-y-auto flex-1 space-y-4 text-xs sm:text-sm">
+            <div className="p-6 sm:p-7 overflow-y-auto flex-1 space-y-5 text-sm">
               {extError && (
-                <div className="p-3 bg-rose-50 border border-rose-300 rounded-xl text-xs text-rose-800 flex items-start gap-2.5">
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <div className="p-3.5 bg-rose-50 border border-rose-300 rounded-xl text-xs sm:text-sm text-rose-800 flex items-start gap-2.5">
+                  <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
                   <span className="font-medium">{extError}</span>
                 </div>
               )}
 
               {/* Perihal Surat Eksternal */}
               <div>
-                <label className="block font-bold text-slate-800 mb-1">
+                <label className="block font-bold text-slate-800 text-sm mb-1.5">
                   Perihal / Hal Surat Eksternal <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -645,16 +530,16 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                   value={extPerihal}
                   onChange={(e) => setExtPerihal(e.target.value)}
                   placeholder="Contoh: Permohonan Bantuan Dana Renovasi Ruang Kelas / Surat Kerjasama Kegiatan"
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2 bg-white text-slate-900 font-medium focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 bg-white text-slate-900 font-medium text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none shadow-2xs"
                 />
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   Tuliskan perihal surat yang dibuat di luar sistem untuk keperluan buku agenda surat keluar.
                 </p>
               </div>
 
               {/* Tujuan / Penerima */}
               <div>
-                <label className="block font-bold text-slate-800 mb-1">
+                <label className="block font-bold text-slate-800 text-sm mb-1.5">
                   Tujuan / Penerima Surat <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -663,14 +548,14 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                   value={extTujuan}
                   onChange={(e) => setExtTujuan(e.target.value)}
                   placeholder="Contoh: Kepala Dinas Lingkungan Hidup Kab. Jembrana / Camat Pekutatan"
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2 bg-white text-slate-900 font-medium focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 bg-white text-slate-900 font-medium text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none shadow-2xs"
                 />
               </div>
 
               {/* Penandatangan */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Pejabat Penandatangan
                   </label>
                   <select
@@ -692,7 +577,7 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                         }
                       }
                     }}
-                    className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white text-xs focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 sm:py-3 bg-white text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none shadow-2xs"
                   >
                     <option value={resolvedKepsek.nama}>
                       {resolvedKepsek.nama} (Kepala Sekolah - {resolvedKepsek.nip})
@@ -708,7 +593,7 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Jabatan Penandatangan
                   </label>
                   <input
@@ -716,22 +601,22 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                     value={extPenandatanganJabatan}
                     onChange={(e) => setExtPenandatanganJabatan(e.target.value)}
                     placeholder="Kepala Sekolah"
-                    className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white text-xs focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 sm:py-3 bg-white text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none shadow-2xs"
                   />
                 </div>
               </div>
 
               {/* Keterangan Naskah / Dokumen Fisik */}
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                   Keterangan Naskah / Lokasi Dokumen Fisik <span className="text-slate-400 font-normal">(Opsional)</span>
                 </label>
                 <textarea
-                  rows={2}
+                  rows={3}
                   value={extKeterangan}
                   onChange={(e) => setExtKeterangan(e.target.value)}
                   placeholder="Contoh: Dokumen diketik menggunakan template Word khusus oleh staf TU, naskah fisik disimpan di lemari arsip surat keluar."
-                  className="w-full border border-slate-300 rounded-xl p-2.5 bg-white text-xs focus:ring-2 focus:ring-indigo-600 focus:outline-none leading-relaxed"
+                  className="w-full border border-slate-300 rounded-xl p-3.5 bg-white text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none leading-relaxed shadow-2xs"
                 />
               </div>
 

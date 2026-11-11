@@ -253,24 +253,14 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header View */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <FileText className="w-5 h-5 text-blue-900" />
-            Pencatatan Surat Masuk
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Buku agenda surat masuk, penerimaan dinas, dan pengisian lembar disposisi kepala sekolah
-          </p>
-        </div>
-
+      {/* Tombol + CATAT SURAT MASUK */}
+      <div className="flex items-center justify-end">
         <button
           onClick={openNew}
-          className="px-4 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-sm flex items-center justify-center gap-2 transition-colors"
+          className="px-4 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
         >
           <Plus className="w-4 h-4" />
-          <span>Catat Surat Masuk Baru</span>
+          <span>+ CATAT SURAT MASUK</span>
         </button>
       </div>
 
@@ -517,27 +507,27 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
 
       {/* Modal Form Pencatatan / Edit Surat Masuk */}
       {showFormModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh]">
-            <div className="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl lg:max-w-5xl overflow-hidden flex flex-col max-h-[94vh]">
+            <div className="bg-slate-900 px-6 sm:px-8 py-5 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
                 <FileText className="w-5 h-5 text-blue-400" />
-                <h2 className="text-base font-bold">
+                <h2 className="text-base sm:text-lg font-bold">
                   {formId ? 'Edit Surat Masuk & Disposisi' : 'Catat Surat Masuk Baru'}
                 </h2>
               </div>
               <button
                 onClick={() => setShowFormModal(false)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors"
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 text-xs sm:text-sm">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <form onSubmit={handleSubmit} className="p-6 sm:p-7 overflow-y-auto flex-1 space-y-5 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Nomor Agenda Masuk *
                   </label>
                   <input
@@ -545,11 +535,11 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                     required
                     value={noAgenda}
                     onChange={(e) => setNoAgenda(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 font-mono font-bold text-sm bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Nomor Surat Asal *
                   </label>
                   <input
@@ -558,25 +548,25 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                     placeholder="Contoh: 421.2/142/Dikpora/2026"
                     value={noSurat}
                     onChange={(e) => setNoSurat(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Tanggal Surat Asal
                   </label>
                   <input
                     type="date"
                     value={tglSurat}
                     onChange={(e) => setTglSurat(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Tanggal Diterima di Sekolah *
                   </label>
                   <input
@@ -584,13 +574,13 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                     required
                     value={tglTerima}
                     onChange={(e) => setTglTerima(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                   Instansi Pengirim *
                 </label>
                 <input
@@ -599,33 +589,33 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                   placeholder="Contoh: Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana"
                   value={pengirim}
                   onChange={(e) => setPengirim(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                   Perihal / Ringkasan Isi Surat *
                 </label>
                 <textarea
                   required
-                  rows={2}
+                  rows={3}
                   placeholder="Uraian pokok surat..."
                   value={perihal}
                   onChange={(e) => setPerihal(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs leading-relaxed"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Sifat Surat
                   </label>
                   <select
                     value={sifat}
                     onChange={(e) => setSifat(e.target.value as SifatSurat)}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white shadow-2xs"
                   >
                     <option value="Biasa">Biasa</option>
                     <option value="Penting">Penting</option>
@@ -634,13 +624,13 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Status Tindak Lanjut
                   </label>
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as StatusSuratMasuk)}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white shadow-2xs"
                   >
                     <option value="Menunggu Tindak Lanjut">Menunggu Tindak Lanjut</option>
                     <option value="Sedang Diproses">Sedang Diproses</option>
@@ -648,40 +638,40 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Batas Waktu TL
                   </label>
                   <input
                     type="date"
                     value={tglTindakLanjut}
                     onChange={(e) => setTglTindakLanjut(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
                   />
                 </div>
               </div>
 
               {/* Bagian Disposisi Kepala Sekolah */}
-              <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-xl space-y-3">
-                <h3 className="font-bold text-amber-950 flex items-center gap-1.5 text-xs uppercase tracking-wide">
+              <div className="p-5 bg-amber-50/80 border border-amber-200 rounded-xl space-y-4">
+                <h3 className="font-bold text-amber-950 flex items-center gap-2 text-xs uppercase tracking-wide">
                   <AlertCircle className="w-4 h-4 text-amber-700" />
                   Lembar Instruksi / Disposisi Kepala Sekolah
                 </h3>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Petunjuk / Catatan Disposisi:
                   </label>
                   <textarea
-                    rows={2}
+                    rows={3}
                     placeholder="Contoh: Segera koordinasikan dengan dewan guru dan proktor ANBK..."
                     value={disposisi}
                     onChange={(e) => setDisposisi(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-600 focus:outline-none bg-white"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-amber-600 focus:outline-none bg-white shadow-2xs leading-relaxed"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Diteruskan / Ditugaskan Kepada:
                   </label>
                   <input
@@ -689,13 +679,13 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                     placeholder="Nama Guru, Wali Kelas, atau Staf Operator"
                     value={diteruskanKepada}
                     onChange={(e) => setDiteruskanKepada(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-600 focus:outline-none bg-white"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-amber-600 focus:outline-none bg-white shadow-2xs"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                   Catatan Tambahan / Keterangan Berkas
                 </label>
                 <input
@@ -703,7 +693,7 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                   placeholder="Keterangan fisik, nomor bundel, atau link file berkas..."
                   value={catatan}
                   onChange={(e) => setCatatan(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
                 />
               </div>
 

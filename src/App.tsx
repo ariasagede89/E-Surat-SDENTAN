@@ -767,118 +767,233 @@ export default function App() {
 
   // Navigation item definitions
   const navItems = [
-    { id: 'beranda' as const, label: 'Beranda', icon: Home, isLocked: false },
-    { id: 'surat_masuk' as const, label: 'Surat Masuk', icon: Inbox, isLocked: false },
-    { id: 'surat_keluar' as const, label: 'Surat Keluar', icon: Send, isLocked: false },
-    { id: 'guru_siswa' as const, label: 'Data PTK & Siswa', icon: Users, isLocked: false },
-    { id: 'filter' as const, label: 'Filter & Laporan', icon: Filter, isLocked: false },
-    { id: 'pengaturan' as const, label: 'Pengaturan', icon: Settings, isLocked: userRole !== 'admin' },
+    { id: 'beranda' as const, label: 'Beranda', icon: Home, isLocked: false, count: null },
+    { id: 'surat_masuk' as const, label: 'Surat Masuk', icon: Inbox, isLocked: false, count: suratMasukList.length },
+    { id: 'surat_keluar' as const, label: 'Surat Keluar', icon: Send, isLocked: false, count: suratKeluarList.length },
+    { id: 'guru_siswa' as const, label: 'Data PTK & Siswa', icon: Users, isLocked: false, count: guruList.length + siswaList.length },
+    { id: 'filter' as const, label: 'Filter & Laporan', icon: Filter, isLocked: false, count: null },
+    { id: 'pengaturan' as const, label: 'Pengaturan', icon: Settings, isLocked: userRole !== 'admin', count: null },
   ];
 
-  return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-800 flex flex-col font-sans antialiased">
-      {/* Top Navbar */}
-      <header className="bg-slate-900 text-white sticky top-0 z-40 shadow-md border-b border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          {/* Brand */}
-          <div className="flex items-center gap-3">
-            <span className="font-extrabold text-lg sm:text-xl tracking-tight text-white">
-              E-SURAT SDENTAN
-            </span>
-          </div>
+  const pageTitles: Record<MenuTab, string> = {
+    beranda: 'Beranda',
+    surat_masuk: 'Surat Masuk',
+    surat_keluar: 'Surat Keluar',
+    guru_siswa: 'Data PTK & Siswa',
+    filter: 'Filter & Laporan',
+    pengaturan: 'Pengaturan',
+  };
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1.5">
+  return (
+    <div className="min-h-screen bg-slate-100/70 text-slate-800 flex font-sans antialiased">
+      {/* Mobile Overlay Backdrop */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-slate-950/60 z-40 md:hidden backdrop-blur-xs transition-opacity"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar: Navigasi Menu di Samping (Latar Putih Bersih) */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 lg:w-72 bg-white text-slate-800 flex flex-col border-r border-slate-200/90 shadow-2xl md:shadow-none transition-transform duration-300 ease-in-out md:translate-x-0 md:sticky md:top-0 md:h-screen shrink-0 ${
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        {/* Brand Header */}
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm shrink-0">
+              <School className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <span className="font-extrabold text-base tracking-tight text-slate-900 block truncate">
+                E-SURAT SDENTAN
+              </span>
+              <span className="text-[11px] text-slate-500 font-medium block truncate">
+                SDN 1 Pekutatan
+              </span>
+            </div>
+          </div>
+          {/* Close button for mobile */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(false)}
+            className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            aria-label="Tutup Menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Quick Action Button: Minta No. Surat Otomatis (Warna Kalem & Elegan) */}
+        <div className="p-3.5 border-b border-slate-100 shrink-0">
+          <button
+            onClick={() => {
+              setMobileMenuOpen(false);
+              handleOpenAutoNumber();
+            }}
+            className="w-full px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200/90 text-slate-700 hover:text-slate-900 border border-slate-300/80 font-semibold text-xs rounded-xl shadow-2xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            title="Minta Nomor Surat Baru"
+          >
+            <Sparkles className="w-4 h-4 text-slate-500 shrink-0" />
+            <span>Minta No. Surat Otomatis</span>
+          </button>
+        </div>
+
+        {/* Sidebar Navigation Menu */}
+        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+          <nav className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               return (
                 <button
                   key={item.id}
-                  onClick={() => handleNavigateTab(item.id)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleNavigateTab(item.id);
+                  }}
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-500'
+                      ? 'bg-blue-600 text-white shadow-xs font-bold'
                       : item.isLocked
-                      ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/70'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                      ? 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                      : 'text-slate-700 hover:text-slate-950 hover:bg-slate-100/80'
                   }`}
-                  title={item.isLocked ? 'Menu Pengaturan dikunci untuk Mode Guru. Klik untuk login Admin.' : undefined}
+                  title={
+                    item.isLocked
+                      ? 'Menu Pengaturan dikunci untuk Mode Guru. Klik untuk login Admin.'
+                      : undefined
+                  }
                 >
-                  <Icon className="w-4 h-4" />
-                  <span>{item.label}</span>
-                  {item.isLocked && <Lock className="w-3 h-3 text-amber-400/80 ml-0.5" />}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Icon
+                      className={`w-4 h-4 shrink-0 ${
+                        isActive ? 'text-white' : item.isLocked ? 'text-amber-500' : 'text-slate-500'
+                      }`}
+                    />
+                    <span className="truncate">{item.label}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    {item.isLocked ? (
+                      <span className="flex items-center gap-1 text-[10px] font-medium bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200">
+                        <Lock className="w-2.5 h-2.5" />
+                        <span>Admin</span>
+                      </span>
+                    ) : item.count !== null && item.count !== undefined ? (
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                          isActive
+                            ? 'bg-white/20 text-white'
+                            : 'bg-slate-100 text-slate-600 border border-slate-200/80'
+                        }`}
+                      >
+                        {item.count}
+                      </span>
+                    ) : null}
+                  </div>
                 </button>
               );
             })}
           </nav>
 
-          {/* Right Action: Cloud Status & Quick Number Button */}
-          <div className="flex items-center gap-2 sm:gap-2.5">
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700/80 text-[11px]">
-              <span className={`w-2 h-2 rounded-full ${firebaseActive ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
-              <span className="font-medium text-slate-300">
-                {firebaseActive ? 'Firestore Online' : 'Mode Lokal'}
-              </span>
+          {/* Database / Cloud Status Card in Sidebar */}
+          <div className="pt-2">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                  Basis Data
+                </span>
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    firebaseActive ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                  }`}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Database className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span className="text-xs font-semibold text-slate-700 truncate">
+                  {firebaseActive ? 'Firestore Online' : 'Penyimpanan Lokal'}
+                </span>
+              </div>
             </div>
-            <button
-              onClick={handleOpenAutoNumber}
-              className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs rounded-lg shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Minta Nomor Surat Baru"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-slate-950" />
-              <span className="hidden sm:inline">Minta No. Surat</span>
-            </button>
-
-            {/* Mobile Menu Toggle Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
-              aria-label="Buka Menu"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
           </div>
         </div>
 
-        {/* Mobile Dropdown Navigation */}
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-slate-900 border-t border-slate-800 px-4 py-3 space-y-1">
-            <div className="space-y-1">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleNavigateTab(item.id)}
-                    className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors ${
-                      isActive
-                        ? 'bg-blue-600 text-white'
-                        : item.isLocked
-                        ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/80'
-                        : 'text-slate-300 hover:text-white hover:bg-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Icon className="w-4 h-4" />
-                      <span>{item.label}</span>
-                    </div>
-                    {item.isLocked && (
-                      <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/40">
-                        Admin
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+        {/* User Role Card & Login / Logout in Sidebar Footer */}
+        <div className="p-3.5 border-t border-slate-100 bg-slate-50/50 shrink-0">
+          <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                  userRole === 'admin'
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : 'bg-blue-50 text-blue-700 border border-blue-200'
+                }`}
+              >
+                {userRole === 'admin' ? (
+                  <ShieldCheck className="w-4 h-4" />
+                ) : (
+                  <UserCheck className="w-4 h-4" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-slate-900 block truncate">
+                  {userRole === 'admin' ? 'Administrator' : 'Mode Guru'}
+                </span>
+                <span className="text-[10px] text-slate-500 block truncate">
+                  {userRole === 'admin' ? 'Kepsek & TU' : 'Akses Terbatas'}
+                </span>
+              </div>
             </div>
-          </div>
-        )}
-      </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+            {userRole === 'admin' ? (
+              <button
+                type="button"
+                onClick={handleLogoutAdmin}
+                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                title="Keluar Admin (Kembali ke Mode Guru)"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginNoticeMessage('');
+                  setIsAdminLoginModalOpen(true);
+                }}
+                className="px-2.5 py-1 text-[11px] font-semibold bg-blue-600 text-white hover:bg-blue-700 rounded-lg shadow-2xs transition-colors cursor-pointer"
+                title="Login Administrator"
+              >
+                Masuk
+              </button>
+            )}
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Layout Area: Header Top Bar + Page Views + Footer */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+        {/* Mobile Header (Hanya tampil di ponsel/tablet untuk membuka menu samping) */}
+        <div className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="p-1.5 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            aria-label="Buka Menu Samping"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <span className="text-xs font-bold text-slate-800 tracking-wide uppercase">
+            SDN 1 Pekutatan
+          </span>
+          <div className="w-8" />
+        </div>
+
+        {/* Main Content Area */}
+        <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         {activeTab === 'beranda' && (
           <BerandaView
             suratMasukList={suratMasukList}
@@ -1073,7 +1188,7 @@ export default function App() {
       )}
 
       {/* Persistent Footer */}
-      <footer className="bg-white border-t border-slate-200/80 py-4 mt-8 text-xs text-slate-500">
+      <footer className="bg-white border-t border-slate-200/80 py-4 mt-auto text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
           <div>
             <span className="font-semibold text-slate-700">E-SURAT SDENTAN</span> — Sistem Informasi Administrasi Surat SDN 1 Pekutatan
@@ -1085,6 +1200,7 @@ export default function App() {
           </div>
         </div>
       </footer>
+      </div>
 
       {/* Global Modal: Generator Nomor Surat Otomatis Permendagri 83/2022 */}
       <AutoNumberModal

@@ -236,9 +236,6 @@ export const PengaturanView: React.FC<PengaturanViewProps> = ({
             <Settings className="w-5 h-5 text-slate-700" />
             Pengaturan Sistem E-SURAT SDENTAN
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Konfigurasi identitas resmi SDN 1 Pekutatan, kop surat dinas, penomoran, dan koneksi Google Firebase
-          </p>
         </div>
 
         {/* Tab switcher */}

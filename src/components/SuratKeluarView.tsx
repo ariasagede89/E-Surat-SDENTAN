@@ -2380,9 +2380,6 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
             <Send className="w-5 h-5 text-emerald-700" />
             Manajemen Surat Keluar & Arsip
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Pembuatan 5 format surat dinas resmi, ekspor MS Word & PDF, penomoran Permendagri 83/2022, dan pengarsipan
-          </p>
         </div>
 
         {/* Sub-tab switcher */}
@@ -2468,10 +2465,10 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={onOpenAutoNumberModal}
-                className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-colors"
+                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-300 font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
                 title="Minta Nomor Surat Otomatis Permendagri No. 83 Tahun 2022"
               >
-                <Sparkles className="w-4 h-4" />
+                <Sparkles className="w-4 h-4 text-slate-500" />
                 <span>Minta No. Surat Otomatis</span>
               </button>
 
@@ -2846,37 +2843,37 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
 
       {/* MODAL FORM: BUAT / EDIT SURAT KELUAR (5 FORMAT DINAS RESMI) */}
       {showFormModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden flex flex-col max-h-[92vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl lg:max-w-6xl overflow-hidden flex flex-col max-h-[94vh]">
             {/* Modal Header */}
-            <div className="bg-emerald-950 px-6 py-4 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
+            <div className="bg-emerald-950 px-6 sm:px-8 py-5 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
                 <Send className="w-5 h-5 text-emerald-400" />
                 <div>
-                  <h2 className="text-base font-bold">
+                  <h2 className="text-base sm:text-lg font-bold">
                     {editingId ? 'Edit Surat Keluar' : 'Buat Surat Keluar Baru'}
                   </h2>
-                  <p className="text-[11px] text-emerald-200">
+                  <p className="text-xs text-emerald-200">
                     Format resmi kedinasan sekolah siap cetak Word (.doc) & PDF
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowFormModal(false)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors"
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Form Body */}
-            <form onSubmit={handleSaveSurat} className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 text-xs sm:text-sm">
+            <form onSubmit={handleSaveSurat} className="p-6 sm:p-8 overflow-y-auto flex-1 space-y-5 text-sm">
               {/* Selector Jenis Surat */}
-              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2">
-                <label className="block font-bold text-emerald-950 text-xs uppercase tracking-wide">
+              <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2.5">
+                <label className="block font-bold text-emerald-950 text-xs sm:text-sm uppercase tracking-wide">
                   Pilih Format Surat yang Ingin Dibuat:
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {[
                     { id: 'surat_ijin_guru', label: '1. Permohonan Izin Tidak Masuk' },
                     { id: 'surat_keterangan', label: '2. Surat Keterangan' },
@@ -2934,7 +2931,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                           setTujuan('');
                         }
                       }}
-                      className={`py-2 px-2.5 text-xs font-semibold rounded-lg text-left transition-all border ${
+                      className={`py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-xl text-left transition-all border cursor-pointer ${
                         jenisSurat === fmt.id
                           ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs'
                           : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-300'
@@ -2947,10 +2944,10 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
               </div>
 
               {/* Nomor Surat & Tombol Segarkan Nomor Otomatis */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="font-semibold text-slate-700">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="font-semibold text-slate-700 text-sm">
                       {jenisSurat === 'surat_ijin_guru' ? 'Nomor Surat (Pribadi)' : 'Nomor Surat (Otomatis) *'}
                     </label>
                     {jenisSurat !== 'surat_ijin_guru' && (
@@ -2971,7 +2968,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             );
                             setNoSurat(refreshed);
                           }}
-                          className="text-[11px] text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200 transition-colors"
+                          className="text-xs text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200 transition-colors cursor-pointer"
                           title="Segarkan nomor urut surat otomatis tersinkronisasi dengan Surat Keluar & Arsip (kode klasifikasi tetap dipertahankan)"
                         >
                           <RefreshCw className="w-3 h-3 text-emerald-600" />
@@ -2980,7 +2977,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                         <button
                           type="button"
                           onClick={onOpenAutoNumberModal}
-                          className="text-[11px] text-slate-500 hover:text-slate-800 underline"
+                          className="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
                           title="Pilih Klasifikasi Manual"
                         >
                           Ubah Kode
@@ -2989,7 +2986,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                     )}
                   </div>
                   {jenisSurat === 'surat_ijin_guru' ? (
-                    <div className="bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 italic">
+                    <div className="bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 sm:py-3 text-xs text-slate-600 italic">
                       Surat permohonan izin pribadi tidak menggunakan kop dinas dan nomor register surat dinas.
                     </div>
                   ) : (
@@ -2998,13 +2995,13 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       required
                       value={noSurat}
                       onChange={(e) => setNoSurat(e.target.value)}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                      className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 font-mono font-bold text-sm sm:text-base text-slate-900 focus:ring-2 focus:ring-emerald-600 focus:outline-none shadow-2xs"
                     />
                   )}
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Tanggal Surat *
                   </label>
                   <input
@@ -3019,14 +3016,14 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                         setNoSurat(auto.nomor);
                       }
                     }}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none shadow-2xs bg-white"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     {jenisSurat === 'surat_ijin_guru' ? 'Tujuan Permohonan Izin *' : 'Tujuan / Penerima Surat *'}
                   </label>
                   <input
@@ -3035,18 +3032,18 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                     placeholder={jenisSurat === 'surat_ijin_guru' ? `Kepala ${formatNamaSekolahIsi(sekolah.namaSekolah)}` : 'Contoh: Kepala Dinas / Nama Siswa / Bapak/Ibu Wali Murid'}
                     value={tujuan}
                     onChange={(e) => setTujuan(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none shadow-2xs bg-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Status Surat
                   </label>
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as StatusSuratKeluar)}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-600 focus:outline-none bg-white"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none bg-white shadow-2xs"
                   >
                     <option value="Konsep">Konsep (Draft)</option>
                     <option value="Disetujui">Disetujui Kepala Sekolah</option>
@@ -3058,7 +3055,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
 
               {jenisSurat !== 'surat_ijin_guru' && (
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Perihal Surat *
                   </label>
                   <input
@@ -3066,7 +3063,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                     required
                     value={perihal}
                     onChange={(e) => setPerihal(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none shadow-2xs bg-white"
                   />
                 </div>
               )}
@@ -3890,28 +3887,28 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                           </span>
                         </div>
                         <textarea
-                          rows={3}
+                          rows={4}
                           required
                           value={ketIntiSurat}
                           onChange={(e) => setKetIntiSurat(e.target.value)}
                           placeholder="Contoh: Adalah benar pendidik / tenaga kependidikan aktif pada SDN 1 Pekutatan..."
-                          className="w-full border border-emerald-300 rounded-lg p-2.5 bg-white text-xs text-slate-800 leading-relaxed focus:ring-2 focus:ring-emerald-600 focus:outline-none focus:border-emerald-600 font-serif"
+                          className="w-full border border-emerald-300 rounded-xl p-3.5 sm:p-4 bg-white text-sm text-slate-800 leading-relaxed focus:ring-2 focus:ring-emerald-600 focus:outline-none focus:border-emerald-600 font-serif shadow-2xs"
                         />
-                        <p className="text-[10px] text-slate-500 mt-1 italic">
+                        <p className="text-xs text-slate-500 mt-1.5 italic">
                           * Teks di atas akan dicetak tepat di bawah data identitas dan sebelum kalimat keperluan. Anda dapat mengedit teks ini secara bebas, atau menekan Enter bila ingin membuat paragraf baru.
                         </p>
                       </div>
                     </div>
 
                     <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Keperluan Pembuatan Keterangan *</label>
+                      <label className="block font-semibold text-slate-700 text-sm mb-1.5">Keperluan Pembuatan Keterangan *</label>
                       <input
                         type="text"
                         required
                         placeholder="Contoh: Pengurusan Rekening SimPel Beasiswa PIP / Kenaikan Pangkat / Pemberkasan Dinas"
                         value={ketKeperluan}
                         onChange={(e) => setKetKeperluan(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                        className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none shadow-2xs"
                       />
                     </div>
                   </div>
@@ -7631,27 +7628,27 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
 
       {/* MODAL FORM: ARSIP SURAT KELUAR */}
       {showArsipModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col">
-            <div className="bg-indigo-950 px-6 py-4 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden flex flex-col max-h-[94vh]">
+            <div className="bg-indigo-950 px-6 sm:px-8 py-5 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
                 <Archive className="w-5 h-5 text-indigo-300" />
-                <h2 className="text-base font-bold">
+                <h2 className="text-base sm:text-lg font-bold">
                   {editingArsipId ? 'Edit Arsip Surat Keluar' : 'Arsipkan Surat Keluar'}
                 </h2>
               </div>
               <button
                 onClick={() => setShowArsipModal(false)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors"
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveArsip} className="p-5 space-y-3.5 text-xs sm:text-sm">
+            <form onSubmit={handleSaveArsip} className="p-6 sm:p-7 space-y-4 text-sm overflow-y-auto flex-1">
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block font-semibold text-slate-700">Nomor Surat *</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block font-semibold text-slate-700 text-sm">Nomor Surat *</label>
                   <button
                     type="button"
                     onClick={() => {
@@ -7666,10 +7663,10 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       );
                       setArsipNoSurat(autoNo);
                     }}
-                    className="text-[11px] text-indigo-700 hover:text-indigo-900 font-bold flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded border border-indigo-200 transition-colors cursor-pointer"
+                    className="text-xs text-indigo-700 hover:text-indigo-900 font-bold flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg border border-indigo-200 transition-colors cursor-pointer"
                     title="Buat nomor surat otomatis berdasarkan nomor urut berikutnya sesuai tahun surat"
                   >
-                    <Sparkles className="w-3 h-3 text-indigo-600" />
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
                     <span>No. Urut Otomatis (#{formatNomorUrut(getNextNomorUrut(suratKeluarList, arsipList, arsipTglSurat || new Date()))})</span>
                   </button>
                 </div>
@@ -7679,7 +7676,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                   placeholder="Contoh: 400.3.5/044/SDN1PKT/IX/2026 atau 044..."
                   value={arsipNoSurat}
                   onChange={(e) => setArsipNoSurat(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono font-bold focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 font-mono font-bold text-sm sm:text-base focus:ring-2 focus:ring-indigo-600 focus:outline-none shadow-2xs"
                 />
 
                 {/* Indikator Koneksi Nomor Urut */}
@@ -7687,11 +7684,11 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                   const detectedSeq = extractNomorUrut(arsipNoSurat);
                   const highestSeq = getHighestNomorUrut(suratKeluarList, arsipList, arsipTglSurat || new Date());
                   return (
-                    <div className="mt-1.5 p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 space-y-1">
+                    <div className="mt-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1">
                       <div className="flex items-center justify-between font-medium">
                         <span className="text-slate-500">Koneksi Sistem Urut:</span>
                         {detectedSeq !== null ? (
-                          <span className="text-indigo-700 font-bold bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200 font-mono">
+                          <span className="text-indigo-700 font-bold bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200 font-mono">
                             Urut Terdeteksi: #{formatNomorUrut(detectedSeq)}
                           </span>
                         ) : (
@@ -7713,71 +7710,71 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                 })()}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Kode Klasifikasi</label>
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">Kode Klasifikasi</label>
                   <input
                     type="text"
                     value={arsipKode}
                     onChange={(e) => setArsipKode(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 font-mono text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none shadow-2xs"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Kategori Arsip</label>
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">Kategori Arsip</label>
                   <input
                     type="text"
                     value={arsipKategori}
                     onChange={(e) => setArsipKategori(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none shadow-2xs"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Perihal *</label>
+                <label className="block font-semibold text-slate-700 text-sm mb-1.5">Perihal *</label>
                 <textarea
-                  rows={2}
+                  rows={3}
                   required
                   value={arsipPerihal}
                   onChange={(e) => setArsipPerihal(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none shadow-2xs leading-relaxed"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Tujuan Surat</label>
+                <label className="block font-semibold text-slate-700 text-sm mb-1.5">Tujuan Surat</label>
                 <input
                   type="text"
                   value={arsipTujuan}
                   onChange={(e) => setArsipTujuan(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none shadow-2xs"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Tgl Surat</label>
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">Tgl Surat</label>
                   <input
                     type="date"
                     value={arsipTglSurat}
                     onChange={(e) => setArsipTglSurat(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none shadow-2xs"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Tgl Pengarsipan</label>
+                  <label className="block font-semibold text-slate-700 text-sm mb-1.5">Tgl Pengarsipan</label>
                   <input
                     type="date"
                     value={arsipTglArsip}
                     onChange={(e) => setArsipTglArsip(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none shadow-2xs"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                   Lokasi Fisik Arsip (Lemari / Rak / Box Ordner) *
                 </label>
                 <input
@@ -7786,18 +7783,18 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                   placeholder="Contoh: Ordner 2026 - Lemari A Rak 1"
                   value={arsipLokasi}
                   onChange={(e) => setArsipLokasi(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 font-semibold text-indigo-950 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 font-semibold text-sm text-indigo-950 focus:ring-2 focus:ring-indigo-600 focus:outline-none shadow-2xs"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Catatan Tambahan</label>
+                <label className="block font-semibold text-slate-700 text-sm mb-1.5">Catatan Tambahan</label>
                 <input
                   type="text"
                   placeholder="Keterangan kelengkapan berkas fisik..."
                   value={arsipKeterangan}
                   onChange={(e) => setArsipKeterangan(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none shadow-2xs"
                 />
               </div>
 

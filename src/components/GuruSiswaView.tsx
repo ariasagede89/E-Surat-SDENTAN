@@ -1024,9 +1024,6 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
             <Users className="w-5 h-5 text-indigo-700" />
             Data PTK & Siswa SDN 1 Pekutatan
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Database Pendidik & Tenaga Kependidikan (PTK: Kepala Sekolah, Guru, Tata Usaha), Peserta Didik, Impor/Ekspor Excel/CSV, dan Cetak Presensi Resmi
-          </p>
         </div>
 
         {/* Sub-Tabs: a. Data PTK, b. Data Siswa */}
@@ -1796,14 +1793,14 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
 
       {/* MODAL FORM: PTK (Kepala Sekolah, Guru, TU) */}
       {showGuruModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col my-auto">
-            <div className="bg-indigo-950 px-6 py-4 text-white flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl lg:max-w-3xl overflow-hidden flex flex-col my-auto max-h-[94vh]">
+            <div className="bg-indigo-950 px-6 sm:px-8 py-5 text-white flex items-center justify-between">
               <div>
-                <h2 className="text-base font-bold">
+                <h2 className="text-base sm:text-lg font-bold">
                   {guruId ? 'Edit Data PTK' : 'Tambah Data PTK Baru'}
                 </h2>
-                <p className="text-[11px] text-indigo-200 mt-0.5">
+                <p className="text-xs text-indigo-200 mt-0.5">
                   Pendidik dan Tenaga Kependidikan: Kepala Sekolah, Guru, atau TU
                 </p>
               </div>
@@ -2011,21 +2008,21 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
 
       {/* MODAL FORM: SISWA */}
       {showSiswaModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col">
-            <div className="bg-indigo-950 px-6 py-4 text-white flex items-center justify-between">
-              <h2 className="text-base font-bold">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl lg:max-w-3xl overflow-hidden flex flex-col max-h-[94vh]">
+            <div className="bg-indigo-950 px-6 sm:px-8 py-5 text-white flex items-center justify-between">
+              <h2 className="text-base sm:text-lg font-bold">
                 {siswaId ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}
               </h2>
               <button
                 onClick={() => setShowSiswaModal(false)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors"
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveSiswa} className="p-5 space-y-3.5 text-xs sm:text-sm">
+            <form onSubmit={handleSaveSiswa} className="p-6 sm:p-7 space-y-4 text-sm overflow-y-auto flex-1">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">NISN *</label>

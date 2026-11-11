@@ -231,9 +231,6 @@ export const FilterSuratView: React.FC<FilterSuratViewProps> = ({
             <Filter className="w-5 h-5 text-blue-900" />
             Filter & Rekapitulasi Persuratan
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Pencarian mendalam berdasarkan jenis surat, rentang tanggal, status disposisi, serta cetak buku agenda
-          </p>
         </div>
 
         <div className="flex items-center gap-2">
