@@ -34,6 +34,7 @@ import {
   SuratKeluar,
   ArsipSurat,
   Guru,
+  JenisSuratKeluar,
 } from '../types';
 import { resolveKepalaSekolahData } from '../utils/exportUtils';
 import { readFileAsDataUrl, UploadedFileResult } from '../utils/fileUtils';
@@ -46,7 +47,11 @@ interface AutoNumberModalProps {
   suratKeluarList?: SuratKeluar[];
   arsipList?: ArsipSurat[];
   guruList?: Guru[];
-  onSelectNumber?: (noSurat: string, klasifikasi: KlasifikasiMendagriItem) => void;
+  onSelectNumber?: (
+    noSurat: string,
+    klasifikasi: KlasifikasiMendagriItem,
+    targetJenisSurat?: JenisSuratKeluar
+  ) => void;
   onAddSuratKeluar?: (surat: Omit<SuratKeluar, 'id' | 'createdAt'>) => void;
   onAddArsip?: (arsip: Omit<ArsipSurat, 'id'>) => void;
   onSuccessNotice?: (msg: string) => void;
@@ -142,7 +147,18 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
     onClose();
   };
 
-  // Pilihan 2: Buka Form Pencatatan Surat Eksternal
+  // Pilihan 2: Gunakan untuk Surat Lainnya (Diarahkan langsung ke Surat Lainnya pada menu Buat Surat)
+  const handleUseForSuratLainnya = () => {
+    if (onSelectNumber) {
+      onSelectNumber(nomorSuratOtomatis, selectedItem, 'surat_eksternal');
+    }
+    if (onNavigateToSuratKeluar) {
+      onNavigateToSuratKeluar();
+    }
+    onClose();
+  };
+
+  // Fallback / opsional: Form Pencatatan Khusus Surat Eksternal
   const handleOpenExternalForm = () => {
     setExtPerihal(selectedItem.uraian || '');
     setExtError('');
@@ -221,11 +237,11 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
           tujuan: extTujuan.trim(),
           tglSurat: tanggalSurat,
           tglArsip: new Date().toISOString().slice(0, 10),
-          lokasiFisik: extLokasiFisik.trim() || 'Map Arsip Surat Keluar Eksternal',
-          kategori: 'Surat Eksternal',
+          lokasiFisik: extLokasiFisik.trim() || 'Map Arsip Surat Lainnya',
+          kategori: 'Surat Lainnya',
           keterangan:
             extKeterangan.trim() ||
-            'Surat keluar eksternal dibuat di luar sistem, tercatat resmi dalam agenda penomoran.',
+            'Surat Lainnya dibuat di luar sistem, tercatat resmi dalam agenda penomoran.',
           lampiranNama: extFile?.name,
           lampiranUrl: extFile?.url,
           lampiranUkuran: extFile?.size,
@@ -235,7 +251,7 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
 
       if (onSuccessNotice) {
         onSuccessNotice(
-          `Nomor surat ${nomorSuratOtomatis} berhasil dicatat ke sistem sebagai Surat Eksternal!`
+          `Nomor surat ${nomorSuratOtomatis} berhasil dicatat ke sistem sebagai Surat Lainnya!`
         );
       }
 
@@ -434,11 +450,12 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
 
                   <button
                     type="button"
-                    onClick={handleOpenExternalForm}
+                    onClick={handleUseForSuratLainnya}
                     className="py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+                    title="Gunakan nomor ini untuk membuat Surat Lainnya pada menu Buat Surat"
                   >
-                    <ExternalLink className="w-4 h-4" />
-                    <span>Surat Eksternal</span>
+                    <FileText className="w-4 h-4" />
+                    <span>Surat Lainnya</span>
                   </button>
                 </div>
               </div>
@@ -474,7 +491,7 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                   <ArrowLeft className="w-5 h-5" />
                 </button>
                 <div>
-                  <h2 className="text-base sm:text-lg font-bold">Catat Surat Keluar Eksternal</h2>
+                  <h2 className="text-base sm:text-lg font-bold">Catat Surat Lainnya</h2>
                   <p className="text-xs text-blue-200">
                     Mencatat naskah surat di luar template sistem agar nomor urut agenda resmi tetap terjaga
                   </p>
@@ -519,10 +536,10 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                 </div>
               )}
 
-              {/* Perihal Surat Eksternal */}
+              {/* Perihal Surat Lainnya */}
               <div>
                 <label className="block font-bold text-slate-800 text-sm mb-1.5">
-                  Perihal / Hal Surat Eksternal <span className="text-rose-500">*</span>
+                  Perihal / Hal Surat Lainnya <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -623,7 +640,7 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
               {/* Upload Berkas Dokumen (Opsional) */}
               <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                 <label className="block font-semibold text-slate-700 text-xs">
-                  Unggah Salinan / Scan Berkas Surat Eksternal <span className="text-slate-400 font-normal">(Opsional)</span>
+                  Unggah Salinan / Scan Berkas Surat Lainnya <span className="text-slate-400 font-normal">(Opsional)</span>
                 </label>
                 <p className="text-[11px] text-slate-500">
                   Anda dapat melampirkan berkas PDF, Word (.docx), atau foto scan dokumen surat ini (maks. 15MB).

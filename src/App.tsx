@@ -41,6 +41,7 @@ import {
 import {
   SuratMasuk,
   SuratKeluar,
+  JenisSuratKeluar,
   ArsipSurat,
   Guru,
   Siswa,
@@ -275,6 +276,7 @@ export default function App() {
   const [selectedAutoNumber, setSelectedAutoNumber] = useState<{
     noSurat: string;
     klasifikasi: KlasifikasiMendagriItem;
+    targetJenisSurat?: JenisSuratKeluar;
   } | null>(null);
 
   // Real-time Cloud Sync Toast Notifications
@@ -726,9 +728,10 @@ export default function App() {
 
   const handleSelectNumberForSurat = (
     noSurat: string,
-    klasifikasi: KlasifikasiMendagriItem
+    klasifikasi: KlasifikasiMendagriItem,
+    targetJenisSurat?: JenisSuratKeluar
   ) => {
-    setSelectedAutoNumber({ noSurat, klasifikasi });
+    setSelectedAutoNumber({ noSurat, klasifikasi, targetJenisSurat });
     setActiveTab('surat_keluar');
   };
 

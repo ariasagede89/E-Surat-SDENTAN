@@ -55,6 +55,7 @@ export interface SuratKeluar {
   lampiranUrl?: string;
   lampiranUkuran?: string;
   lampiranTipe?: string;
+  tempatArsip?: string;
   createdAt: string;
 }
 

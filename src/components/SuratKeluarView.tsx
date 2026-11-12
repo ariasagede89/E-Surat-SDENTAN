@@ -95,7 +95,11 @@ interface SuratKeluarViewProps {
   onDeleteArsip: (id: string) => void;
   onOpenAutoNumberModal: () => void;
   onPreviewSurat: (surat: SuratKeluar) => void;
-  initialSelectedNumber?: { noSurat: string; klasifikasi: KlasifikasiMendagriItem } | null;
+  initialSelectedNumber?: {
+    noSurat: string;
+    klasifikasi: KlasifikasiMendagriItem;
+    targetJenisSurat?: JenisSuratKeluar;
+  } | null;
   onClearSelectedNumber?: () => void;
 }
 
@@ -724,8 +728,14 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     'Bahwa yang bersangkutan memiliki loyalitas, integritas, kedisiplinan yang tinggi, serta rekam jejak kinerja yang sangat baik dan tidak sedang menjalani sanksi hukuman disiplin kedinasan.'
   );
 
-  // Khusus: Surat Eksternal (Luar Sistem)
+  // Khusus: Surat Lainnya
   const [eksternalKeterangan, setEksternalKeterangan] = useState('');
+  const [eksternalTempatArsip, setEksternalTempatArsip] = useState('Ordner 2026 / Lemari A');
+  const [eksternalLampiranNama, setEksternalLampiranNama] = useState('');
+  const [eksternalLampiranUrl, setEksternalLampiranUrl] = useState('');
+  const [eksternalLampiranUkuran, setEksternalLampiranUkuran] = useState('');
+  const [eksternalLampiranTipe, setEksternalLampiranTipe] = useState('');
+  const [isUploadingEksternalDoc, setIsUploadingEksternalDoc] = useState(false);
 
   // Delete Confirmation Modal State
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -780,6 +790,12 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       setNoSurat(initialSelectedNumber.noSurat);
       setKodeKlasifikasi(initialSelectedNumber.klasifikasi.kode);
       setNamaKlasifikasi(initialSelectedNumber.klasifikasi.uraian);
+      if (initialSelectedNumber.targetJenisSurat) {
+        setJenisSurat(initialSelectedNumber.targetJenisSurat);
+        if (initialSelectedNumber.targetJenisSurat === 'surat_eksternal') {
+          setPerihal(initialSelectedNumber.perihal || 'Surat Lainnya');
+        }
+      }
       setShowFormModal(true);
       if (onClearSelectedNumber) onClearSelectedNumber();
     }
@@ -1651,6 +1667,11 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     setRekPtkKeperluan('Mengikuti Seleksi Program Pendidikan Profesi Guru (PPG) Guru Tertentu / Calon Guru Penggerak');
     setRekPtkPertimbangan('');
     setEksternalKeterangan('');
+    setEksternalTempatArsip('Ordner 2026 / Lemari A');
+    setEksternalLampiranNama('');
+    setEksternalLampiranUrl('');
+    setEksternalLampiranUkuran('');
+    setEksternalLampiranTipe('');
 
     setShowFormModal(true);
   };
@@ -1954,6 +1975,11 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     } else if (sk.jenisSurat === 'surat_eksternal') {
       const d = sk.dataKhusus || {};
       setEksternalKeterangan(d.keterangan || sk.isiSurat || '');
+      setEksternalTempatArsip(sk.tempatArsip || d.tempatArsip || 'Ordner 2026 / Lemari A');
+      setEksternalLampiranNama(sk.lampiranNama || d.lampiranNama || '');
+      setEksternalLampiranUrl(sk.lampiranUrl || d.lampiranUrl || '');
+      setEksternalLampiranUkuran(sk.lampiranUkuran || d.lampiranUkuran || '');
+      setEksternalLampiranTipe(sk.lampiranTipe || d.lampiranTipe || '');
     }
 
     setShowFormModal(true);
@@ -2203,6 +2229,11 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       dataKhusus = {
         isEksternal: true,
         keterangan: eksternalKeterangan || '',
+        tempatArsip: eksternalTempatArsip || '',
+        lampiranNama: eksternalLampiranNama || '',
+        lampiranUrl: eksternalLampiranUrl || '',
+        lampiranUkuran: eksternalLampiranUkuran || '',
+        lampiranTipe: eksternalLampiranTipe || '',
       };
     }
 
@@ -2226,6 +2257,11 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
           tujuan: finalTujuan,
           perihal: finalPerihal,
           dataKhusus: finalDataKhusus,
+          tempatArsip: jenisSurat === 'surat_eksternal' ? eksternalTempatArsip : existing.tempatArsip,
+          lampiranNama: jenisSurat === 'surat_eksternal' ? (eksternalLampiranNama || undefined) : existing.lampiranNama,
+          lampiranUrl: jenisSurat === 'surat_eksternal' ? (eksternalLampiranUrl || undefined) : existing.lampiranUrl,
+          lampiranUkuran: jenisSurat === 'surat_eksternal' ? (eksternalLampiranUkuran || undefined) : existing.lampiranUkuran,
+          lampiranTipe: jenisSurat === 'surat_eksternal' ? (eksternalLampiranTipe || undefined) : existing.lampiranTipe,
           status,
           penandatangan: resolvedKepsek.nama,
           nipPenandatangan: resolvedKepsek.nip,
@@ -2242,6 +2278,11 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
         tujuan: finalTujuan,
         perihal: finalPerihal,
         dataKhusus: finalDataKhusus,
+        tempatArsip: jenisSurat === 'surat_eksternal' ? eksternalTempatArsip : undefined,
+        lampiranNama: jenisSurat === 'surat_eksternal' ? (eksternalLampiranNama || undefined) : undefined,
+        lampiranUrl: jenisSurat === 'surat_eksternal' ? (eksternalLampiranUrl || undefined) : undefined,
+        lampiranUkuran: jenisSurat === 'surat_eksternal' ? (eksternalLampiranUkuran || undefined) : undefined,
+        lampiranTipe: jenisSurat === 'surat_eksternal' ? (eksternalLampiranTipe || undefined) : undefined,
         status,
         penandatangan: resolvedKepsek.nama,
         nipPenandatangan: resolvedKepsek.nip,
@@ -2412,8 +2453,28 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       {activeSubTab === 'buat_surat' ? (
         /* SUB-TAB A: BUAT SURAT KELUAR */
         <div className="space-y-4">
-          {/* Action Bar with "Minta Nomor Otomatis" & "Buat Surat Baru" */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
+          {/* Centered Top Action Buttons: BUAT SURAT KELUAR & Minta No Surat (Lebar & Center Point) */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 pt-2 pb-1 px-2 w-full max-w-xl sm:max-w-2xl mx-auto">
+            <button
+              onClick={openNewSurat}
+              className="w-full sm:flex-1 py-4 sm:py-4.5 px-6 sm:px-8 bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold text-base sm:text-lg rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 active:scale-[0.99] cursor-pointer tracking-wide"
+            >
+              <Plus className="w-6 h-6 stroke-[2.5]" />
+              <span>BUAT SURAT KELUAR</span>
+            </button>
+
+            <button
+              onClick={onOpenAutoNumberModal}
+              className="w-full sm:w-auto py-4 sm:py-4.5 px-6 sm:px-8 bg-white hover:bg-slate-50 text-slate-800 hover:text-slate-900 border-2 border-slate-300 font-bold text-base sm:text-lg rounded-2xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2.5 active:scale-[0.99] cursor-pointer shrink-0"
+              title="Minta Nomor Surat Permendagri No. 83 Tahun 2022"
+            >
+              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500" />
+              <span>Minta No Surat</span>
+            </button>
+          </div>
+
+          {/* Action Bar with Search & Filter */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs">
             <div className="flex items-center gap-2 flex-1">
               <div className="relative flex-1 max-w-sm">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -2439,7 +2500,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                 <option value="surat_tugas">Surat Tugas (SPT)</option>
                 <option value="surat_pengantar">Surat Pengantar</option>
                 <option value="surat_rekomendasi">Surat Rekomendasi</option>
-                <option value="surat_eksternal">Surat Eksternal (Luar Sistem)</option>
+                <option value="surat_eksternal">Surat Lainnya</option>
               </select>
 
               <button
@@ -2461,51 +2522,32 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                 </span>
               </button>
             </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onOpenAutoNumberModal}
-                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-300 font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
-                title="Minta Nomor Surat Otomatis Permendagri No. 83 Tahun 2022"
-              >
-                <Sparkles className="w-4 h-4 text-slate-500" />
-                <span>Minta No. Surat Otomatis</span>
-              </button>
-
-              <button
-                onClick={openNewSurat}
-                className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Buat Surat Keluar</span>
-              </button>
-            </div>
           </div>
 
           {/* List of Surat Keluar */}
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs sm:text-sm">
+              <table className="w-full text-left border-collapse text-[11px] sm:text-xs">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold">
-                    <th className="py-3 px-4 w-12 text-center">No</th>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[10.5px] uppercase tracking-wider">
+                    <th className="py-2.5 px-3 w-10 text-center">No</th>
                     <th
-                      className="py-3 px-4 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                      className="py-2.5 px-3 cursor-pointer hover:bg-slate-100 transition-colors select-none"
                       onClick={() => setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
                       title="Klik untuk mengubah urutan nomor urut surat"
                     >
                       <div className="flex items-center gap-1.5">
                         <span>Jenis & Nomor Surat</span>
-                        <ArrowUpDown className="w-3.5 h-3.5 text-emerald-700" />
-                        <span className="text-[10px] font-normal text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                          {sortOrder === 'desc' ? 'No. Tertinggi di Atas' : 'No. Terkecil di Atas'}
+                        <ArrowUpDown className="w-3 h-3 text-emerald-700" />
+                        <span className="text-[9.5px] font-normal text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                          {sortOrder === 'desc' ? 'Terbaru' : 'Terlama'}
                         </span>
                       </div>
                     </th>
-                    <th className="py-3 px-4">Perihal & Tujuan</th>
-                    <th className="py-3 px-4">Tgl Surat</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-center w-48">Aksi</th>
+                    <th className="py-2.5 px-3">Perihal & Tujuan</th>
+                    <th className="py-2.5 px-3">Tgl Surat</th>
+                    <th className="py-2.5 px-3">Status</th>
+                    <th className="py-2.5 px-3 text-center w-40">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -2518,19 +2560,19 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       surat_tugas: 'Surat Tugas (SPT)',
                       surat_pengantar: 'Surat Pengantar',
                       surat_rekomendasi: 'Surat Rekomendasi',
-                      surat_eksternal: 'Surat Eksternal (Luar Sistem)',
+                      surat_eksternal: 'Surat Lainnya',
                     };
 
                     const isEksternal = sk.jenisSurat === 'surat_eksternal';
 
                     return (
                       <tr key={sk.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-3 px-4 text-center font-medium text-slate-500">
+                        <td className="py-2.5 px-3 text-center font-medium text-slate-400">
                           {idx + 1}
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-2.5 px-3">
                           <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 w-max ${
+                            className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-md border flex items-center gap-1 w-max ${
                               isEksternal
                                 ? 'bg-indigo-100 text-indigo-900 border-indigo-200'
                                 : 'bg-emerald-100 text-emerald-800 border-emerald-200'
@@ -2555,27 +2597,46 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                               </span>
                             )}
                           </span>
-                          <span className="font-mono text-xs font-bold text-slate-900 block mt-1">
+                          <span className="font-mono text-[11px] font-bold text-slate-900 block mt-0.5">
                             {sk.noSurat}
                           </span>
-                          <span className="text-[11px] text-slate-400">
+                          <span className="text-[10px] text-slate-400">
                             Klasifikasi: {sk.kodeKlasifikasi}
                           </span>
                         </td>
-                        <td className="py-3 px-4 max-w-xs">
-                          <p className="font-semibold text-slate-900 leading-tight">
+                        <td className="py-2.5 px-3 max-w-xs">
+                          <p className="font-semibold text-slate-900 leading-snug text-[11.5px]">
                             {sk.perihal}
                           </p>
-                          <p className="text-xs text-slate-600 mt-1">
-                            Tujuan: <span className="font-medium text-slate-800 whitespace-pre-line">{sk.tujuan}</span>
+                          <p className="text-[11px] text-slate-600 mt-0.5">
+                            Tujuan: <span className="font-medium text-slate-800 whitespace-pre-line">{sk.tujuan || '-'}</span>
                           </p>
+                          {(sk.tempatArsip || sk.dataKhusus?.tempatArsip) && (
+                            <p className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1 font-medium">
+                              <Archive className="w-3 h-3 text-emerald-700 shrink-0" />
+                              <span>Arsip: {sk.tempatArsip || sk.dataKhusus?.tempatArsip}</span>
+                            </p>
+                          )}
+                          {(sk.lampiranUrl || sk.dataKhusus?.lampiranUrl) && (
+                            <p className="text-[10px] text-indigo-700 mt-0.5 flex items-center gap-1 font-medium">
+                              <Paperclip className="w-3 h-3 text-indigo-600 shrink-0" />
+                              <button
+                                type="button"
+                                onClick={() => openOrDownloadDocument(sk.lampiranNama || sk.dataKhusus?.lampiranNama || 'Berkas', sk.lampiranUrl || sk.dataKhusus?.lampiranUrl)}
+                                className="underline hover:text-indigo-900 truncate max-w-[170px]"
+                                title="Buka berkas lampiran"
+                              >
+                                {sk.lampiranNama || sk.dataKhusus?.lampiranNama || 'Berkas Terlampir'}
+                              </button>
+                            </p>
+                          )}
                         </td>
-                        <td className="py-3 px-4 whitespace-nowrap text-xs text-slate-600">
+                        <td className="py-2.5 px-3 whitespace-nowrap text-[11px] text-slate-600">
                           {formatTanggalIndonesia(sk.tglSurat)}
                         </td>
-                        <td className="py-3 px-4 whitespace-nowrap">
+                        <td className="py-2.5 px-3 whitespace-nowrap">
                           <span
-                            className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                            className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full ${
                               sk.status === 'Terkirim'
                                 ? 'bg-emerald-100 text-emerald-800'
                                 : sk.status === 'Disetujui'
@@ -2588,15 +2649,15 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             {sk.status}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-center whitespace-nowrap">
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1">
                             {/* Tombol Lihat & Cetak Word/PDF */}
                             <button
                               onClick={() => onPreviewSurat(sk)}
-                              className="p-1.5 text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                              className="p-1 text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
                               title="Lihat Pratinjau & Cetak PDF"
                             >
-                              <Eye className="w-4 h-4" />
+                              <Eye className="w-3.5 h-3.5" />
                             </button>
 
                             {/* Tombol Export MS Word */}
@@ -2605,28 +2666,28 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                 const html = buildSuratHtml(sk, sekolah, guruList, siswaList);
                                 exportToWord(`Surat_${sk.jenisSurat}_${sk.noSurat.replace(/\//g, '_')}`, html);
                               }}
-                              className="p-1.5 text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+                              className="p-1 text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors"
                               title="Download MS Word (.doc)"
                             >
-                              <FileSpreadsheet className="w-4 h-4" />
+                              <FileSpreadsheet className="w-3.5 h-3.5" />
                             </button>
 
                             {/* Tombol Arsipkan */}
                             <button
                               onClick={() => handleOpenArsipModal(sk)}
-                              className="p-1.5 text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors"
+                              className="p-1 text-indigo-700 hover:bg-indigo-50 rounded-md transition-colors"
                               title="Simpan ke Arsip Surat Keluar"
                             >
-                              <Archive className="w-4 h-4" />
+                              <Archive className="w-3.5 h-3.5" />
                             </button>
 
                             {/* Tombol Edit */}
                             <button
                               onClick={() => openEditSurat(sk)}
-                              className="p-1.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                              className="p-1 text-slate-600 hover:bg-slate-100 rounded-md transition-colors"
                               title="Edit Surat"
                             >
-                              <Edit className="w-4 h-4" />
+                              <Edit className="w-3.5 h-3.5" />
                             </button>
 
                             {/* Tombol Hapus */}
@@ -2638,10 +2699,10 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                   noSurat: sk.noSurat || sk.perihal,
                                 });
                               }}
-                              className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                              className="p-1 text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
                               title="Hapus Surat"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </td>
@@ -2684,84 +2745,84 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
 
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs sm:text-sm">
+              <table className="w-full text-left border-collapse text-[11px] sm:text-xs">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold">
-                    <th className="py-3 px-4 w-12 text-center">No</th>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[10.5px] uppercase tracking-wider">
+                    <th className="py-2.5 px-3 w-10 text-center">No</th>
                     <th
-                      className="py-3 px-4 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                      className="py-2.5 px-3 cursor-pointer hover:bg-slate-100 transition-colors select-none"
                       onClick={() => setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
                       title="Klik untuk mengubah urutan arsip surat keluar"
                     >
                       <div className="flex items-center gap-1.5">
                         <span>Nomor & Kode Arsip</span>
-                        <ArrowUpDown className="w-3.5 h-3.5 text-indigo-700" />
-                        <span className="text-[10px] font-normal text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
-                          {sortOrder === 'desc' ? 'No. Tertinggi di Atas' : 'No. Terkecil di Atas'}
+                        <ArrowUpDown className="w-3 h-3 text-indigo-700" />
+                        <span className="text-[9.5px] font-normal text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
+                          {sortOrder === 'desc' ? 'Terbaru' : 'Terlama'}
                         </span>
                       </div>
                     </th>
-                    <th className="py-3 px-4">Perihal & Tujuan</th>
-                    <th className="py-3 px-4">Tgl Surat & Arsip</th>
-                    <th className="py-3 px-4">Lokasi Fisik (Rak/Box)</th>
-                    <th className="py-3 px-4 text-center w-24">Aksi</th>
+                    <th className="py-2.5 px-3">Perihal & Tujuan</th>
+                    <th className="py-2.5 px-3">Tgl Surat & Arsip</th>
+                    <th className="py-2.5 px-3">Lokasi Fisik (Rak/Box)</th>
+                    <th className="py-2.5 px-3 text-center w-20">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {sortedArsipList.map((ar, idx) => (
                     <tr key={ar.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3 px-4 text-center font-medium text-slate-500">
+                      <td className="py-2.5 px-3 text-center font-medium text-slate-400">
                         {idx + 1}
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-2.5 px-3">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-mono text-xs font-bold text-indigo-950">
+                          <span className="font-mono text-[11px] font-bold text-indigo-950">
                             {ar.noSurat}
                           </span>
                           {(() => {
                             const seq = extractNomorUrut(ar.noSurat);
                             return seq !== null ? (
-                              <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.5 rounded border border-indigo-200 font-mono">
+                              <span className="text-[9.5px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.5 rounded border border-indigo-200 font-mono">
                                 Urut #{formatNomorUrut(seq)}
                               </span>
                             ) : null;
                           })()}
                         </div>
-                        <span className="text-[11px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono inline-block mt-1">
+                        <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono inline-block mt-0.5">
                           Kode: {ar.kodeKlasifikasi}
                         </span>
                       </td>
-                      <td className="py-3 px-4 max-w-xs">
-                        <p className="font-semibold text-slate-900 leading-tight">
+                      <td className="py-2.5 px-3 max-w-xs">
+                        <p className="font-semibold text-slate-900 leading-snug text-[11.5px]">
                           {ar.perihal}
                         </p>
-                        <p className="text-xs text-slate-600 mt-1">
+                        <p className="text-[11px] text-slate-600 mt-0.5">
                           Tujuan: <span className="font-medium">{ar.tujuan || '-'}</span>
                         </p>
                         {ar.keterangan && (
-                          <p className="text-[11px] text-slate-500 italic mt-0.5">
+                          <p className="text-[10px] text-slate-500 italic mt-0.5">
                             {ar.keterangan}
                           </p>
                         )}
                         {/* Dokumen Lampiran Arsip */}
                         {ar.lampiranUrl ? (
-                          <div className="mt-2 flex items-center gap-1.5">
+                          <div className="mt-1 flex items-center gap-1.5">
                             <button
                               type="button"
                               onClick={() => openOrDownloadDocument(ar.lampiranNama || 'Dokumen_Arsip', ar.lampiranUrl!)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-900 text-[11px] font-semibold hover:bg-indigo-100 transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-900 text-[10px] font-semibold hover:bg-indigo-100 transition-colors cursor-pointer"
                               title="Buka / Unduh Dokumen Arsip"
                             >
                               <Paperclip className="w-3 h-3 text-indigo-700" />
-                              <span className="truncate max-w-[140px] sm:max-w-[180px]">{ar.lampiranNama || 'Dokumen Terlampir'}</span>
+                              <span className="truncate max-w-[130px] sm:max-w-[170px]">{ar.lampiranNama || 'Dokumen Terlampir'}</span>
                               <Eye className="w-3 h-3 text-indigo-600" />
                             </button>
                           </div>
                         ) : (
-                          <div className="mt-1.5">
-                            <label className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-slate-600 hover:text-indigo-900 hover:border-indigo-300 hover:bg-indigo-50/50 text-[10px] font-medium transition-colors cursor-pointer">
-                              <Upload className="w-3 h-3 text-slate-400" />
-                              <span>Upload Dokumen (Opsional)</span>
+                          <div className="mt-1">
+                            <label className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-50 border border-slate-200 text-slate-600 hover:text-indigo-900 hover:border-indigo-300 hover:bg-indigo-50/50 text-[9.5px] font-medium transition-colors cursor-pointer">
+                              <Upload className="w-2.5 h-2.5 text-slate-400" />
+                              <span>Upload Dokumen</span>
                               <input
                                 type="file"
                                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
@@ -2787,26 +2848,26 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                           </div>
                         )}
                       </td>
-                      <td className="py-3 px-4 whitespace-nowrap text-xs text-slate-600">
+                      <td className="py-2.5 px-3 whitespace-nowrap text-[11px] text-slate-600">
                         <div>Surat: {formatTanggalIndonesia(ar.tglSurat)}</div>
-                        <div className="text-[11px] text-indigo-700 font-medium mt-0.5">
+                        <div className="text-[10px] text-indigo-700 font-medium mt-0.5">
                           Diarsip: {formatTanggalIndonesia(ar.tglArsip)}
                         </div>
                       </td>
-                      <td className="py-3 px-4">
-                        <span className="inline-block bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-lg text-xs font-medium">
+                      <td className="py-2.5 px-3">
+                        <span className="inline-block bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-md text-[10.5px] font-medium">
                           {ar.lokasiFisik}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-center whitespace-nowrap">
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1">
                           <button
                             type="button"
                             onClick={() => handleOpenArsipModal(undefined, ar)}
-                            className="p-1.5 text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-1 text-indigo-700 hover:bg-indigo-50 rounded-md transition-colors cursor-pointer"
                             title="Edit Data Arsip"
                           >
-                            <Edit className="w-4 h-4" />
+                            <Edit className="w-3.5 h-3.5" />
                           </button>
                           <button
                             type="button"
@@ -2882,7 +2943,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                     { id: 'surat_tugas', label: '5. Surat Perintah Tugas (SPT)' },
                     { id: 'surat_pengantar', label: '6. Surat Pengantar' },
                     { id: 'surat_rekomendasi', label: '7. Surat Rekomendasi' },
-                    { id: 'surat_eksternal', label: '8. Surat Eksternal (Luar Sistem)' },
+                    { id: 'surat_eksternal', label: '8. Surat Lainnya' },
                   ].map((fmt) => (
                     <button
                       type="button"
@@ -2927,7 +2988,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             setTujuan(rekPtkNama || 'PTK');
                           }
                         } else if (newJenis === 'surat_eksternal') {
-                          setPerihal('Surat Dinas Eksternal');
+                          setPerihal('Surat Lainnya');
                           setTujuan('');
                         }
                       }}
@@ -7571,35 +7632,172 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                   </div>
                 )}
 
-                {/* Khusus: Surat Eksternal (Luar Sistem) */}
+                {/* Khusus: Surat Lainnya */}
                 {jenisSurat === 'surat_eksternal' && (
-                  <div className="p-4 bg-indigo-50/60 border border-indigo-200 rounded-xl space-y-3">
-                    <div className="flex items-center gap-2 pb-2 border-b border-indigo-200 text-indigo-950 font-bold text-xs uppercase tracking-wide">
-                      <ExternalLink className="w-4 h-4 text-indigo-600" />
-                      <span>Keterangan Surat Eksternal (Dibuat di Luar Sistem)</span>
-                    </div>
-
-                    <div className="p-3 bg-white border border-indigo-100 rounded-lg text-xs text-indigo-950 space-y-1">
-                      <p className="font-semibold flex items-center gap-1.5 text-indigo-800">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                        Pencatatan Nomor Surat Resmi di Buku Agenda Sekolah
-                      </p>
-                      <p className="text-[11px] text-slate-600 leading-relaxed">
-                        Surat fisik atau berkas digital dibuat di aplikasi eksternal (Microsoft Word, Google Docs, Canva, dsb.). Nomor surat ini telah resmi diregistrasi pada buku agenda sistem agar penomoran urut tetap teratur dan tercatat rapi.
-                      </p>
+                  <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-xl space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b border-emerald-200 text-emerald-950 font-bold text-xs uppercase tracking-wide">
+                      <FileText className="w-4 h-4 text-emerald-700" />
+                      <span>Surat Lainnya</span>
                     </div>
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Keterangan Tambahan / Ringkasan Isi Surat Eksternal
+                        Keterangan Tambahan / Ringkasan Isi Surat
                       </label>
                       <textarea
                         rows={3}
                         value={eksternalKeterangan}
                         onChange={(e) => setEksternalKeterangan(e.target.value)}
-                        placeholder="Contoh: Berkas proposal/permohonan kerjasama dibuat di Word dan dikirimkan langsung ke kantor dinas terkait..."
-                        className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-indigo-600 focus:outline-none"
+                        placeholder="Tuliskan ringkasan isi surat, keperluan, atau informasi terkait..."
+                        className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-emerald-600 focus:outline-none"
                       />
+                    </div>
+
+                    {/* Tombol Tempat Arsip */}
+                    <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Archive className="w-4 h-4 text-emerald-700" />
+                          <span>Tempat Arsip</span>
+                        </label>
+                        <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                          Lokasi Fisik
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {['Ordner 2026 / Lemari A', 'Lemari Arsip B / Rak 1', 'Box File Tata Usaha', 'Map Khusus Kepsek'].map((lokasi) => (
+                          <button
+                            key={lokasi}
+                            type="button"
+                            onClick={() => setEksternalTempatArsip(lokasi)}
+                            className={`px-2.5 py-1 text-[11px] rounded-lg border font-medium transition-all cursor-pointer ${
+                              eksternalTempatArsip === lokasi
+                                ? 'bg-emerald-700 text-white border-emerald-700 shadow-2xs'
+                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {lokasi}
+                          </button>
+                        ))}
+                      </div>
+                      <input
+                        type="text"
+                        value={eksternalTempatArsip}
+                        onChange={(e) => setEksternalTempatArsip(e.target.value)}
+                        placeholder="Contoh: Ordner 2026 / Lemari A Rak 1"
+                        className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-1 focus:ring-emerald-600 focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Tombol Lampirkan Berkas (Opsional) */}
+                    <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Paperclip className="w-4 h-4 text-emerald-700" />
+                          <span>Lampirkan Berkas</span>
+                        </label>
+                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-md">
+                          Opsional
+                        </span>
+                      </div>
+
+                      {eksternalLampiranUrl || eksternalLampiranNama ? (
+                        <div className="flex items-center justify-between p-2.5 bg-emerald-50/50 border border-emerald-200 rounded-lg">
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                              <FileText className="w-4 h-4" />
+                            </div>
+                            <div className="overflow-hidden">
+                              <p className="text-xs font-bold text-slate-800 truncate max-w-[200px] sm:max-w-xs" title={eksternalLampiranNama}>
+                                {eksternalLampiranNama}
+                              </p>
+                              <p className="text-[10px] text-slate-500">
+                                {eksternalLampiranUkuran || 'Berkas Terlampir'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => openOrDownloadDocument(eksternalLampiranNama || 'Berkas_Surat_Lainnya', eksternalLampiranUrl)}
+                              className="px-2 py-1 text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                              title="Buka / Unduh Berkas"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-emerald-700" />
+                              <span>Lihat</span>
+                            </button>
+                            <label className="px-2 py-1 text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1">
+                              <Upload className="w-3.5 h-3.5 text-emerald-700" />
+                              <span>Ganti</span>
+                              <input
+                                type="file"
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  try {
+                                    setIsUploadingEksternalDoc(true);
+                                    const res = await readFileAsDataUrl(file);
+                                    setEksternalLampiranNama(res.name);
+                                    setEksternalLampiranUrl(res.url);
+                                    setEksternalLampiranUkuran(res.size);
+                                    setEksternalLampiranTipe(res.type);
+                                  } catch (err: any) {
+                                    alert(err.message || 'Gagal membaca file');
+                                  } finally {
+                                    setIsUploadingEksternalDoc(false);
+                                  }
+                                }}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEksternalLampiranNama('');
+                                setEksternalLampiranUrl('');
+                                setEksternalLampiranUkuran('');
+                                setEksternalLampiranTipe('');
+                              }}
+                              className="p-1 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              title="Hapus Berkas"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 hover:border-emerald-500 hover:bg-emerald-50/30 rounded-xl p-3 cursor-pointer transition-colors bg-white">
+                          <Upload className="w-5 h-5 text-slate-400 mb-1" />
+                          <span className="text-xs font-semibold text-slate-800">
+                            {isUploadingEksternalDoc ? 'Memproses berkas...' : 'Klik untuk Lampirkan Berkas'}
+                          </span>
+                          <span className="text-[11px] text-slate-500 mt-0.5">
+                            PDF, Word (.doc/docx), atau Gambar / Foto (Opsional)
+                          </span>
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              try {
+                                setIsUploadingEksternalDoc(true);
+                                const res = await readFileAsDataUrl(file);
+                                setEksternalLampiranNama(res.name);
+                                setEksternalLampiranUrl(res.url);
+                                setEksternalLampiranUkuran(res.size);
+                                setEksternalLampiranTipe(res.type);
+                              } catch (err: any) {
+                                alert(err.message || 'Gagal membaca file');
+                              } finally {
+                                setIsUploadingEksternalDoc(false);
+                              }
+                            }}
+                          />
+                        </label>
+                      )}
                     </div>
                   </div>
                 )}

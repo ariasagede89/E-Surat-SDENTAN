@@ -253,19 +253,19 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Tombol + CATAT SURAT MASUK */}
-      <div className="flex items-center justify-end">
+      {/* Tombol Utama: CATAT SURAT MASUK di Bagian Tengah Atas (Lebar & Center Point) */}
+      <div className="flex items-center justify-center pt-2 pb-1 px-2">
         <button
           onClick={openNew}
-          className="px-4 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          className="w-full max-w-xl sm:max-w-2xl py-4 sm:py-4.5 px-8 sm:px-12 bg-blue-900 hover:bg-blue-800 text-white font-extrabold text-base sm:text-lg rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 cursor-pointer tracking-wide active:scale-[0.99]"
         >
-          <Plus className="w-4 h-4" />
-          <span>+ CATAT SURAT MASUK</span>
+          <Plus className="w-6 h-6 stroke-[2.5]" />
+          <span>CATAT SURAT MASUK</span>
         </button>
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
+      <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input
@@ -273,14 +273,14 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Cari no surat, pengirim, perihal..."
-            className="w-full text-xs sm:text-sm pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-none"
+            className="w-full text-xs pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-none"
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           <div className="flex items-center gap-1.5 text-xs text-slate-600">
             <Filter className="w-3.5 h-3.5" />
-            <span className="font-semibold">Sifat:</span>
+            <span className="font-semibold text-[11px]">Sifat:</span>
             <select
               value={filterSifat}
               onChange={(e) => setFilterSifat(e.target.value)}
@@ -295,7 +295,7 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 text-xs text-slate-600">
-            <span className="font-semibold">Status:</span>
+            <span className="font-semibold text-[11px]">Status:</span>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -310,69 +310,69 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
         </div>
       </div>
 
-      {/* Table List of Surat Masuk */}
+      {/* Table List of Surat Masuk (Font Lebih Kecil) */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs sm:text-sm">
+          <table className="w-full text-left border-collapse text-[11px] sm:text-xs">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold">
-                <th className="py-3 px-4 w-12 text-center">No</th>
-                <th className="py-3 px-4">Agenda & No Surat</th>
-                <th className="py-3 px-4">Pengirim & Perihal</th>
-                <th className="py-3 px-4">Tgl Terima & TL</th>
-                <th className="py-3 px-4">Sifat / Status</th>
-                <th className="py-3 px-4 text-center w-48">Aksi</th>
+              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[10.5px] uppercase tracking-wider">
+                <th className="py-2.5 px-3 w-10 text-center">No</th>
+                <th className="py-2.5 px-3">Agenda & No Surat</th>
+                <th className="py-2.5 px-3">Pengirim & Perihal</th>
+                <th className="py-2.5 px-3">Tgl Terima & TL</th>
+                <th className="py-2.5 px-3">Sifat / Status</th>
+                <th className="py-2.5 px-3 text-center w-44">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredSurat.map((sm, idx) => (
                 <tr key={sm.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3 px-4 text-center font-medium text-slate-500">
+                  <td className="py-2.5 px-3 text-center font-medium text-slate-400">
                     {idx + 1}
                   </td>
-                  <td className="py-3 px-4">
-                    <span className="font-mono text-xs font-bold text-blue-900 block">
+                  <td className="py-2.5 px-3">
+                    <span className="font-mono text-[11px] font-bold text-blue-900 block">
                       {sm.noAgenda}
                     </span>
-                    <span className="text-xs text-slate-600 font-medium">
+                    <span className="text-[11px] text-slate-600 font-medium">
                       {sm.noSurat}
                     </span>
-                    <span className="text-[11px] text-slate-400 block mt-0.5">
+                    <span className="text-[10px] text-slate-400 block mt-0.5">
                       Tgl Surat: {formatTanggalIndonesia(sm.tglSurat)}
                     </span>
                   </td>
-                  <td className="py-3 px-4 max-w-xs">
-                    <p className="font-semibold text-slate-900 leading-tight">
+                  <td className="py-2.5 px-3 max-w-xs">
+                    <p className="font-semibold text-slate-900 leading-snug text-[11.5px]">
                       {sm.pengirim}
                     </p>
-                    <p className="text-xs text-slate-600 mt-1 line-clamp-2">
+                    <p className="text-[11px] text-slate-600 mt-0.5 line-clamp-2">
                       {sm.perihal}
                     </p>
                     {sm.disposisi && (
-                      <p className="text-[11px] text-amber-900 bg-amber-50 rounded px-1.5 py-0.5 mt-1 border border-amber-200/60 line-clamp-1 italic">
+                      <p className="text-[10px] text-amber-900 bg-amber-50 rounded px-1.5 py-0.5 mt-1 border border-amber-200/60 line-clamp-1 italic">
                         Disposisi: "{sm.disposisi}"
                       </p>
                     )}
 
                     {/* Berkas Dokumen Surat Masuk (Opsional) */}
                     {sm.lampiranNama || sm.lampiranUrl ? (
-                      <div className="mt-1.5 flex items-center gap-1.5">
+                      <div className="mt-1 flex items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => openOrDownloadDocument(sm.lampiranNama || 'Dokumen_Surat_Masuk', sm.lampiranUrl)}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-900 text-[11px] font-semibold rounded-md border border-blue-200 transition-colors shadow-2xs cursor-pointer"
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-900 text-[10px] font-semibold rounded border border-blue-200 transition-colors shadow-2xs cursor-pointer"
                           title="Klik untuk membuka atau mengunduh berkas dokumen"
                         >
                           <Paperclip className="w-3 h-3 text-blue-700 shrink-0" />
-                          <span className="truncate max-w-[130px] sm:max-w-[180px]">{sm.lampiranNama || 'Dokumen Terlampir'}</span>
-                          {sm.lampiranUkuran && <span className="text-[10px] text-blue-600 font-normal">({sm.lampiranUkuran})</span>}
+                          <span className="truncate max-w-[120px] sm:max-w-[160px]">{sm.lampiranNama || 'Dokumen Terlampir'}</span>
+                          {sm.lampiranUkuran && <span className="text-[9.5px] text-blue-600 font-normal">({sm.lampiranUkuran})</span>}
                         </button>
                       </div>
                     ) : (
-                      <div className="mt-1">
-                        <label className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-blue-900 cursor-pointer font-medium transition-colors hover:underline">
-                          <Upload className="w-3 h-3 text-slate-400" />
-                          <span>+ Upload Dokumen (Opsional)</span>
+                      <div className="mt-0.5">
+                        <label className="inline-flex items-center gap-1 text-[10px] text-slate-400 hover:text-blue-900 cursor-pointer font-medium transition-colors hover:underline">
+                          <Upload className="w-2.5 h-2.5 text-slate-400" />
+                          <span>+ Upload Dokumen</span>
                           <input
                             type="file"
                             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
@@ -398,26 +398,26 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                       </div>
                     )}
                   </td>
-                  <td className="py-3 px-4 whitespace-nowrap">
-                    <div className="text-xs text-slate-700">
+                  <td className="py-2.5 px-3 whitespace-nowrap">
+                    <div className="text-[11px] text-slate-700">
                       Terima: {formatTanggalIndonesia(sm.tglTerima)}
                     </div>
                     {sm.tglTindakLanjut && (
-                      <div className="text-[11px] font-semibold text-amber-800 flex items-center gap-1 mt-0.5">
+                      <div className="text-[10px] font-semibold text-amber-800 flex items-center gap-1 mt-0.5">
                         <Clock className="w-3 h-3" />
                         <span>Batas TL: {formatTanggalIndonesia(sm.tglTindakLanjut)}</span>
                       </div>
                     )}
                     {sm.petugasTindakLanjut && (
-                      <div className="text-[10.5px] font-medium text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded mt-1 border border-emerald-200/60 flex items-center gap-1">
+                      <div className="text-[10px] font-medium text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded mt-0.5 border border-emerald-200/60 flex items-center gap-1">
                         <UserCheck className="w-3 h-3 shrink-0" />
                         <span>TL: {sm.petugasTindakLanjut} ({formatTanggalIndonesia(sm.tglSelesaiTindakLanjut || '')})</span>
                       </div>
                     )}
                   </td>
-                  <td className="py-3 px-4 whitespace-nowrap space-y-1">
+                  <td className="py-2.5 px-3 whitespace-nowrap space-y-1">
                     <span
-                      className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded ${
+                      className={`inline-block text-[9.5px] font-bold px-1.5 py-0.5 rounded ${
                         sm.sifat === 'Sangat Penting'
                           ? 'bg-rose-100 text-rose-800 border border-rose-200'
                           : sm.sifat === 'Penting'
@@ -430,7 +430,7 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                       {sm.sifat}
                     </span>
                     <span
-                      className={`block text-[10px] font-medium px-2 py-0.5 rounded w-max ${
+                      className={`block text-[9.5px] font-medium px-1.5 py-0.5 rounded w-max ${
                         sm.status === 'Selesai'
                           ? 'bg-emerald-100 text-emerald-800'
                           : sm.status === 'Sedang Diproses'
@@ -441,17 +441,17 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                       {sm.status}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-center whitespace-nowrap">
-                    <div className="flex items-center justify-center gap-1.5">
+                  <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                    <div className="flex items-center justify-center gap-1">
                       {/* Tombol Selesai Ditindaklanjuti untuk status Menunggu Tindak Lanjut */}
                       {sm.status === 'Menunggu Tindak Lanjut' && (
                         <button
                           onClick={() => openSelesaiTindakLanjut(sm)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs transition-colors"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 text-[10.5px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-md shadow-xs transition-colors"
                           title="Selesai Ditindaklanjuti (isi orang & tanggal tindak lanjut)"
                         >
-                          <CheckSquare className="w-3.5 h-3.5" />
-                          <span>Selesai Ditindaklanjuti</span>
+                          <CheckSquare className="w-3 h-3" />
+                          <span>Selesai TL</span>
                         </button>
                       )}
 
@@ -459,34 +459,34 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                       {sm.status === 'Selesai' && (
                         <button
                           onClick={() => openSelesaiTindakLanjut(sm)}
-                          className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors"
                           title="Lihat / Perbarui Info Tindak Lanjut"
                         >
                           <UserCheck className="w-3 h-3 text-emerald-600" />
-                          <span>Tindak Lanjut</span>
+                          <span>TL</span>
                         </button>
                       )}
 
                       <button
                         onClick={() => handlePrintDisposisi(sm)}
-                        className="p-1.5 text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="p-1 text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
                         title="Cetak Lembar Disposisi"
                       >
-                        <Printer className="w-4 h-4" />
+                        <Printer className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => openEdit(sm)}
-                        className="p-1.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                        className="p-1 text-slate-600 hover:bg-slate-100 rounded-md transition-colors"
                         title="Edit Surat Masuk"
                       >
-                        <Edit className="w-4 h-4" />
+                        <Edit className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => setDeleteConfirm({ id: sm.id, noSurat: sm.noSurat })}
-                        className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                        title="Hapus"
+                        className="p-1 text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                        title="Hapus Surat Masuk"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </td>

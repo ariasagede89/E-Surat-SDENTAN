@@ -2209,9 +2209,6 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                       Landscape F4 ({ptkPaperSizeCetak})
                     </span>
                   </h3>
-                  <p className="text-xs text-slate-500">
-                    Format bulanan resmi kedinasan, orientasi Landscape F4/Folio, kalender kostum libur, dan unduh Ms. Word (.doc)
-                  </p>
                 </div>
               </div>
               <button
@@ -2258,18 +2255,6 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                       <span className="font-semibold">{holidaySuccessToast}</span>
                     </div>
                   )}
-
-                  <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1">
-                    <div className="font-bold flex items-center gap-1">
-                      <Info className="w-3.5 h-3.5 text-amber-700" />
-                      Petunjuk Kostum Hari Libur & Jam Kerja:
-                    </div>
-                    <p className="text-[11px] leading-relaxed text-amber-800">
-                      • Sistem yang digunakan: <strong>{absenWorkSystem === '5_hari' ? '5 Hari Kerja (Sabtu & Minggu Libur Resmi)' : '6 Hari Kerja (Hanya Minggu Libur)'}</strong>.<br/>
-                      • Baris tanggal libur pada lembar presensi otomatis diberi arsir warna dan keterangan <strong>LIBUR</strong>.<br/>
-                      • Untuk menambah tanggal libur khusus (misal: Hari Raya Pagerwesi), klik tanggalnya, isi keterangannya lalu klik <strong>Terapkan</strong> (otomatis tersimpan di kalender & presensi).
-                    </p>
-                  </div>
                 </div>
 
                 {/* Kolom Kanan: Opsi Format Cetak & Ringkasan */}
@@ -2475,71 +2460,6 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                       </label>
                     </div>
                   </div>
-
-                  {/* Ringkasan Cetak */}
-                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
-                    <span className="font-bold text-slate-800 uppercase tracking-wider block text-[11px]">
-                      Ringkasan Dokumen Presensi
-                    </span>
-                    <div className="space-y-1 text-slate-600 text-[11.5px]">
-                      <div className="flex justify-between">
-                        <span>Kop Surat:</span>
-                        <span className={`font-semibold ${!ptkShowKopCetak ? 'text-emerald-700' : 'text-slate-900'}`}>
-                          {!ptkShowKopCetak ? 'Tanpa KOP (Pilihan Utama)' : 'Resmi Kedinasan Pemkab Jembrana'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Ukuran & Orientasi:</span>
-                        <span className="font-bold text-blue-900">
-                          {ptkPaperSizeCetak === 'F4' ? 'F4 / Folio (33.0 × 21.5 cm)' : 'A4 (29.7 × 21.0 cm)'} Landscape
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Subjek PTK Terpilih:</span>
-                        <span className="font-bold text-indigo-900">
-                          {ptkFilterCetak === 'semua'
-                            ? `Seluruh PTK (${guruList.length} orang)`
-                            : ptkFilterCetak === 'guru'
-                            ? `Hanya Guru (${guruList.filter((g) => g.jenisPtk === 'guru').length} orang)`
-                            : ptkFilterCetak === 'tu'
-                            ? `Hanya TU (${guruList.filter((g) => g.jenisPtk === 'tu').length} orang)`
-                            : `Kepala Sekolah (${guruList.filter((g) => g.jenisPtk === 'kepala_sekolah').length} orang)`}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Bulan / Tahun:</span>
-                        <span className="font-semibold text-slate-900">
-                          {NAMA_BULAN_INDONESIA[absenMonth - 1]} {absenYear}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Hari Kerja Efektif:</span>
-                        <span className="font-bold text-emerald-700">
-                          {Math.max(0, new Date(absenYear, absenMonth, 0).getDate() - Object.keys(absenHolidays).length)} Hari ({absenWorkSystem === '5_hari' ? '5 Hari Kerja' : '6 Hari Kerja'}: {Object.keys(absenHolidays).length} Hari Libur)
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Format Tampilan:</span>
-                        <span className="font-semibold text-blue-900">
-                          {ptkCetakMode === 'kolektif_per_lembar'
-                            ? `Harian Terbagi (${ptkPerPageCetak} PTK / Lembar)`
-                            : ptkCetakMode === 'rekap_bulanan'
-                            ? 'Matriks Rekapitulasi (1 Lembar)'
-                            : 'All-in-One'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Sub-Kolom Presensi:</span>
-                        <span className="font-semibold text-slate-800">
-                          {ptkCetakMode === 'rekap_bulanan' ? 'Tgl 1..31 & Rekap H/S/I/DL/TK' : 'Pagi, TTD, Sore, TTD'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Format Dokumen:</span>
-                        <span className="font-semibold text-slate-900">Cetak Langsung / PDF & Ms. Word (.doc)</span>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -2599,9 +2519,6 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                       {siswaOrientationCetak === 'portrait' ? 'Potret (Pilihan Utama)' : 'Lanskap'} • {siswaPaperSizeCetak}
                     </span>
                   </h3>
-                  <p className="text-xs text-slate-500">
-                    Format baris: No, NISN/NIS, Nama Siswa, L/P, Tanggal (1..30/31), Rekapitulasi (S, I, A, Jml), dan Pengesahan
-                  </p>
                 </div>
               </div>
               <button
@@ -2648,18 +2565,6 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                       <span className="font-semibold">{holidaySuccessToast}</span>
                     </div>
                   )}
-
-                  <div className="p-3 bg-red-50 rounded-xl border border-red-200 text-xs text-red-900 space-y-1">
-                    <div className="font-bold flex items-center gap-1">
-                      <Info className="w-3.5 h-3.5 text-red-700" />
-                      Penandaan Hari Libur Siswa:
-                    </div>
-                    <p className="text-[11px] leading-relaxed text-red-800">
-                      • Sistem yang digunakan: <strong>{absenWorkSystem === '5_hari' ? '5 Hari Kerja (Sabtu & Minggu Otomatis Libur)' : '6 Hari Kerja (Hanya Minggu Libur)'}</strong>.<br/>
-                      • Kolom tanggal yang ditandai libur otomatis diarsir merah muda dengan kode <strong>'L'</strong> pada tabel absensi siswa.<br/>
-                      • Untuk menambahkan libur khusus (misal: Hari Raya Pagerwesi), klik tanggalnya, isi keterangan lalu klik <strong>Terapkan</strong> (otomatis tersimpan di kalender & presensi).
-                    </p>
-                  </div>
                 </div>
 
                 {/* Kolom Kanan: Pengaturan Dokumen Presensi */}
@@ -2801,63 +2706,6 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                           onChange={(e) => setSiswaTahunAjaranCetak(e.target.value)}
                           className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-2 font-medium text-slate-800 focus:outline-none"
                         />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Ringkasan Cetak Siswa */}
-                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
-                    <span className="font-bold text-slate-800 uppercase tracking-wider block text-[11px]">
-                      Ringkasan Dokumen Presensi Siswa
-                    </span>
-                    <div className="space-y-1 text-slate-600 text-[11.5px]">
-                      <div className="flex justify-between">
-                        <span>Orientasi:</span>
-                        <span className={`font-bold ${siswaOrientationCetak === 'portrait' ? 'text-emerald-700' : 'text-blue-900'}`}>
-                          {siswaOrientationCetak === 'portrait' ? 'Potret (Tegak) - Pilihan Utama' : 'Lanskap (Melebar)'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Ukuran Kertas:</span>
-                        <span className="font-semibold text-slate-900">
-                          {siswaPaperSizeCetak === 'F4' ? 'F4 / Folio (215 × 330 mm)' : 'A4 (210 × 297 mm)'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Kop Surat:</span>
-                        <span className={`font-semibold ${!siswaShowKopCetak ? 'text-emerald-700' : 'text-slate-900'}`}>
-                          {!siswaShowKopCetak ? 'Tanpa KOP (Pilihan Utama)' : 'Resmi Kedinasan Pemkab Jembrana'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Kelas Dicetak:</span>
-                        <span className="font-bold text-blue-900">
-                          {siswaKelasCetak === 'Semua' ? 'Semua Kelas' : `Kelas ${siswaKelasCetak}`} ({siswaKelasCetak === 'Semua' ? siswaList.length : siswaList.filter((s) => s.kelas === siswaKelasCetak).length} Siswa)
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Periode:</span>
-                        <span className="font-semibold text-slate-900">
-                          {NAMA_BULAN_INDONESIA[absenMonth - 1]} {absenYear}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Hari Efektif Belajar:</span>
-                        <span className="font-bold text-emerald-700">
-                          {Math.max(0, new Date(absenYear, absenMonth, 0).getDate() - Object.keys(absenHolidays).length)} Hari ({absenWorkSystem === '5_hari' ? '5 Hari Kerja' : '6 Hari Kerja'}: {Object.keys(absenHolidays).length} Hari Libur)
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Format Kolom:</span>
-                        <span className="font-semibold text-slate-900">
-                          No, NISN/NIS, Nama Siswa, L/P, Tanggal (1..{new Date(absenYear, absenMonth, 0).getDate()}), S, I, A, Jml
-                        </span>
-                      </div>
-                      <div className="flex justify-between pt-1 border-t border-slate-200/80">
-                        <span>Margin Dokumen (Word & PDF):</span>
-                        <span className="font-bold text-slate-800">
-                          Kiri 3cm, Kanan 1cm, Atas 1cm, Bawah 2cm
-                        </span>
                       </div>
                     </div>
                   </div>
