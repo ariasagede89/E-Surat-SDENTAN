@@ -20,6 +20,7 @@ import {
   Lock,
   LogOut,
   UserCheck,
+  GraduationCap,
 } from 'lucide-react';
 import {
   isFirebaseConfigured,
@@ -80,7 +81,8 @@ type MenuTab =
   | 'beranda'
   | 'surat_masuk'
   | 'surat_keluar'
-  | 'guru_siswa'
+  | 'data_ptk'
+  | 'data_murid'
   | 'filter'
   | 'pengaturan';
 
@@ -773,7 +775,8 @@ export default function App() {
     { id: 'beranda' as const, label: 'Beranda', icon: Home, isLocked: false, count: null },
     { id: 'surat_masuk' as const, label: 'Surat Masuk', icon: Inbox, isLocked: false, count: suratMasukList.length },
     { id: 'surat_keluar' as const, label: 'Surat Keluar', icon: Send, isLocked: false, count: suratKeluarList.length },
-    { id: 'guru_siswa' as const, label: 'Data PTK & Siswa', icon: Users, isLocked: false, count: guruList.length + siswaList.length },
+    { id: 'data_ptk' as const, label: 'Data PTK', icon: Users, isLocked: false, count: guruList.length },
+    { id: 'data_murid' as const, label: 'Data Murid', icon: GraduationCap, isLocked: false, count: siswaList.length },
     { id: 'filter' as const, label: 'Filter & Laporan', icon: Filter, isLocked: false, count: null },
     { id: 'pengaturan' as const, label: 'Pengaturan', icon: Settings, isLocked: userRole !== 'admin', count: null },
   ];
@@ -782,7 +785,8 @@ export default function App() {
     beranda: 'Beranda',
     surat_masuk: 'Surat Masuk',
     surat_keluar: 'Surat Keluar',
-    guru_siswa: 'Data PTK & Siswa',
+    data_ptk: 'Data PTK',
+    data_murid: 'Data Murid',
     filter: 'Filter & Laporan',
     pengaturan: 'Pengaturan',
   };
@@ -1046,8 +1050,9 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'guru_siswa' && (
+        {(activeTab === 'data_ptk' || activeTab === 'data_murid') && (
           <GuruSiswaView
+            mode={activeTab === 'data_ptk' ? 'guru' : 'siswa'}
             guruList={guruList}
             siswaList={siswaList}
             sekolah={sekolah}
@@ -1107,7 +1112,7 @@ export default function App() {
                   Saat ini aplikasi berjalan dalam <strong>Mode Guru</strong> (akses langsung tanpa login). Sesuai pengaturan hak akses, <strong>Mode Guru tidak mengakses pengaturan</strong>.
                 </p>
                 <p className="text-xs text-slate-500">
-                  Untuk mengonfigurasi Identitas Sekolah, Format Kop Surat Kedinasan, Akun Administrator, atau Basis Data Cloud Firebase, silakan masuk sebagai Admin (Kepala Sekolah & TU).
+                  Untuk mengonfigurasi Profil Sekolah, Format Kop Surat Kedinasan, atau Akun Administrator, silakan masuk sebagai Admin (Kepala Sekolah & TU).
                 </p>
               </div>
 

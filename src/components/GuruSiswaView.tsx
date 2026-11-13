@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Users,
   GraduationCap,
@@ -122,6 +122,7 @@ export function hitungUmurSiswa(tglLahir: string, acuanStrOrDate?: string | Date
 }
 
 interface GuruSiswaViewProps {
+  mode?: 'guru' | 'siswa';
   guruList: Guru[];
   siswaList: Siswa[];
   sekolah: PengaturanSekolah;
@@ -138,6 +139,7 @@ interface GuruSiswaViewProps {
 }
 
 export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
+  mode,
   guruList,
   siswaList,
   sekolah,
@@ -152,8 +154,15 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
   onClearAllSiswa,
   onResetSiswaDefault,
 }) => {
-  const [activeTab, setActiveTab] = useState<'guru' | 'siswa'>('guru');
+  const [activeTab, setActiveTab] = useState<'guru' | 'siswa'>(mode || 'guru');
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    if (mode) {
+      setActiveTab(mode);
+      setSearchTerm('');
+    }
+  }, [mode]);
   const [filterKelasSiswa, setFilterKelasSiswa] = useState<string>('Semua');
   const [filterJkSiswa, setFilterJkSiswa] = useState<'Semua' | 'L' | 'P'>('Semua');
   const [filterUmurSiswa, setFilterUmurSiswa] = useState<string>('Semua');
@@ -1018,44 +1027,111 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Header View */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <Users className="w-5 h-5 text-indigo-700" />
-            Data PTK & Siswa SDN 1 Pekutatan
+            {activeTab === 'guru' ? (
+              <>
+                <Users className="w-5 h-5 text-indigo-700" />
+                <span>Data PTK SDN 1 Pekutatan</span>
+              </>
+            ) : (
+              <>
+                <GraduationCap className="w-5 h-5 text-indigo-700" />
+                <span>Data Murid SDN 1 Pekutatan</span>
+              </>
+            )}
           </h1>
+          {mode && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 rounded-lg text-xs font-semibold text-indigo-950">
+              {activeTab === 'guru'
+                ? `Total PTK: ${guruList.length}`
+                : `Total Murid: ${siswaList.length}`}
+            </span>
+          )}
         </div>
 
-        {/* Sub-Tabs: a. Data PTK, b. Data Siswa */}
-        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
-          <button
-            onClick={() => {
-              setActiveTab('guru');
-              setSearchTerm('');
-            }}
-            className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
-              activeTab === 'guru'
-                ? 'bg-white text-indigo-950 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>a. DATA PTK ({guruList.length})</span>
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('siswa');
-              setSearchTerm('');
-            }}
-            className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
-              activeTab === 'siswa'
-                ? 'bg-white text-indigo-950 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <GraduationCap className="w-4 h-4" />
-            <span>b. Data Siswa ({siswaList.length})</span>
-          </button>
+        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-start lg:justify-end">
+          {!mode && (
+            /* Fallback Sub-Tabs jika dibuka tanpa mode spesifik */
+            <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl mr-auto lg:mr-2">
+              <button
+                onClick={() => {
+                  setActiveTab('guru');
+                  setSearchTerm('');
+                }}
+                className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                  activeTab === 'guru'
+                    ? 'bg-white text-indigo-950 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                <span>Data PTK ({guruList.length})</span>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('siswa');
+                  setSearchTerm('');
+                }}
+                className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                  activeTab === 'siswa'
+                    ? 'bg-white text-indigo-950 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <GraduationCap className="w-4 h-4" />
+                <span>Data Murid ({siswaList.length})</span>
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'guru' ? (
+            <>
+              {/* Tombol Cetak & Unduh Presensi PTK (Paling Atas berdampingan dengan Tambah PTK) */}
+              <button
+                onClick={handlePrintAbsenGuru}
+                className="px-4 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Cetak Presensi PTK</span>
+              </button>
+
+              {/* Tambah Manual PTK */}
+              <button
+                onClick={() => openGuruModal()}
+                className="px-4 py-2.5 bg-indigo-700 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Tambah PTK</span>
+              </button>
+            </>
+          ) : (
+            <>
+              {/* Tombol Cetak Absen Siswa (Paling Atas berdampingan dengan Tambah Siswa) */}
+              <button
+                onClick={() =>
+                  openCetakSiswaModal(
+                    filterKelasSiswa !== 'Semua' ? filterKelasSiswa : (availableKelas[0] || '6A')
+                  )
+                }
+                className="px-4 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
+                title="Cetak Presensi Siswa Bulanan (Format Potret Pilihan Utama / Lanskap & Kostum Libur)"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Cetak Absen Siswa</span>
+              </button>
+
+              {/* Tambah Manual Siswa */}
+              <button
+                onClick={() => openSiswaModal()}
+                className="px-4 py-2.5 bg-indigo-700 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Tambah Siswa</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -1156,24 +1232,6 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
               >
                 <FileSpreadsheet className="w-4 h-4 text-slate-600" />
                 <span>Unduh Format PTK</span>
-              </button>
-
-              {/* Tombol Cetak & Unduh Presensi PTK */}
-              <button
-                onClick={handlePrintAbsenGuru}
-                className="px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Cetak Presensi PTK</span>
-              </button>
-
-              {/* Tambah Manual PTK */}
-              <button
-                onClick={() => openGuruModal()}
-                className="px-3.5 py-2 bg-indigo-700 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>+ Tambah PTK</span>
               </button>
             </div>
           </div>
@@ -1571,20 +1629,6 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                   )}
                 </div>
 
-                {/* Tombol Cetak Absen Siswa */}
-                <button
-                  onClick={() =>
-                    openCetakSiswaModal(
-                      filterKelasSiswa !== 'Semua' ? filterKelasSiswa : (availableKelas[0] || '6A')
-                    )
-                  }
-                  className="px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                  title="Cetak Presensi Siswa Bulanan (Format Potret Pilihan Utama / Lanskap &amp; Kostum Libur)"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>Cetak Absen Siswa</span>
-                </button>
-
                 {/* Tombol Opsi Data (Reset / Bersihkan) */}
                 {(onResetSiswaDefault || onClearAllSiswa) && (
                   <div className="relative">
@@ -1626,15 +1670,6 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                     )}
                   </div>
                 )}
-
-                {/* Tambah Manual */}
-                <button
-                  onClick={() => openSiswaModal()}
-                  className="px-3.5 py-2 bg-indigo-700 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Tambah Siswa</span>
-                </button>
               </div>
             </div>
 
@@ -2194,18 +2229,18 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
 
       {/* ================= MODAL CETAK ABSEN GURU (LANDSCAPE) ================= */}
       {showCetakAbsenGuruModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-4xl w-full my-auto shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-5 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-6xl xl:max-w-7xl w-full my-auto shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[95vh] animate-in fade-in zoom-in-95 duration-150">
             {/* Header Modal */}
-            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-900 text-white flex items-center justify-center font-bold shadow-xs">
+            <div className="px-6 sm:px-8 py-4 sm:py-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-blue-900 text-white flex items-center justify-center font-bold shadow-xs">
                   <Printer className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 flex flex-wrap items-center gap-2">
                     <span>Cetak Presensi PTK (Pendidik & Tenaga Kependidikan)</span>
-                    <span className="px-2 py-0.5 text-[11px] font-semibold bg-blue-100 text-blue-900 rounded-full border border-blue-200">
+                    <span className="px-2.5 py-0.5 text-xs font-semibold bg-blue-100 text-blue-900 rounded-full border border-blue-200">
                       Landscape F4 ({ptkPaperSizeCetak})
                     </span>
                   </h3>
@@ -2213,20 +2248,20 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
               </div>
               <button
                 onClick={() => setShowCetakAbsenGuruModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
+                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Content Modal */}
-            <div className="p-5 overflow-y-auto space-y-5">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            <div className="p-6 sm:p-8 overflow-y-auto space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
                 {/* Kolom Kiri: Kalender Kecil Kostum Libur */}
                 <div className="lg:col-span-7 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-red-600" />
+                    <span className="text-xs sm:text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4 text-red-600" />
                       1. Tentukan Hari Libur (Kalender Interaktif)
                     </span>
                     <span className="text-[11px] text-slate-500">
@@ -2465,11 +2500,11 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
             </div>
 
             {/* Footer Modal */}
-            <div className="px-5 py-3 border-t border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
+            <div className="px-6 sm:px-8 py-4 border-t border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => setShowCetakAbsenGuruModal(false)}
-                className="px-4 py-2 text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-xl transition-colors"
+                className="px-5 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
               >
                 Tutup
               </button>
@@ -2498,20 +2533,20 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
 
       {/* ================= MODAL CETAK ABSEN SISWA (LANDSCAPE) ================= */}
       {showCetakAbsenSiswaModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-4xl w-full my-auto shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-5 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-6xl xl:max-w-7xl w-full my-auto shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[95vh] animate-in fade-in zoom-in-95 duration-150">
             {/* Header Modal */}
-            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl text-white flex items-center justify-center font-bold shadow-xs ${
+            <div className="px-6 sm:px-8 py-4 sm:py-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-3.5">
+                <div className={`w-11 h-11 rounded-xl text-white flex items-center justify-center font-bold shadow-xs ${
                   siswaOrientationCetak === 'portrait' ? 'bg-emerald-700' : 'bg-blue-900'
                 }`}>
                   <Printer className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 flex flex-wrap items-center gap-2">
                     <span>Cetak Presensi Peserta Didik Bulanan</span>
-                    <span className={`px-2 py-0.5 text-[11px] font-bold rounded-full border ${
+                    <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full border ${
                       siswaOrientationCetak === 'portrait'
                         ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
                         : 'bg-blue-100 text-blue-900 border-blue-200'
@@ -2523,20 +2558,20 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
               </div>
               <button
                 onClick={() => setShowCetakAbsenSiswaModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
+                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Content Modal */}
-            <div className="p-5 overflow-y-auto space-y-5">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            <div className="p-6 sm:p-8 overflow-y-auto space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
                 {/* Kolom Kiri: Kalender Kecil Kostum Libur */}
                 <div className="lg:col-span-7 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-red-600" />
+                    <span className="text-xs sm:text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4 text-red-600" />
                       1. Tentukan Hari Libur Sekolah (Kalender Interaktif)
                     </span>
                     <span className="text-[11px] text-slate-500">
@@ -2714,11 +2749,11 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
             </div>
 
             {/* Footer Modal */}
-            <div className="px-5 py-3 border-t border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
+            <div className="px-6 sm:px-8 py-4 border-t border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => setShowCetakAbsenSiswaModal(false)}
-                className="px-4 py-2 text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-xl transition-colors"
+                className="px-5 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
               >
                 Tutup
               </button>

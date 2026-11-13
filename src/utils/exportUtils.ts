@@ -274,6 +274,10 @@ export function exportToWord(
   </xml>
   <![endif]-->
   <style>
+    v\:* { behavior: url(#default#VML); }
+    o\:* { behavior: url(#default#VML); }
+    w\:* { behavior: url(#default#VML); }
+    .shape { behavior: url(#default#VML); }
     @font-face {
       font-family: "Times New Roman";
       panose-1: 2 2 6 3 5 4 5 2 3 4;
@@ -425,11 +429,16 @@ export function exportToWord(
   </style>
 </head>
 <body lang="ID" style="tab-interval:36.0pt">
+  ${wordDocHtmlHasVml(bodyContent) ? buildWordVmlShapeTypeHtml() : ''}
   ${bodyContent}
 </body>
 </html>`;
 
-  const blob = new Blob(['\ufeff', wordDocHtml], {
+  const finalWordPayload = wordDocHtmlHasVml(wordDocHtml)
+    ? buildWordMhtmlPayload(wordDocHtml)
+    : '\ufeff' + wordDocHtml;
+
+  const blob = new Blob([finalWordPayload], {
     type: 'application/msword;charset=utf-8',
   });
   const url = URL.createObjectURL(blob);
@@ -893,11 +902,261 @@ export function buildKepadaYthBlock(options: KepadaYthBlockOptions): string {
   `;
 }
 
+export interface SuratStampOptions {
+  tempelTtd?: boolean;
+  tempelCap?: boolean;
+}
+
+let vmlShapeCounter = 0;
+
+function wordDocHtmlHasVml(html: string): boolean {
+  return /<v:imagedata\b/i.test(html);
+}
+
+function buildWordVmlShapeTypeHtml(): string {
+  return `<!--[if gte mso 9]>
+  <v:shapetype id="_x0000_t75" coordsize="21600,21600" o:spt="75" o:preferrelative="t" path="m@4@5l@4@11@9@11@9@5xe" filled="f" stroked="f">
+    <v:stroke joinstyle="miter"/>
+    <v:formulas>
+      <v:f eqn="if lineDrawn pixelLineWidth 0"/>
+      <v:f eqn="sum @0 1 0"/>
+      <v:f eqn="sum 0 0 @1"/>
+      <v:f eqn="prod @2 1 2"/>
+      <v:f eqn="prod @3 21600 pixelWidth"/>
+      <v:f eqn="prod @3 21600 pixelHeight"/>
+      <v:f eqn="sum @0 0 1"/>
+      <v:f eqn="prod @6 1 2"/>
+      <v:f eqn="prod @7 21600 pixelWidth"/>
+      <v:f eqn="sum @8 21600 0"/>
+      <v:f eqn="prod @7 21600 pixelHeight"/>
+      <v:f eqn="sum @10 21600 0"/>
+    </v:formulas>
+    <v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect"/>
+    <o:lock v:ext="edit" aspectratio="t"/>
+  </v:shapetype>
+  <![endif]-->`;
+}
+
+function wrapBase64Lines(b64: string): string {
+  return b64.replace(/\s+/g, '').replace(/(.{76})/g, '$1\r\n');
+}
+
+function encodeUtf8ToBase64(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  const chunkSize = 0x8000;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function buildWordMhtmlPayload(wordDocHtml: string): string {
+  const boundary = '----=_NextPart_ESURAT_01D9A000';
+  const assets: Array<{ dataUri: string; mimeType: string; base64: string; location: string }> = [];
+  const seenMap = new Map<string, string>();
+
+  const processedHtml = wordDocHtml.replace(
+    /src=["'](data:image\/([a-zA-Z0-9.+-]+);base64,([^"']+))["']/gi,
+    (_full, dataUri: string, rawExt: string, base64Data: string) => {
+      let location = seenMap.get(dataUri);
+      if (!location) {
+        const lowerExt = rawExt.toLowerCase() === 'jpeg' ? 'jpg' : rawExt.toLowerCase();
+        const mimeType = `image/${rawExt.toLowerCase()}`;
+        location = `file:///C:/esurat_media/image_${assets.length + 1}.${lowerExt}`;
+        seenMap.set(dataUri, location);
+        assets.push({
+          dataUri,
+          mimeType,
+          base64: base64Data,
+          location,
+        });
+      }
+      return `src="${location}"`;
+    }
+  );
+
+  const htmlPart = [
+    `--${boundary}`,
+    `Content-Location: file:///C:/esurat_media/document.htm`,
+    `Content-Transfer-Encoding: base64`,
+    `Content-Type: text/html; charset="utf-8"`,
+    ``,
+    wrapBase64Lines(encodeUtf8ToBase64(processedHtml)),
+  ].join('\r\n');
+
+  const mediaParts = assets.map((asset) =>
+    [
+      `--${boundary}`,
+      `Content-Location: ${asset.location}`,
+      `Content-Transfer-Encoding: base64`,
+      `Content-Type: ${asset.mimeType}`,
+      ``,
+      wrapBase64Lines(asset.base64),
+    ].join('\r\n')
+  );
+
+  return [
+    `MIME-Version: 1.0`,
+    `Content-Type: multipart/related; boundary="${boundary}"`,
+    ``,
+    `This document is a Single File Web Page, also known as a Web Archive file.`,
+    ``,
+    htmlPart,
+    ...mediaParts,
+    `--${boundary}--`,
+    ``,
+  ].join('\r\n');
+}
+
+function getImageDimensionsFromDataUrl(dataUrl?: string): { width: number; height: number } | null {
+  if (!dataUrl || !dataUrl.startsWith('data:image/')) return null;
+  const commaIdx = dataUrl.indexOf(',');
+  if (commaIdx < 0) return null;
+  const header = dataUrl.slice(0, commaIdx).toLowerCase();
+  const base64Part = dataUrl.slice(commaIdx + 1).replace(/\s+/g, '');
+
+  try {
+    if (header.includes('image/png')) {
+      const prefixLen = Math.min(base64Part.length, 48);
+      const aligned = prefixLen - (prefixLen % 4);
+      if (aligned < 36) return null;
+      const bin = atob(base64Part.slice(0, aligned));
+      if (bin.length < 24) return null;
+      const width =
+        ((bin.charCodeAt(16) & 0xff) << 24) |
+        ((bin.charCodeAt(17) & 0xff) << 16) |
+        ((bin.charCodeAt(18) & 0xff) << 8) |
+        (bin.charCodeAt(19) & 0xff);
+      const height =
+        ((bin.charCodeAt(20) & 0xff) << 24) |
+        ((bin.charCodeAt(21) & 0xff) << 16) |
+        ((bin.charCodeAt(22) & 0xff) << 8) |
+        (bin.charCodeAt(23) & 0xff);
+      if (width > 0 && height > 0) return { width, height };
+    }
+
+    if (header.includes('image/jpeg') || header.includes('image/jpg')) {
+      const bin = atob(base64Part);
+      if (bin.length < 4 || bin.charCodeAt(0) !== 0xff || bin.charCodeAt(1) !== 0xd8) {
+        return null;
+      }
+      let offset = 2;
+      while (offset + 8 < bin.length) {
+        if (bin.charCodeAt(offset) !== 0xff) {
+          offset++;
+          continue;
+        }
+        const marker = bin.charCodeAt(offset + 1);
+        if (marker === 0xff) {
+          offset++;
+          continue;
+        }
+        if (marker === 0xd8 || marker === 0xd9 || (marker >= 0xd0 && marker <= 0xd7)) {
+          offset += 2;
+          continue;
+        }
+        const segLen = ((bin.charCodeAt(offset + 2) & 0xff) << 8) | (bin.charCodeAt(offset + 3) & 0xff);
+        if (marker === 0xc0 || marker === 0xc1 || marker === 0xc2) {
+          const height = ((bin.charCodeAt(offset + 5) & 0xff) << 8) | (bin.charCodeAt(offset + 6) & 0xff);
+          const width = ((bin.charCodeAt(offset + 7) & 0xff) << 8) | (bin.charCodeAt(offset + 8) & 0xff);
+          if (width > 0 && height > 0) return { width, height };
+          break;
+        }
+        if (segLen < 2) break;
+        offset += 2 + segLen;
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function resolveWordShapeSize(
+  dataUrl: string | undefined,
+  targetHeightPt: number,
+  fallbackWidthPt: number
+): { widthPt: number; heightPt: number } {
+  const dims = getImageDimensionsFromDataUrl(dataUrl);
+  if (!dims) return { widthPt: fallbackWidthPt, heightPt: targetHeightPt };
+  const aspectWidth = Math.round(targetHeightPt * (dims.width / dims.height));
+  return {
+    widthPt: Math.min(215, Math.max(55, aspectWidth)),
+    heightPt: targetHeightPt,
+  };
+}
+
+/**
+ * Generates the signature & stamp area inside the Kepala Sekolah signature column
+ * using a Behind Text layout so Cap, TTD, and signature text never cover each other.
+ * Renders cleanly in Browser Preview, PDF Print, and MS Word (.doc).
+ */
+export function buildKepsekSignatureSpaceHtml(
+  sekolah?: Partial<PengaturanSekolah>,
+  stampOptions?: SuratStampOptions,
+  spacerHeight: string = '55pt'
+): string {
+  const showTtd = Boolean(stampOptions?.tempelTtd && sekolah?.ttdKepalaSekolahUrl);
+  const showCap = Boolean(stampOptions?.tempelCap && sekolah?.capSekolahUrl);
+
+  if (!showTtd && !showCap) {
+    return `<div style="height: ${spacerHeight}; line-height: ${spacerHeight}; font-size: 1pt;">&nbsp;</div>`;
+  }
+
+  const capUrl = sekolah?.capSekolahUrl || '';
+  const ttdUrl = sekolah?.ttdKepalaSekolahUrl || '';
+
+  const capSize = resolveWordShapeSize(capUrl, 66, 66);
+  const ttdSize = resolveWordShapeSize(ttdUrl, 112, 180);
+
+  const capMarginLeft = showTtd ? -Math.round(capSize.widthPt * 1.42) : -Math.round(capSize.widthPt * 0.5);
+  const ttdMarginLeft = showCap ? -Math.round(ttdSize.widthPt * 0.38) : -Math.round(ttdSize.widthPt * 0.5);
+
+  const capShapeId = `esurat_cap_${++vmlShapeCounter}`;
+  const ttdShapeId = `esurat_ttd_${++vmlShapeCounter}`;
+
+  const browserCapImg = showCap
+    ? `<img src="${capUrl}" alt="Cap Sekolah" style="position: absolute; left: 50%; transform: translateX(${showTtd ? '-145%' : '-50%'}); top: -10pt; height: 66pt; max-height: 68pt; width: auto; opacity: 0.85; z-index: 1; mix-blend-mode: multiply; object-fit: contain; pointer-events: none; -webkit-print-color-adjust: exact; print-color-adjust: exact;" />`
+    : '';
+
+  const browserTtdImg = showTtd
+    ? `<img src="${ttdUrl}" alt="TTD Kepala Sekolah" style="position: absolute; left: 50%; transform: translateX(${showCap ? '-38%' : '-50%'}); top: -28pt; height: 112pt; max-height: 115pt; width: auto; max-width: 215pt; z-index: 2; mix-blend-mode: multiply; object-fit: contain; pointer-events: none; -webkit-print-color-adjust: exact; print-color-adjust: exact;" />`
+    : '';
+
+  const wordCapVml = showCap
+    ? `<v:shape id="${capShapeId}" type="#_x0000_t75" style="position:absolute;margin-left:${capMarginLeft}pt;margin-top:-8pt;width:${capSize.widthPt}pt;height:${capSize.heightPt}pt;z-index:-251658240;visibility:visible;mso-wrap-style:square;mso-position-horizontal-relative:char;mso-position-vertical-relative:line" o:allowoverlap="t"><v:imagedata src="${capUrl}" o:title="Cap Sekolah" chromakey="white"/><w:wrap type="none"/></v:shape>`
+    : '';
+
+  const wordTtdVml = showTtd
+    ? `<v:shape id="${ttdShapeId}" type="#_x0000_t75" style="position:absolute;margin-left:${ttdMarginLeft}pt;margin-top:-26pt;width:${ttdSize.widthPt}pt;height:${ttdSize.heightPt}pt;z-index:-251657216;visibility:visible;mso-wrap-style:square;mso-position-horizontal-relative:char;mso-position-vertical-relative:line" o:allowoverlap="t"><v:imagedata src="${ttdUrl}" o:title="TTD Kepala Sekolah" chromakey="white"/><w:wrap type="none"/></v:shape>`
+    : '';
+
+  return `
+    <!--[if !mso]><!-->
+    <div style="position: relative; width: 100%; height: ${spacerHeight}; z-index: 1; overflow: visible; pointer-events: none;">
+      ${browserCapImg}
+      ${browserTtdImg}
+    </div>
+    <!--<![endif]-->
+    <!--[if gte mso 9]>
+    <p class="MsoNormal" align="center" style="margin: 0; text-align: center; line-height: 1pt; font-size: 1pt; mso-line-height-rule: exactly;">${wordCapVml}${wordTtdVml}&nbsp;</p>
+    <div style="height: ${spacerHeight}; line-height: ${spacerHeight}; font-size: 1pt;">&nbsp;</div>
+    <![endif]-->
+  `;
+}
+
 /**
  * Generates official HTML string for letter templates
  * Format is designed to render pixel-identically in PDF, browser preview, and MS Word (.doc)
  */
-export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, guruList?: Guru[], siswaList?: Siswa[]): string {
+export function buildSuratHtml(
+  surat: SuratKeluar,
+  sekolah: PengaturanSekolah,
+  guruList?: Guru[],
+  siswaList?: Siswa[],
+  stampOptions?: SuratStampOptions
+): string {
   const tglIndo = formatTanggalIndonesia(surat.tglSurat);
   const data = surat.dataKhusus || {};
   const schoolNameIsi = formatNamaSekolahIsi(sekolah?.namaSekolah);
@@ -1012,12 +1271,12 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
         <table class="ttd-table" style="width: 100%; margin-top: 24pt; border: none; border-collapse: collapse; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
           <tr>
             <td style="width: 50%; text-align: center; vertical-align: top; border: none; font-size: 12pt;">
-              <p style="margin: 0; font-weight: bold; text-align: center; font-size: 12pt;">Menyetujui,</p>
-              <p style="margin: 1pt 0 0 0; text-align: center; font-size: 12pt;">Kepala ${schoolNameIsi},</p>
-              <div style="height: 55pt;">&nbsp;</div>
-              <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; font-size: 12pt;">${kepsek.nama}</p>
-              ${kepsek.pangkat ? `<p style="margin: 1.5pt 0 0 0; font-size: 11pt; text-align: center;">${kepsek.pangkat}</p>` : ''}
-              <p style="margin: 1.5pt 0 0 0; font-size: 11pt; text-align: center;">NIP. ${kepsek.nip}</p>
+              <p style="margin: 0; font-weight: bold; text-align: center; font-size: 12pt; position: relative; z-index: 10;">Menyetujui,</p>
+              <p style="margin: 1pt 0 0 0; text-align: center; font-size: 12pt; position: relative; z-index: 10;">Kepala ${schoolNameIsi},</p>
+              ${buildKepsekSignatureSpaceHtml(sekolah, stampOptions, '55pt')}
+              <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; font-size: 12pt; position: relative; z-index: 10;">${kepsek.nama}</p>
+              ${kepsek.pangkat ? `<p style="margin: 1.5pt 0 0 0; font-size: 11pt; text-align: center; position: relative; z-index: 10;">${kepsek.pangkat}</p>` : ''}
+              <p style="margin: 1.5pt 0 0 0; font-size: 11pt; text-align: center; position: relative; z-index: 10;">NIP. ${kepsek.nip}</p>
             </td>
             <td style="width: 50%; text-align: center; vertical-align: top; border: none; font-size: 12pt;">
               <p style="margin: 0; text-align: center; font-size: 12pt;">${sekolah.desa || 'Pekutatan'}, ${tglIndo}</p>
@@ -1764,12 +2023,12 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
               </td>
               <!-- Sisi kanan kertas: TTD Kepala Sekolah -->
               <td style="width: 48%; vertical-align: top; text-align: center; border: none; padding-left: 8pt;">
-                <p style="margin: 0 0 3pt 0; text-align: center; font-size: 11.5pt;">${sekolah.desa || 'Pekutatan'}, ${tglIndo}</p>
-                <p style="margin: 0; font-weight: bold; text-align: center; font-size: 11.5pt;">Kepala Sekolah,</p>
-                <div style="height: 50pt;">&nbsp;</div>
-                <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; font-size: 11.5pt;">${kepsekNama}</p>
-                ${pangkatKepsek ? `<p style="margin: 1.5pt 0 0 0; font-size: 10.5pt; text-align: center;">${pangkatKepsek}</p>` : ''}
-                <p style="margin: 1.5pt 0 0 0; font-size: 10.5pt; text-align: center;">NIP. ${kepsekNip}</p>
+                <p style="margin: 0 0 3pt 0; text-align: center; font-size: 11.5pt; position: relative; z-index: 10;">${sekolah.desa || 'Pekutatan'}, ${tglIndo}</p>
+                <p style="margin: 0; font-weight: bold; text-align: center; font-size: 11.5pt; position: relative; z-index: 10;">Kepala Sekolah,</p>
+                ${buildKepsekSignatureSpaceHtml(sekolah, stampOptions, '50pt')}
+                <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; font-size: 11.5pt; position: relative; z-index: 10;">${kepsekNama}</p>
+                ${pangkatKepsek ? `<p style="margin: 1.5pt 0 0 0; font-size: 10.5pt; text-align: center; position: relative; z-index: 10;">${pangkatKepsek}</p>` : ''}
+                <p style="margin: 1.5pt 0 0 0; font-size: 10.5pt; text-align: center; position: relative; z-index: 10;">NIP. ${kepsekNip}</p>
               </td>
             </tr>
           </table>
@@ -2392,13 +2651,13 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
         <td style="width: 52%; border: none;">&nbsp;</td>
         <td style="width: 48%; text-align: center; vertical-align: top; border: none;">
           ${surat.jenisSurat !== 'surat_keputusan' ? `
-            <p style="margin: 0 0 3pt 0; text-align: center;">${sekolah.desa || 'Pekutatan'}, ${tglIndo}</p>
+            <p style="margin: 0 0 3pt 0; text-align: center; position: relative; z-index: 10;">${sekolah.desa || 'Pekutatan'}, ${tglIndo}</p>
           ` : ''}
-          <p style="margin: 0; font-weight: bold; text-align: center;">${defaultJabatanKepsek},</p>
-          <div style="height: 55pt;">&nbsp;</div>
-          <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center;">${kepsek.nama}</p>
-          ${kepsek.pangkat ? `<p style="margin: 1.5pt 0 0 0; font-size: 11pt; text-align: center;">${kepsek.pangkat}</p>` : ''}
-          <p style="margin: 2pt 0 0 0; font-size: 11pt; text-align: center;">NIP. ${kepsek.nip}</p>
+          <p style="margin: 0; font-weight: bold; text-align: center; position: relative; z-index: 10;">${defaultJabatanKepsek},</p>
+          ${buildKepsekSignatureSpaceHtml(sekolah, stampOptions, '55pt')}
+          <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; position: relative; z-index: 10;">${kepsek.nama}</p>
+          ${kepsek.pangkat ? `<p style="margin: 1.5pt 0 0 0; font-size: 11pt; text-align: center; position: relative; z-index: 10;">${kepsek.pangkat}</p>` : ''}
+          <p style="margin: 2pt 0 0 0; font-size: 11pt; text-align: center; position: relative; z-index: 10;">NIP. ${kepsek.nip}</p>
         </td>
       </tr>
     </table>
@@ -2747,13 +3006,13 @@ export function buildSuratHtml(surat: SuratKeluar, sekolah: PengaturanSekolah, g
               <tr>
                 <td style="width: 52%; border: none;">&nbsp;</td>
                 <td style="width: 48%; text-align: center; vertical-align: top; border: none;">
-                  <p style="margin: 0 0 2pt 0; text-align: center; font-size: 11pt;">Ditetapkan di : ${sekolah.desa || 'Pekutatan'}</p>
-                  <p style="margin: 0 0 4pt 0; text-align: center; font-size: 11pt;">Pada tanggal : ${tglIndo}</p>
-                  <p style="margin: 0; font-weight: bold; text-align: center; font-size: 11pt;">${defaultJabatanKepsek},</p>
-                  <div style="height: 52pt;">&nbsp;</div>
-                  <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; font-size: 11pt;">${kepsek.nama}</p>
-                  ${kepsek.pangkat ? `<p style="margin: 1.5pt 0 0 0; font-size: 10pt; text-align: center;">${kepsek.pangkat}</p>` : ''}
-                  <p style="margin: 2pt 0 0 0; font-size: 10pt; text-align: center;">NIP. ${kepsek.nip}</p>
+                  <p style="margin: 0 0 2pt 0; text-align: center; font-size: 11pt; position: relative; z-index: 10;">Ditetapkan di : ${sekolah.desa || 'Pekutatan'}</p>
+                  <p style="margin: 0 0 4pt 0; text-align: center; font-size: 11pt; position: relative; z-index: 10;">Pada tanggal : ${tglIndo}</p>
+                  <p style="margin: 0; font-weight: bold; text-align: center; font-size: 11pt; position: relative; z-index: 10;">${defaultJabatanKepsek},</p>
+                  ${buildKepsekSignatureSpaceHtml(sekolah, stampOptions, '52pt')}
+                  <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; font-size: 11pt; position: relative; z-index: 10;">${kepsek.nama}</p>
+                  ${kepsek.pangkat ? `<p style="margin: 1.5pt 0 0 0; font-size: 10pt; text-align: center; position: relative; z-index: 10;">${kepsek.pangkat}</p>` : ''}
+                  <p style="margin: 2pt 0 0 0; font-size: 10pt; text-align: center; position: relative; z-index: 10;">NIP. ${kepsek.nip}</p>
                 </td>
               </tr>
             </table>

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Printer, FileText, FileSpreadsheet } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Printer, FileText, Stamp, PenTool, Check } from 'lucide-react';
 import { SuratKeluar, PengaturanSekolah, PaperSize, Guru, Siswa } from '../types';
 import { buildSuratHtml, exportToWord, printHtmlElement } from '../utils/exportUtils';
 
@@ -13,10 +13,23 @@ interface SuratModalProps {
 
 export const SuratModal: React.FC<SuratModalProps> = ({ surat, sekolah, guruList, siswaList, onClose }) => {
   const [paperSize, setPaperSize] = useState<PaperSize>('A4');
+  const [tempelTtd, setTempelTtd] = useState<boolean>(false);
+  const [tempelCap, setTempelCap] = useState<boolean>(false);
+
+  useEffect(() => {
+    setTempelTtd(false);
+    setTempelCap(false);
+  }, [surat?.id]);
 
   if (!surat) return null;
 
-  const htmlContent = buildSuratHtml(surat, sekolah, guruList, siswaList);
+  const hasUploadedTtd = Boolean(sekolah?.ttdKepalaSekolahUrl);
+  const hasUploadedCap = Boolean(sekolah?.capSekolahUrl);
+
+  const htmlContent = buildSuratHtml(surat, sekolah, guruList, siswaList, {
+    tempelTtd: tempelTtd && hasUploadedTtd,
+    tempelCap: tempelCap && hasUploadedCap,
+  });
 
   const handlePrint = () => {
     printHtmlElement(
@@ -55,7 +68,7 @@ export const SuratModal: React.FC<SuratModalProps> = ({ surat, sekolah, guruList
                 type="button"
                 id="btn-paper-a4"
                 onClick={() => setPaperSize('A4')}
-                className={`px-2.5 py-1 rounded-md transition-all ${
+                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                   paperSize === 'A4'
                     ? 'bg-amber-500 text-slate-950 shadow-sm font-bold'
                     : 'text-slate-300 hover:text-white'
@@ -68,7 +81,7 @@ export const SuratModal: React.FC<SuratModalProps> = ({ surat, sekolah, guruList
                 type="button"
                 id="btn-paper-f4"
                 onClick={() => setPaperSize('F4')}
-                className={`px-2.5 py-1 rounded-md transition-all ${
+                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                   paperSize === 'F4'
                     ? 'bg-amber-500 text-slate-950 shadow-sm font-bold'
                     : 'text-slate-300 hover:text-white'
@@ -81,25 +94,100 @@ export const SuratModal: React.FC<SuratModalProps> = ({ surat, sekolah, guruList
 
             <button
               onClick={handleWordExport}
-              className="px-3 py-1.5 text-xs font-semibold bg-blue-700 hover:bg-blue-600 text-white rounded-lg shadow-sm flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 text-xs font-semibold bg-blue-700 hover:bg-blue-600 text-white rounded-lg shadow-sm flex items-center gap-1.5 transition-colors cursor-pointer"
               title={`Download format Microsoft Word (.doc) ukuran ${paperSize}`}
             >
               <FileText className="w-4 h-4" />
-              <span className="hidden sm:inline">Export</span> Word
+              <span className="hidden sm:inline">Download</span> Word
             </button>
             <button
               onClick={handlePrint}
-              className="px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-sm flex items-center gap-1.5 transition-colors"
-              title={`Cetak langsung / PDF ukuran kertas ${paperSize}`}
+              className="px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-sm flex items-center gap-1.5 transition-colors cursor-pointer"
+              title={`Cetak langsung / Download PDF ukuran kertas ${paperSize}`}
             >
               <Printer className="w-4 h-4" />
-              <span>Cetak ({paperSize})</span>
+              <span>Cetak / PDF ({paperSize})</span>
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors ml-1"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors ml-1 cursor-pointer"
             >
               <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Pilihan Tempel TTD Kepala Sekolah & Cap Sekolah sebelum Download PDF / Word */}
+        <div className="px-6 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+          <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+            <span>Opsi Kolom TTD Kepala Sekolah (PDF &amp; Word):</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              disabled={!hasUploadedTtd}
+              onClick={() => hasUploadedTtd && setTempelTtd((prev) => !prev)}
+              className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-2 transition-all ${
+                !hasUploadedTtd
+                  ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                  : tempelTtd
+                  ? 'bg-blue-900 text-white border-blue-900 shadow-xs cursor-pointer'
+                  : 'bg-white text-slate-700 border-slate-300 hover:bg-blue-50 hover:border-blue-300 cursor-pointer'
+              }`}
+              title={
+                hasUploadedTtd
+                  ? 'Klik untuk menempelkan TTD Kepala Sekolah pada kolom tanda tangan'
+                  : 'TTD Kepala Sekolah belum diunggah di menu Pengaturan'
+              }
+            >
+              <span
+                className={`w-4 h-4 rounded flex items-center justify-center border ${
+                  tempelTtd && hasUploadedTtd
+                    ? 'bg-white text-blue-900 border-white'
+                    : 'border-slate-300 bg-white'
+                }`}
+              >
+                {tempelTtd && hasUploadedTtd && <Check className="w-3 h-3 stroke-[3]" />}
+              </span>
+              <PenTool className="w-3.5 h-3.5" />
+              <span>
+                Tempel TTD Kepala Sekolah
+                {!hasUploadedTtd && ' (Belum diupload)'}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              disabled={!hasUploadedCap}
+              onClick={() => hasUploadedCap && setTempelCap((prev) => !prev)}
+              className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-2 transition-all ${
+                !hasUploadedCap
+                  ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                  : tempelCap
+                  ? 'bg-indigo-700 text-white border-indigo-700 shadow-xs cursor-pointer'
+                  : 'bg-white text-slate-700 border-slate-300 hover:bg-indigo-50 hover:border-indigo-300 cursor-pointer'
+              }`}
+              title={
+                hasUploadedCap
+                  ? 'Klik untuk menempelkan Cap Sekolah pada kolom tanda tangan Kepala Sekolah'
+                  : 'Cap Sekolah belum diunggah di menu Pengaturan'
+              }
+            >
+              <span
+                className={`w-4 h-4 rounded flex items-center justify-center border ${
+                  tempelCap && hasUploadedCap
+                    ? 'bg-white text-indigo-700 border-white'
+                    : 'border-slate-300 bg-white'
+                }`}
+              >
+                {tempelCap && hasUploadedCap && <Check className="w-3 h-3 stroke-[3]" />}
+              </span>
+              <Stamp className="w-3.5 h-3.5" />
+              <span>
+                Tempel Cap Sekolah
+                {!hasUploadedCap && ' (Belum diupload)'}
+              </span>
             </button>
           </div>
         </div>

@@ -137,6 +137,8 @@ export interface PengaturanSekolah {
   kodeSuratSekolah: string;
   logoUrl?: string;
   kopImageUrl?: string;
+  capSekolahUrl?: string;
+  ttdKepalaSekolahUrl?: string;
 }
 
 export interface FirebaseAppConfig {

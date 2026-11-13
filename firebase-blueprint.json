@@ -122,7 +122,10 @@
         "kepalaSekolah": { "type": "string", "maxLength": 200 },
         "nipKepalaSekolah": { "type": "string", "maxLength": 50 },
         "pangkatKepalaSekolah": { "type": "string", "maxLength": 100 },
-        "kodeSuratSekolah": { "type": "string", "maxLength": 50 }
+        "kodeSuratSekolah": { "type": "string", "maxLength": 50 },
+        "kopImageUrl": { "type": "string", "maxLength": 900000 },
+        "capSekolahUrl": { "type": "string", "maxLength": 900000 },
+        "ttdKepalaSekolahUrl": { "type": "string", "maxLength": 900000 }
       },
       "required": ["namaSekolah", "kepalaSekolah"]
     }

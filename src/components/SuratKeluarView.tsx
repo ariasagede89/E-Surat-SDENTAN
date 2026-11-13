@@ -38,6 +38,8 @@ import {
   AlignRight,
   ListOrdered,
   ExternalLink,
+  Stamp,
+  PenTool,
 } from 'lucide-react';
 import {
   SuratKeluar,
@@ -58,6 +60,7 @@ import {
   SkLampiranData,
   SkTableColumn,
   SkUraianItem,
+  PaperSize,
 } from '../types';
 import {
   formatTanggalIndonesia,
@@ -555,6 +558,10 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterJenis, setFilterJenis] = useState<string>('Semua');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [downloadWordTarget, setDownloadWordTarget] = useState<SuratKeluar | null>(null);
+  const [wordTempelTtd, setWordTempelTtd] = useState<boolean>(false);
+  const [wordTempelCap, setWordTempelCap] = useState<boolean>(false);
+  const [wordPaperSize, setWordPaperSize] = useState<PaperSize>('A4');
 
   // Form State for Surat Keluar
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -2660,13 +2667,15 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                               <Eye className="w-3.5 h-3.5" />
                             </button>
 
-                            {/* Tombol Export MS Word */}
+                            {/* Tombol Export MS Word (Dengan pilihan Tempel TTD & Cap) */}
                             <button
                               onClick={() => {
-                                const html = buildSuratHtml(sk, sekolah, guruList, siswaList);
-                                exportToWord(`Surat_${sk.jenisSurat}_${sk.noSurat.replace(/\//g, '_')}`, html);
+                                setWordTempelTtd(false);
+                                setWordTempelCap(false);
+                                setWordPaperSize('A4');
+                                setDownloadWordTarget(sk);
                               }}
-                              className="p-1 text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors"
+                              className="p-1 text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors cursor-pointer"
                               title="Download MS Word (.doc)"
                             >
                               <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -8167,6 +8176,186 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
               >
                 Ya, Hapus Data
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL OPSI UNDUH SURAT KELUAR (TEMPEL TTD & CAP) */}
+      {downloadWordTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <FileText className="w-5 h-5 text-amber-400 shrink-0" />
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold truncate">Unduh Dokumen Surat Keluar</h3>
+                  <p className="text-[11px] text-slate-300 font-mono truncate">
+                    No: {downloadWordTarget.noSurat}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDownloadWordTarget(null)}
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700">
+                <div className="font-bold text-slate-900 truncate">{downloadWordTarget.perihal}</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">
+                  Tujuan: {downloadWordTarget.tujuan || '-'}
+                </div>
+              </div>
+
+              {/* Pilihan Tempel TTD & Cap */}
+              <div className="space-y-2.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Opsi Kolom TTD Kepala Sekolah
+                </label>
+
+                <button
+                  type="button"
+                  disabled={!sekolah?.ttdKepalaSekolahUrl}
+                  onClick={() => sekolah?.ttdKepalaSekolahUrl && setWordTempelTtd((prev) => !prev)}
+                  className={`w-full px-4 py-3 rounded-xl border text-xs sm:text-sm font-semibold flex items-center justify-between transition-all ${
+                    !sekolah?.ttdKepalaSekolahUrl
+                      ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                      : wordTempelTtd
+                      ? 'bg-blue-50 text-blue-950 border-blue-600 ring-1 ring-blue-600 cursor-pointer'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 cursor-pointer'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <PenTool className="w-4 h-4 text-blue-800" />
+                    <span>Tempel TTD Kepala Sekolah</span>
+                  </div>
+                  {!sekolah?.ttdKepalaSekolahUrl ? (
+                    <span className="text-[11px] font-normal text-slate-400">Belum diupload</span>
+                  ) : (
+                    <span
+                      className={`w-5 h-5 rounded flex items-center justify-center border ${
+                        wordTempelTtd
+                          ? 'bg-blue-900 text-white border-blue-900'
+                          : 'bg-white border-slate-300'
+                      }`}
+                    >
+                      {wordTempelTtd && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!sekolah?.capSekolahUrl}
+                  onClick={() => sekolah?.capSekolahUrl && setWordTempelCap((prev) => !prev)}
+                  className={`w-full px-4 py-3 rounded-xl border text-xs sm:text-sm font-semibold flex items-center justify-between transition-all ${
+                    !sekolah?.capSekolahUrl
+                      ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                      : wordTempelCap
+                      ? 'bg-indigo-50 text-indigo-950 border-indigo-600 ring-1 ring-indigo-600 cursor-pointer'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 cursor-pointer'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Stamp className="w-4 h-4 text-indigo-700" />
+                    <span>Tempel Cap Sekolah</span>
+                  </div>
+                  {!sekolah?.capSekolahUrl ? (
+                    <span className="text-[11px] font-normal text-slate-400">Belum diupload</span>
+                  ) : (
+                    <span
+                      className={`w-5 h-5 rounded flex items-center justify-center border ${
+                        wordTempelCap
+                          ? 'bg-indigo-700 text-white border-indigo-700'
+                          : 'bg-white border-slate-300'
+                      }`}
+                    >
+                      {wordTempelCap && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Pilihan Ukuran Kertas */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Ukuran Kertas
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setWordPaperSize('A4')}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                      wordPaperSize === 'A4'
+                        ? 'bg-slate-900 text-white border-slate-900'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    A4 (210 × 297 mm)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWordPaperSize('F4')}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                      wordPaperSize === 'F4'
+                        ? 'bg-slate-900 text-white border-slate-900'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    F4 / Folio (215 × 330 mm)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const sk = downloadWordTarget;
+                  setDownloadWordTarget(null);
+                  onPreviewSurat(sk);
+                }}
+                className="px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200/70 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Eye className="w-4 h-4" />
+                <span>Pratinjau / PDF</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDownloadWordTarget(null)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200/70 rounded-xl transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const sk = downloadWordTarget;
+                    const html = buildSuratHtml(sk, sekolah, guruList, siswaList, {
+                      tempelTtd: wordTempelTtd && Boolean(sekolah?.ttdKepalaSekolahUrl),
+                      tempelCap: wordTempelCap && Boolean(sekolah?.capSekolahUrl),
+                    });
+                    exportToWord(
+                      `Surat_${sk.jenisSurat}_${sk.noSurat.replace(/\//g, '_')}`,
+                      html,
+                      wordPaperSize
+                    );
+                    setDownloadWordTarget(null);
+                  }}
+                  className="px-4 py-2 text-xs font-bold text-white bg-blue-700 hover:bg-blue-600 rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Download Word (.doc)</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

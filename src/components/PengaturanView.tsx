@@ -2,21 +2,13 @@ import React, { useState } from 'react';
 import {
   Settings,
   School,
-  Database,
   Save,
   CheckCircle,
   AlertCircle,
   FileText,
-  Key,
-  Globe,
   RefreshCw,
   Trash2,
-  Inbox,
-  Send,
-  Archive,
-  Users,
   Upload,
-  Image as ImageIcon,
   ShieldCheck,
   Lock,
   KeyRound,
@@ -25,15 +17,13 @@ import {
   UserCheck,
   LogOut,
   Info,
+  Stamp,
+  PenTool,
 } from 'lucide-react';
 import { PengaturanSekolah, FirebaseConfig } from '../types';
-import { KopSurat } from './KopSurat';
-import { testFirebaseConnection, getStoredFirebaseConfig, saveStoredFirebaseConfig } from '../firebase/config';
 import {
   getStoredAdminCredentials,
   saveAdminCredentialsAsync,
-  saveAdminCredentials,
-  saveAdminPassword,
   resetAdminPasswordToDefault,
   DEFAULT_ADMIN_USERNAME,
   DEFAULT_ADMIN_PASSWORD,
@@ -60,25 +50,12 @@ interface PengaturanViewProps {
 export const PengaturanView: React.FC<PengaturanViewProps> = ({
   sekolah,
   onSaveSekolah,
-  firebaseConfig,
-  onSaveFirebaseConfig,
-  suratMasukCount = 0,
-  suratKeluarCount = 0,
-  arsipCount = 0,
-  guruCount = 0,
-  siswaCount = 0,
-  onSyncAllLocalDataToFirestore,
-  onClearSuratMasukFirestore,
-  onClearSuratKeluarFirestore,
-  onPurgeDummyData,
-  onResetLocalCache,
   onLogoutAdmin,
 }) => {
   const [formData, setFormData] = useState<PengaturanSekolah>(sekolah);
-  const [activeTab, setActiveTab] = useState<'identitas' | 'kop' | 'database' | 'keamanan'>('identitas');
+  const [activeTab, setActiveTab] = useState<'identitas' | 'cap_ttd' | 'keamanan'>('identitas');
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [clearingAction, setClearingAction] = useState<string | null>(null);
-  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [uploadNotice, setUploadNotice] = useState<string | null>(null);
 
   // Admin auth credential states
   const [adminCreds, setAdminCreds] = useState(() => getStoredAdminCredentials());
@@ -163,36 +140,9 @@ export const PengaturanView: React.FC<PengaturanViewProps> = ({
     setFormData(sekolah);
   }, [sekolah]);
 
-  // Firebase Config State initialized from stored config or defaults
-  const initialFb = firebaseConfig || getStoredFirebaseConfig();
-  const [fbProjectId, setFbProjectId] = useState(initialFb.projectId || 'simas-24c34');
-  const [fbApiKey, setFbApiKey] = useState(initialFb.apiKey || '');
-  const [fbAuthDomain, setFbAuthDomain] = useState(initialFb.authDomain || 'simas-24c34.firebaseapp.com');
-  const [fbStorageBucket, setFbStorageBucket] = useState(initialFb.storageBucket || 'simas-24c34.firebasestorage.app');
-  const [fbMessagingSenderId, setFbMessagingSenderId] = useState(initialFb.messagingSenderId || '787216152833');
-  const [fbAppId, setFbAppId] = useState(initialFb.appId || '1:787216152833:web:aecdd21edd3d6667a40300');
-  const [testingFirebase, setTestingFirebase] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-
-  const getCurrentFbConfig = (): FirebaseConfig => ({
-    projectId: fbProjectId.trim(),
-    apiKey: fbApiKey.trim(),
-    authDomain: fbAuthDomain.trim(),
-    storageBucket: fbStorageBucket.trim(),
-    messagingSenderId: fbMessagingSenderId.trim(),
-    appId: fbAppId.trim(),
-    firestoreDatabaseId: '(default)',
-  });
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     onSaveSekolah(formData);
-
-    const cfg = getCurrentFbConfig();
-    saveStoredFirebaseConfig(cfg);
-    if (onSaveFirebaseConfig) {
-      onSaveFirebaseConfig(cfg);
-    }
 
     // Jika pengguna sedang mengubah username atau password, simpan juga otomatis
     if (
@@ -209,22 +159,67 @@ export const PengaturanView: React.FC<PengaturanViewProps> = ({
     setTimeout(() => setSaveSuccess(false), 3000);
   };
 
-  const handleTestFb = async () => {
-    setTestingFirebase(true);
-    setTestResult(null);
-    try {
-      const currentConfig = getCurrentFbConfig();
-      saveStoredFirebaseConfig(currentConfig);
-      const res = await testFirebaseConnection(currentConfig);
-      setTestResult(res);
-      if (res.success && onSaveFirebaseConfig) {
-        onSaveFirebaseConfig(currentConfig);
-      }
-    } catch (err: any) {
-      setTestResult({ success: false, message: err.message || 'Gagal tersambung' });
-    } finally {
-      setTestingFirebase(false);
+  const handleUploadAssetImage = (
+    file: File,
+    field: 'capSekolahUrl' | 'ttdKepalaSekolahUrl'
+  ) => {
+    setUploadNotice(null);
+    const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    if (!validTypes.includes(file.type)) {
+      setUploadNotice('Format file tidak didukung. Harap pilih gambar berformat JPG atau PNG.');
+      return;
     }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const rawDataUrl = event.target?.result as string;
+      // Jika ukuran base64 <= 350KB, simpan langsung agar kualitas & transparansi asli terjaga
+      if (rawDataUrl.length <= 350_000) {
+        const updated = { ...formData, [field]: rawDataUrl };
+        setFormData(updated);
+        onSaveSekolah(updated);
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+        return;
+      }
+
+      // Kompresi otomatis jika file besar agar tetap muat di penyimpanan cloud
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 640;
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          const ratio = Math.min(maxDim / width, maxDim / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          const updated = { ...formData, [field]: rawDataUrl };
+          setFormData(updated);
+          onSaveSekolah(updated);
+          setSaveSuccess(true);
+          setTimeout(() => setSaveSuccess(false), 3000);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+        const optimizedDataUrl =
+          outputType === 'image/png'
+            ? canvas.toDataURL('image/png')
+            : canvas.toDataURL('image/jpeg', 0.85);
+        const updated = { ...formData, [field]: optimizedDataUrl };
+        setFormData(updated);
+        onSaveSekolah(updated);
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      };
+      img.src = rawDataUrl;
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -239,51 +234,42 @@ export const PengaturanView: React.FC<PengaturanViewProps> = ({
         </div>
 
         {/* Tab switcher */}
-        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
+        <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 rounded-xl">
           <button
+            type="button"
             onClick={() => setActiveTab('identitas')}
-            className={`px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+            className={`px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'identitas'
                 ? 'bg-white text-blue-950 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <School className="w-4 h-4" />
-            <span>Identitas Sekolah</span>
+            <span>Profil Sekolah</span>
           </button>
           <button
-            onClick={() => setActiveTab('kop')}
-            className={`px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
-              activeTab === 'kop'
+            type="button"
+            onClick={() => setActiveTab('cap_ttd')}
+            className={`px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'cap_ttd'
                 ? 'bg-white text-blue-950 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <FileText className="w-4 h-4" />
-            <span>Kop Surat</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('database')}
-            className={`px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
-              activeTab === 'database'
-                ? 'bg-white text-blue-950 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Database className="w-4 h-4" />
-            <span>Google Firebase</span>
+            <Stamp className="w-4 h-4" />
+            <span>Cap Sekolah &amp; TTD Kepala Sekolah</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('keamanan')}
-            className={`px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+            className={`px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'keamanan'
                 ? 'bg-white text-blue-950 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
-            <span>Hak Akses & Admin</span>
+            <span>Hak Akses &amp; Admin</span>
           </button>
         </div>
       </div>
@@ -297,8 +283,9 @@ export const PengaturanView: React.FC<PengaturanViewProps> = ({
 
       {/* Main Settings Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* TAB 1: IDENTITAS SEKOLAH */}
+        {/* TAB 1: PROFIL SEKOLAH & KOP SURAT */}
         {activeTab === 'identitas' && (
+          <div className="space-y-6">
           <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
             <h2 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
               <School className="w-4 h-4 text-blue-900" />
@@ -443,10 +430,8 @@ export const PengaturanView: React.FC<PengaturanViewProps> = ({
               </div>
             </div>
           </div>
-        )}
 
-        {/* TAB 2: KOP SURAT */}
-        {activeTab === 'kop' && (
+          {/* KOP SURAT SEKOLAH (Di bawah Identitas / Profil Sekolah) */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-5">
             <div className="border-b border-slate-100 pb-3">
               <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -552,309 +537,202 @@ export const PengaturanView: React.FC<PengaturanViewProps> = ({
               )}
             </div>
           </div>
+          </div>
         )}
 
-        {/* TAB 3: DATABASE GOOGLE FIREBASE */}
-        {activeTab === 'database' && (
-          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-5">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Database className="w-4 h-4 text-amber-600" />
-                Integrasi Cloud Google Firebase Firestore
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Persistensi data cloud real-time untuk Surat Masuk, Surat Keluar, Arsip, Guru, dan Siswa
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl bg-blue-50/80 border border-blue-200 flex items-start gap-3">
-              <Globe className="w-5 h-5 text-blue-700 flex-shrink-0 mt-0.5" />
-              <div className="text-xs text-blue-900 space-y-1">
-                <p className="font-bold">Status Penyimpanan Data Saat Ini: Tersinkronisasi Cerdas</p>
-                <p>
-                  Aplikasi telah dilengkapi dengan file konfigurasi <code className="bg-white px-1.5 py-0.5 rounded font-mono text-blue-950 font-bold border border-blue-200">firebase-blueprint.json</code> dan aturan keamanan <code className="bg-white px-1.5 py-0.5 rounded font-mono text-blue-950 font-bold border border-blue-200">firestore.rules</code>. Jika Firebase Project ID terhubung, data akan tersimpan langsung ke Firestore Cloud. Jika sedang offline, sistem otomatis menyimpan ke cache local browser sehingga data tidak hilang.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Firebase Project ID
-                </label>
-                <input
-                  type="text"
-                  value={fbProjectId}
-                  onChange={(e) => setFbProjectId(e.target.value)}
-                  className="w-full text-xs sm:text-sm border border-slate-300 rounded-xl px-3 py-2 font-mono focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Firebase Auth Domain
-                </label>
-                <input
-                  type="text"
-                  value={fbAuthDomain}
-                  onChange={(e) => setFbAuthDomain(e.target.value)}
-                  className="w-full text-xs sm:text-sm border border-slate-300 rounded-xl px-3 py-2 font-mono focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Firebase Web API Key
-              </label>
-              <input
-                type="text"
-                placeholder="AIzaSy..."
-                value={fbApiKey}
-                onChange={(e) => setFbApiKey(e.target.value)}
-                className="w-full text-xs sm:text-sm border border-slate-300 rounded-xl px-3 py-2 font-mono focus:ring-2 focus:ring-blue-600 focus:outline-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Storage Bucket
-                </label>
-                <input
-                  type="text"
-                  value={fbStorageBucket}
-                  onChange={(e) => setFbStorageBucket(e.target.value)}
-                  className="w-full text-xs sm:text-sm border border-slate-300 rounded-xl px-3 py-2 font-mono focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Messaging Sender ID
-                </label>
-                <input
-                  type="text"
-                  value={fbMessagingSenderId}
-                  onChange={(e) => setFbMessagingSenderId(e.target.value)}
-                  className="w-full text-xs sm:text-sm border border-slate-300 rounded-xl px-3 py-2 font-mono focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  App ID
-                </label>
-                <input
-                  type="text"
-                  value={fbAppId}
-                  onChange={(e) => setFbAppId(e.target.value)}
-                  className="w-full text-xs sm:text-sm border border-slate-300 rounded-xl px-3 py-2 font-mono focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={handleTestFb}
-                disabled={testingFirebase}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors shadow-xs"
-              >
-                {testingFirebase ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Menguji Koneksi Firestore...</span>
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Uji & Sinkronkan Firestore Cloud</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {testResult && (
-              <div
-                className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
-                  testResult.success
-                    ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
-                    : 'bg-amber-50 border-amber-300 text-amber-900'
-                }`}
-              >
-                {testResult.success ? (
-                  <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                )}
-                <span>{testResult.message}</span>
+        {/* TAB 2: CAP SEKOLAH & TTD KEPALA SEKOLAH */}
+        {activeTab === 'cap_ttd' && (
+          <div className="space-y-6">
+            {uploadNotice && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl flex items-center gap-2 text-xs sm:text-sm">
+                <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                <span>{uploadNotice}</span>
               </div>
             )}
 
-            {/* Panel Kontrol & Pembersihan Data Firestore */}
-            <div className="mt-6 pt-6 border-t border-slate-200 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                    <Database className="w-4 h-4 text-blue-600" />
-                    <span>Data Riil Aktif di Cloud Firestore (simas-24c34)</span>
-                  </h4>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Aplikasi ini menampilkan data langsung dan eksklusif dari Firebase. Penambahan data dummy otomatis telah dinonaktifkan.
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Ruang Upload Cap Sekolah */}
+              <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-5 flex flex-col">
+                <div className="border-b border-slate-100 pb-3">
+                  <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <Stamp className="w-4 h-4 text-blue-900" />
+                    Cap Sekolah (Stempel Resmi)
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Unggah gambar cap/stempel resmi sekolah dalam format <strong>JPG atau PNG</strong>.
                   </p>
                 </div>
+
+                <div className="flex-1 flex flex-col justify-center">
+                  {formData.capSekolahUrl ? (
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                          <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Cap Sekolah Terpasang</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = { ...formData, capSekolahUrl: '' };
+                            setFormData(updated);
+                            onSaveSekolah(updated);
+                          }}
+                          className="text-xs font-semibold text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 border border-rose-200 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Hapus</span>
+                        </button>
+                      </div>
+
+                      <div className="p-4 bg-white border border-slate-200 rounded-lg min-h-44 flex items-center justify-center">
+                        <img
+                          src={formData.capSekolahUrl}
+                          alt="Pratinjau Cap Sekolah"
+                          className="max-h-40 w-auto object-contain"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-xs font-semibold cursor-pointer transition-colors shadow-xs">
+                          <Upload className="w-4 h-4" />
+                          <span>Ganti Gambar Cap Sekolah (JPG / PNG)</span>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/jpg"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleUploadAssetImage(file, 'capSekolahUrl');
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-slate-300 hover:border-blue-700 rounded-2xl p-8 text-center bg-slate-50/60 transition-colors">
+                      <div className="w-14 h-14 bg-blue-50 text-blue-900 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                        <Stamp className="w-7 h-7" />
+                      </div>
+                      <h3 className="text-sm font-bold text-slate-800 mb-1">
+                        Unggah Cap Sekolah
+                      </h3>
+                      <p className="text-xs text-slate-500 mb-4">
+                        Format gambar didukung: <strong>JPG, JPEG, atau PNG</strong> (disarankan PNG transparan).
+                      </p>
+                      <label className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-xs font-semibold cursor-pointer transition-colors shadow-sm">
+                        <Upload className="w-4 h-4" />
+                        <span>Upload Cap Sekolah (JPG / PNG)</span>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/jpg"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleUploadAssetImage(file, 'capSekolahUrl');
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {actionNotice && (
-                <div className="p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-xl text-xs flex items-center justify-between">
-                  <span>{actionNotice}</span>
-                  <button
-                    type="button"
-                    onClick={() => setActionNotice(null)}
-                    className="text-blue-600 hover:text-blue-900 font-bold ml-2"
-                  >
-                    Tutup
-                  </button>
-                </div>
-              )}
-
-              {/* Real-time Document Counts */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
-                  <div className="flex items-center justify-center text-blue-600 mb-1">
-                    <Inbox className="w-4 h-4" />
-                  </div>
-                  <div className="text-lg font-bold text-slate-900">{suratMasukCount}</div>
-                  <div className="text-[11px] text-slate-500">Surat Masuk</div>
+              {/* Ruang Upload TTD Kepala Sekolah */}
+              <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-5 flex flex-col">
+                <div className="border-b border-slate-100 pb-3">
+                  <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <PenTool className="w-4 h-4 text-blue-900" />
+                    TTD Kepala Sekolah
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Unggah gambar tanda tangan Kepala Sekolah dalam format <strong>JPG atau PNG</strong>.
+                  </p>
                 </div>
 
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
-                  <div className="flex items-center justify-center text-emerald-600 mb-1">
-                    <Send className="w-4 h-4" />
-                  </div>
-                  <div className="text-lg font-bold text-slate-900">{suratKeluarCount}</div>
-                  <div className="text-[11px] text-slate-500">Surat Keluar</div>
+                <div className="flex-1 flex flex-col justify-center">
+                  {formData.ttdKepalaSekolahUrl ? (
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                          <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>TTD Kepala Sekolah Terpasang</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = { ...formData, ttdKepalaSekolahUrl: '' };
+                            setFormData(updated);
+                            onSaveSekolah(updated);
+                          }}
+                          className="text-xs font-semibold text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 border border-rose-200 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Hapus</span>
+                        </button>
+                      </div>
+
+                      <div className="p-4 bg-white border border-slate-200 rounded-lg min-h-44 flex items-center justify-center">
+                        <img
+                          src={formData.ttdKepalaSekolahUrl}
+                          alt="Pratinjau TTD Kepala Sekolah"
+                          className="max-h-40 w-auto object-contain"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-xs font-semibold cursor-pointer transition-colors shadow-xs">
+                          <Upload className="w-4 h-4" />
+                          <span>Ganti Gambar TTD Kepala Sekolah (JPG / PNG)</span>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/jpg"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleUploadAssetImage(file, 'ttdKepalaSekolahUrl');
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-slate-300 hover:border-blue-700 rounded-2xl p-8 text-center bg-slate-50/60 transition-colors">
+                      <div className="w-14 h-14 bg-blue-50 text-blue-900 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                        <PenTool className="w-7 h-7" />
+                      </div>
+                      <h3 className="text-sm font-bold text-slate-800 mb-1">
+                        Unggah TTD Kepala Sekolah
+                      </h3>
+                      <p className="text-xs text-slate-500 mb-4">
+                        Format gambar didukung: <strong>JPG, JPEG, atau PNG</strong> (disarankan PNG transparan).
+                      </p>
+                      <label className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-xs font-semibold cursor-pointer transition-colors shadow-sm">
+                        <Upload className="w-4 h-4" />
+                        <span>Upload TTD Kepala Sekolah (JPG / PNG)</span>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/jpg"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleUploadAssetImage(file, 'ttdKepalaSekolahUrl');
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                    </div>
+                  )}
                 </div>
-
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
-                  <div className="flex items-center justify-center text-indigo-600 mb-1">
-                    <Archive className="w-4 h-4" />
-                  </div>
-                  <div className="text-lg font-bold text-slate-900">{arsipCount}</div>
-                  <div className="text-[11px] text-slate-500">Buku Arsip</div>
-                </div>
-
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
-                  <div className="flex items-center justify-center text-amber-600 mb-1">
-                    <Users className="w-4 h-4" />
-                  </div>
-                  <div className="text-lg font-bold text-slate-900">{guruCount}</div>
-                  <div className="text-[11px] text-slate-500">Guru/Staf</div>
-                </div>
-
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center col-span-2 sm:col-span-1">
-                  <div className="flex items-center justify-center text-purple-600 mb-1">
-                    <School className="w-4 h-4" />
-                  </div>
-                  <div className="text-lg font-bold text-slate-900">{siswaCount}</div>
-                  <div className="text-[11px] text-slate-500">Siswa</div>
-                </div>
-              </div>
-
-              {/* Action Buttons for Cleaning / Resetting / Uploading */}
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                {onSyncAllLocalDataToFirestore && (
-                  <button
-                    type="button"
-                    disabled={clearingAction !== null}
-                    onClick={async () => {
-                      setClearingAction('syncAll');
-                      const res = await onSyncAllLocalDataToFirestore();
-                      setClearingAction(null);
-                      setActionNotice(res.message);
-                    }}
-                    className="px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors shadow-xs"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>{clearingAction === 'syncAll' ? 'Menyinkronkan Data...' : 'Sinkronkan Semua Data ke Cloud'}</span>
-                  </button>
-                )}
-
-                {onPurgeDummyData && (
-                  <button
-                    type="button"
-                    disabled={clearingAction !== null}
-                    onClick={async () => {
-                      setClearingAction('purge');
-                      await onPurgeDummyData();
-                      setClearingAction(null);
-                      setActionNotice('Data dummy contoh bawaan berhasil dibersihkan dari Cloud Firestore.');
-                    }}
-                    className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-amber-700" />
-                    <span>Bersihkan Data Dummy Contoh</span>
-                  </button>
-                )}
-
-                {onClearSuratMasukFirestore && (
-                  <button
-                    type="button"
-                    disabled={clearingAction !== null}
-                    onClick={async () => {
-                      if (confirm('PERINGATAN: Apakah Anda yakin ingin mengosongkan seluruh Surat Masuk di Cloud Firestore? Tindakan ini tidak dapat dibatalkan.')) {
-                        setClearingAction('clearSM');
-                        await onClearSuratMasukFirestore();
-                        setClearingAction(null);
-                        setActionNotice('Seluruh dokumen Surat Masuk di Cloud Firestore telah dihapus.');
-                      }
-                    }}
-                    className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-200 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                    <span>Hapus Semua Surat Masuk</span>
-                  </button>
-                )}
-
-                {onClearSuratKeluarFirestore && (
-                  <button
-                    type="button"
-                    disabled={clearingAction !== null}
-                    onClick={async () => {
-                      if (confirm('PERINGATAN: Apakah Anda yakin ingin mengosongkan seluruh Surat Keluar di Cloud Firestore? Tindakan ini tidak dapat dibatalkan.')) {
-                        setClearingAction('clearSK');
-                        await onClearSuratKeluarFirestore();
-                        setClearingAction(null);
-                        setActionNotice('Seluruh dokumen Surat Keluar di Cloud Firestore telah dihapus.');
-                      }
-                    }}
-                    className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-200 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                    <span>Hapus Semua Surat Keluar</span>
-                  </button>
-                )}
-
-                {onResetLocalCache && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onResetLocalCache();
-                      setActionNotice('Cache browser telah dibersihkan. Data dimuat ulang langsung dari Firestore.');
-                    }}
-                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors ml-auto"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5 text-slate-600" />
-                    <span>Reset Cache Browser</span>
-                  </button>
-                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB 4: HAK AKSES & AKUN ADMIN */}
+        {/* TAB 3: HAK AKSES & AKUN ADMIN */}
         {activeTab === 'keamanan' && (
           <div className="space-y-6">
             {/* Status Info Card */}
@@ -873,7 +751,7 @@ export const PengaturanView: React.FC<PengaturanViewProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-blue-200 mt-0.5">
-                    Anda memiliki hak akses penuh untuk mengubah identitas sekolah, kop surat, database Firebase, dan keamanan.
+                    Anda memiliki hak akses penuh untuk mengubah profil sekolah, kop surat, dan keamanan.
                   </p>
                 </div>
               </div>
