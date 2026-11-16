@@ -1091,7 +1091,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
               {/* Tombol Cetak & Unduh Presensi PTK (Paling Atas berdampingan dengan Tambah PTK) */}
               <button
                 onClick={handlePrintAbsenGuru}
-                className="px-4 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
+                className="w-full sm:w-auto sm:min-w-[280px] px-7 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
                 <span>Cetak Presensi PTK</span>
@@ -1103,7 +1103,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                 className="px-4 py-2.5 bg-indigo-700 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>+ Tambah PTK</span>
+                <span>Tambah PTK</span>
               </button>
             </>
           ) : (
@@ -1115,7 +1115,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                     filterKelasSiswa !== 'Semua' ? filterKelasSiswa : (availableKelas[0] || '6A')
                   )
                 }
-                className="px-4 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
+                className="w-full sm:w-auto sm:min-w-[280px] px-7 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
                 title="Cetak Presensi Siswa Bulanan (Format Potret Pilihan Utama / Lanskap & Kostum Libur)"
               >
                 <Printer className="w-4 h-4" />
