@@ -220,7 +220,7 @@ export const SuratModal: React.FC<SuratModalProps> = ({ surat, sekolah, guruList
 
           <div
             id="surat-print-preview-container"
-            className={`bg-white rounded-sm shadow-xl border border-slate-300 w-full text-slate-900 font-serif leading-relaxed ${
+            className={`bg-white rounded-sm shadow-xl border border-slate-300 w-full text-slate-900 font-serif [line-height:1.15] ${
               paperSize === 'F4' ? 'max-w-[840px] min-h-[780px]' : 'max-w-[800px] min-h-[700px]'
             } ${surat.jenisSurat === 'surat_keputusan' ? 'is-surat-keputusan' : ''}`}
             style={{

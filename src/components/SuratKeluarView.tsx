@@ -735,6 +735,22 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     'Bahwa yang bersangkutan memiliki loyalitas, integritas, kedisiplinan yang tinggi, serta rekam jejak kinerja yang sangat baik dan tidak sedang menjalani sanksi hukuman disiplin kedinasan.'
   );
 
+  // Khusus: Surat Permohonan
+  const [permLampiran, setPermLampiran] = useState('-');
+  const [permTempatTujuan, setPermTempatTujuan] = useState('Tempat');
+  const [permTujuanList, setPermTujuanList] = useState<string[]>(['']);
+  const [permPembukaan, setPermPembukaan] = useState(
+    'Dengan hormat,\nSehubungan dengan pelaksanaan program kegiatan sekolah di SDN 1 Pekutatan Tahun Ajaran 2026/2027, bersama ini kami mengajukan permohonan kepada Bapak/Ibu agar berkenan untuk:'
+  );
+  const [permYangDimohon, setPermYangDimohon] = useState('');
+  const [permSertakanKegiatan, setPermSertakanKegiatan] = useState(false);
+  const [permHariTanggal, setPermHariTanggal] = useState('');
+  const [permWaktu, setPermWaktu] = useState('');
+  const [permTempat, setPermTempat] = useState('');
+  const [permPenutup, setPermPenutup] = useState(
+    'Demikian surat permohonan ini kami sampaikan. Atas perhatian, bantuan, dan kerja sama Bapak/Ibu kami ucapkan terima kasih.'
+  );
+
   // Khusus: Surat Lainnya
   const [eksternalKeterangan, setEksternalKeterangan] = useState('');
   const [eksternalTempatArsip, setEksternalTempatArsip] = useState('Ordner 2026 / Lemari A');
@@ -1673,6 +1689,20 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     setRekPtkUnitKerja(initPtkItem.unitKerja || 'SD Negeri 1 Pekutatan');
     setRekPtkKeperluan('Mengikuti Seleksi Program Pendidikan Profesi Guru (PPG) Guru Tertentu / Calon Guru Penggerak');
     setRekPtkPertimbangan('');
+    setPermLampiran('-');
+    setPermTempatTujuan('Tempat');
+    setPermTujuanList(['']);
+    setPermPembukaan(
+      'Dengan hormat,\nSehubungan dengan pelaksanaan program kegiatan sekolah di SDN 1 Pekutatan Tahun Ajaran 2026/2027, bersama ini kami mengajukan permohonan kepada Bapak/Ibu agar berkenan untuk:'
+    );
+    setPermYangDimohon('');
+    setPermSertakanKegiatan(false);
+    setPermHariTanggal('');
+    setPermWaktu('');
+    setPermTempat('');
+    setPermPenutup(
+      'Demikian surat permohonan ini kami sampaikan. Atas perhatian, bantuan, dan kerja sama Bapak/Ibu kami ucapkan terima kasih.'
+    );
     setEksternalKeterangan('');
     setEksternalTempatArsip('Ordner 2026 / Lemari A');
     setEksternalLampiranNama('');
@@ -1979,6 +2009,33 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
         setRekSiswaKeperluan(d.keperluanRekomendasi || sk.perihal || '');
         setRekSiswaPertimbangan(d.dasarPertimbangan || '');
       }
+    } else if (sk.jenisSurat === 'surat_permohonan') {
+      setPermLampiran(d.lampiran || '-');
+      setPermTempatTujuan(d.tempatTujuan || 'Tempat');
+      if (Array.isArray(d.tujuanList) && d.tujuanList.length > 0) {
+        setPermTujuanList(d.tujuanList);
+      } else if (sk.tujuan) {
+        const extracted = extractTujuanRecipients(sk.tujuan);
+        setPermTujuanList(extracted.length > 0 ? extracted : [sk.tujuan]);
+      } else {
+        setPermTujuanList(['']);
+      }
+      setPermPembukaan(
+        d.pembukaan ||
+          'Dengan hormat,\nSehubungan dengan pelaksanaan program kegiatan sekolah di SDN 1 Pekutatan Tahun Ajaran 2026/2027, bersama ini kami mengajukan permohonan kepada Bapak/Ibu agar berkenan untuk:'
+      );
+      setPermYangDimohon(d.yangDimohon || '');
+      const hasKegiatan = Boolean(
+        d.sertakanKegiatan || d.hariTanggal || d.waktu || d.tempat
+      );
+      setPermSertakanKegiatan(hasKegiatan);
+      setPermHariTanggal(d.hariTanggal || '');
+      setPermWaktu(d.waktu || '');
+      setPermTempat(d.tempat || '');
+      setPermPenutup(
+        d.penutup ||
+          'Demikian surat permohonan ini kami sampaikan. Atas perhatian, bantuan, dan kerja sama Bapak/Ibu kami ucapkan terima kasih.'
+      );
     } else if (sk.jenisSurat === 'surat_eksternal') {
       const d = sk.dataKhusus || {};
       setEksternalKeterangan(d.keterangan || sk.isiSurat || '');
@@ -2232,6 +2289,27 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
           finalTujuan = finalPtkList[0].nama;
         }
       }
+    } else if (jenisSurat === 'surat_permohonan') {
+      const cleanTujuan = permTujuanList.map((t) => t.trim()).filter(Boolean);
+      const activeTujuanList = cleanTujuan.length > 0 ? cleanTujuan : (tujuan.trim() ? [tujuan.trim()] : []);
+      if (activeTujuanList.length > 0) {
+        finalTujuan =
+          activeTujuanList.length > 1
+            ? activeTujuanList.map((t, idx) => `${idx + 1}. ${t}`).join('\n')
+            : activeTujuanList[0];
+      }
+      dataKhusus = {
+        lampiran: permLampiran.trim() || '-',
+        tempatTujuan: permTempatTujuan.trim() || 'Tempat',
+        tujuanList: activeTujuanList,
+        pembukaan: permPembukaan.trim(),
+        yangDimohon: permYangDimohon.trim(),
+        sertakanKegiatan: permSertakanKegiatan,
+        hariTanggal: permSertakanKegiatan ? permHariTanggal.trim() : '',
+        waktu: permSertakanKegiatan ? permWaktu.trim() : '',
+        tempat: permSertakanKegiatan ? permTempat.trim() : '',
+        penutup: permPenutup.trim(),
+      };
     } else if (jenisSurat === 'surat_eksternal') {
       dataKhusus = {
         isEksternal: true,
@@ -2507,6 +2585,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                 <option value="surat_tugas">Surat Tugas (SPT)</option>
                 <option value="surat_pengantar">Surat Pengantar</option>
                 <option value="surat_rekomendasi">Surat Rekomendasi</option>
+                <option value="surat_permohonan">Surat Permohonan</option>
                 <option value="surat_eksternal">Surat Lainnya</option>
               </select>
 
@@ -2567,6 +2646,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       surat_tugas: 'Surat Tugas (SPT)',
                       surat_pengantar: 'Surat Pengantar',
                       surat_rekomendasi: 'Surat Rekomendasi',
+                      surat_permohonan: 'Surat Permohonan',
                       surat_eksternal: 'Surat Lainnya',
                     };
 
@@ -2943,7 +3023,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                 <label className="block font-bold text-emerald-950 text-xs sm:text-sm uppercase tracking-wide">
                   Pilih Format Surat yang Ingin Dibuat:
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                   {[
                     { id: 'surat_ijin_guru', label: '1. Permohonan Izin Tidak Masuk' },
                     { id: 'surat_keterangan', label: '2. Surat Keterangan' },
@@ -2952,7 +3032,8 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                     { id: 'surat_tugas', label: '5. Surat Perintah Tugas (SPT)' },
                     { id: 'surat_pengantar', label: '6. Surat Pengantar' },
                     { id: 'surat_rekomendasi', label: '7. Surat Rekomendasi' },
-                    { id: 'surat_eksternal', label: '8. Surat Lainnya' },
+                    { id: 'surat_permohonan', label: '8. Surat Permohonan' },
+                    { id: 'surat_eksternal', label: '9. Surat Lainnya' },
                   ].map((fmt) => (
                     <button
                       type="button"
@@ -2996,6 +3077,9 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             setPerihal('Surat Rekomendasi Pendidik dan Tenaga Kependidikan');
                             setTujuan(rekPtkNama || 'PTK');
                           }
+                        } else if (newJenis === 'surat_permohonan') {
+                          setPerihal('Permohonan Bantuan / Dukungan Kegiatan Sekolah');
+                          setTujuan(permTujuanList[0] || '');
                         } else if (newJenis === 'surat_eksternal') {
                           setPerihal('Surat Lainnya');
                           setTujuan('');
@@ -3094,14 +3178,35 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-semibold text-slate-700 text-sm mb-1.5">
-                    {jenisSurat === 'surat_ijin_guru' ? 'Tujuan Permohonan Izin *' : 'Tujuan / Penerima Surat *'}
+                    {jenisSurat === 'surat_ijin_guru'
+                      ? 'Tujuan Permohonan Izin *'
+                      : jenisSurat === 'surat_permohonan'
+                      ? 'Kepada Yth. (Tujuan Surat) *'
+                      : 'Tujuan / Penerima Surat *'}
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder={jenisSurat === 'surat_ijin_guru' ? `Kepala ${formatNamaSekolahIsi(sekolah.namaSekolah)}` : 'Contoh: Kepala Dinas / Nama Siswa / Bapak/Ibu Wali Murid'}
+                    placeholder={
+                      jenisSurat === 'surat_ijin_guru'
+                        ? `Kepala ${formatNamaSekolahIsi(sekolah.namaSekolah)}`
+                        : jenisSurat === 'surat_permohonan'
+                        ? 'Contoh: Kepala Dinas Pendidikan / Ketua Komite / Camat Pekutatan'
+                        : 'Contoh: Kepala Dinas / Nama Siswa / Bapak/Ibu Wali Murid'
+                    }
                     value={tujuan}
-                    onChange={(e) => setTujuan(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setTujuan(val);
+                      if (jenisSurat === 'surat_permohonan') {
+                        setPermTujuanList((prev) => {
+                          if (prev.length <= 1) return [val];
+                          const next = [...prev];
+                          next[0] = val;
+                          return next;
+                        });
+                      }
+                    }}
                     className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none shadow-2xs bg-white"
                   />
                 </div>
@@ -7638,6 +7743,219 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                         </div>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* 8. SURAT PERMOHONAN */}
+                {jenisSurat === 'surat_permohonan' && (
+                  <div className="space-y-4">
+                    <h3 className="font-bold text-slate-900 text-xs uppercase flex items-center gap-1.5 text-emerald-800">
+                      <FileText className="w-4 h-4" />
+                      Detail Surat Permohonan
+                    </h3>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-semibold text-slate-700 mb-1 text-xs">
+                          Lampiran
+                        </label>
+                        <input
+                          type="text"
+                          value={permLampiran}
+                          onChange={(e) => setPermLampiran(e.target.value)}
+                          placeholder="Contoh: - atau 1 (satu) Berkas"
+                          className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white text-xs sm:text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-slate-700 mb-1 text-xs">
+                          Tempat Tujuan (di ... pada Kepada Yth.)
+                        </label>
+                        <input
+                          type="text"
+                          value={permTempatTujuan}
+                          onChange={(e) => setPermTempatTujuan(e.target.value)}
+                          placeholder="Contoh: Tempat atau Negara"
+                          className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white text-xs sm:text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Daftar Kepada Yth (Opsional >1 penerima) */}
+                    <div className="p-3.5 bg-white border border-slate-200 rounded-xl space-y-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <label className="font-bold text-xs text-slate-800 uppercase tracking-wide">
+                            Daftar Penerima (Kepada Yth.)
+                          </label>
+                          <span className="ml-2 text-[11px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                            {permTujuanList.length} Penerima
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPermTujuanList([...permTujuanList, ''])}
+                          className="text-xs bg-emerald-700 hover:bg-emerald-600 text-white font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Tambah Penerima</span>
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        {permTujuanList.map((tuj, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <span className="text-xs font-mono font-bold text-slate-400 w-6 text-center">
+                              {idx + 1}.
+                            </span>
+                            <input
+                              type="text"
+                              placeholder="Contoh: Kepala Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana"
+                              value={tuj}
+                              onChange={(e) => {
+                                const updated = [...permTujuanList];
+                                updated[idx] = e.target.value;
+                                setPermTujuanList(updated);
+                                if (idx === 0) setTujuan(e.target.value);
+                              }}
+                              className="flex-1 border border-slate-300 rounded-lg px-3 py-1.5 bg-white text-xs sm:text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                            />
+                            {permTujuanList.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = permTujuanList.filter((_, i) => i !== idx);
+                                  setPermTujuanList(next);
+                                  if (next[0] !== undefined) setTujuan(next[0]);
+                                }}
+                                className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                                title="Hapus Penerima"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1 text-xs sm:text-sm">
+                        Isian Pembukaan Surat *
+                      </label>
+                      <textarea
+                        rows={3}
+                        required
+                        value={permPembukaan}
+                        onChange={(e) => setPermPembukaan(e.target.value)}
+                        placeholder="Contoh: Dengan hormat, Sehubungan dengan pelaksanaan kegiatan..."
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none text-xs sm:text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1 text-xs sm:text-sm">
+                        Isian Yang Dimohon *
+                      </label>
+                      <textarea
+                        rows={4}
+                        required
+                        value={permYangDimohon}
+                        onChange={(e) => setPermYangDimohon(e.target.value)}
+                        placeholder="Tuliskan inti hal/bantuan/izin/narasumber/fasilitas yang dimohon secara rinci..."
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none text-xs sm:text-sm"
+                      />
+                    </div>
+
+                    {/* Hari, Waktu, Tempat Kegiatan (Opsional) */}
+                    <div className="p-3.5 bg-white border border-slate-200 rounded-xl space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-emerald-700" />
+                          <span className="font-bold text-xs text-slate-800 uppercase tracking-wide">
+                            Hari, Waktu &amp; Tempat Kegiatan
+                          </span>
+                          <span className="text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-md">
+                            Opsional
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPermSertakanKegiatan((prev) => !prev)}
+                          className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                            permSertakanKegiatan
+                              ? 'bg-emerald-700 text-white border-emerald-700'
+                              : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-emerald-50'
+                          }`}
+                        >
+                          <span
+                            className={`w-3.5 h-3.5 rounded flex items-center justify-center border ${
+                              permSertakanKegiatan
+                                ? 'bg-white text-emerald-700 border-white'
+                                : 'bg-white border-slate-300'
+                            }`}
+                          >
+                            {permSertakanKegiatan && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                          </span>
+                          <span>{permSertakanKegiatan ? 'Aktif (Ditampilkan)' : 'Sertakan Rincian Kegiatan'}</span>
+                        </button>
+                      </div>
+
+                      {permSertakanKegiatan && (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                          <div>
+                            <label className="block font-semibold text-slate-700 mb-1 text-xs">
+                              Hari / Tanggal
+                            </label>
+                            <input
+                              type="text"
+                              value={permHariTanggal}
+                              onChange={(e) => setPermHariTanggal(e.target.value)}
+                              placeholder="Contoh: Senin, 23 November 2026"
+                              className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-semibold text-slate-700 mb-1 text-xs">
+                              Waktu
+                            </label>
+                            <input
+                              type="text"
+                              value={permWaktu}
+                              onChange={(e) => setPermWaktu(e.target.value)}
+                              placeholder="Contoh: 08.00 WITA - Selesai"
+                              className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-semibold text-slate-700 mb-1 text-xs">
+                              Tempat
+                            </label>
+                            <input
+                              type="text"
+                              value={permTempat}
+                              onChange={(e) => setPermTempat(e.target.value)}
+                              placeholder="Contoh: Aula SDN 1 Pekutatan"
+                              className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1 text-xs sm:text-sm">
+                        Penutup Surat *
+                      </label>
+                      <textarea
+                        rows={2}
+                        required
+                        value={permPenutup}
+                        onChange={(e) => setPermPenutup(e.target.value)}
+                        placeholder="Demikian surat permohonan ini kami sampaikan..."
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none text-xs sm:text-sm"
+                      />
+                    </div>
                   </div>
                 )}
 

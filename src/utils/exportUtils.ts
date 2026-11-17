@@ -359,6 +359,23 @@ export function exportToWord(
       vertical-align: middle;
       word-wrap: break-word;
     }
+    .surat-resmi, .surat-body {
+      line-height: 1.15 !important;
+    }
+    .surat-body p, .surat-body p.MsoNormal, .surat-body li, .surat-body div, .surat-body td, .surat-body th {
+      line-height: 1.15 !important;
+      mso-line-height-rule: at-least !important;
+    }
+    .surat-body p, .surat-body p.MsoNormal {
+      margin-top: 0pt !important;
+      margin-bottom: 0pt !important;
+      mso-margin-top-alt: 0pt !important;
+      mso-margin-bottom-alt: 0pt !important;
+      line-height: 1.15 !important;
+    }
+    .surat-body p.paragraf-surat {
+      text-indent: 28pt !important;
+    }
     .kop-surat-table, .kop-surat-table tr, .kop-surat-table td {
       border: none !important;
       padding: 0pt !important;
@@ -599,6 +616,17 @@ export function printHtmlElement(
     .nomor-surat, .nomor-sk {
       font-size: 11pt !important;
     }
+    .surat-resmi, .surat-body, .surat-body p, .surat-body div, .surat-body td, .surat-body th, .surat-body li {
+      line-height: 1.15 !important;
+    }
+    .surat-body p {
+      margin-top: 0 !important;
+      margin-bottom: 0 !important;
+      line-height: 1.15 !important;
+    }
+    .surat-body p.paragraf-surat {
+      text-indent: 28pt !important;
+    }
     .is-surat-keputusan, .is-surat-keputusan * {
       font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif !important;
     }
@@ -657,7 +685,7 @@ function formatSkKonsideranHtml(
     const validItems = list.filter((item) => item && (item.isi?.trim() || item.poin?.trim()));
     if (validItems.length > 0) {
       return `
-        <table style="width: 100%; border: none; border-collapse: collapse; margin: 0; padding: 0; line-height: 1.45;" border="0" cellpadding="0" cellspacing="0">
+        <table style="width: 100%; border: none; border-collapse: collapse; margin: 0; padding: 0; line-height: 1.15;" border="0" cellpadding="0" cellspacing="0">
           ${validItems
             .map((item, idx) => {
               const defaultPoin =
@@ -667,8 +695,8 @@ function formatSkKonsideranHtml(
               const poinStr = item.poin?.trim() ? item.poin : defaultPoin;
               return `
               <tr>
-                <td style="width: 22pt; vertical-align: top; border: none; padding: 1.5pt 0; font-family: inherit; font-size: 12pt;">${poinStr}</td>
-                <td style="text-align: justify; vertical-align: top; border: none; padding: 1.5pt 0; white-space: pre-line; font-family: inherit; font-size: 12pt;">${item.isi || ''}</td>
+                <td style="width: 22pt; vertical-align: top; border: none; padding: 1pt 0; font-family: inherit; font-size: 12pt; line-height: 1.15;">${poinStr}</td>
+                <td style="text-align: justify; vertical-align: top; border: none; padding: 1pt 0; white-space: pre-line; font-family: inherit; font-size: 12pt; line-height: 1.15;">${item.isi || ''}</td>
               </tr>
             `;
             })
@@ -685,7 +713,7 @@ function formatSkKonsideranHtml(
       .filter(Boolean);
     if (lines.length > 1) {
       return `
-        <table style="width: 100%; border: none; border-collapse: collapse; margin: 0; padding: 0; line-height: 1.45;" border="0" cellpadding="0" cellspacing="0">
+        <table style="width: 100%; border: none; border-collapse: collapse; margin: 0; padding: 0; line-height: 1.15;" border="0" cellpadding="0" cellspacing="0">
           ${lines
             .map((line, idx) => {
               const match = line.match(/^([a-z0-9]+[\.\)])\s*(.*)$/i);
@@ -697,8 +725,8 @@ function formatSkKonsideranHtml(
               const isiStr = match ? match[2] : line;
               return `
               <tr>
-                <td style="width: 22pt; vertical-align: top; border: none; padding: 1.5pt 0; font-family: inherit; font-size: 12pt;">${poinStr}</td>
-                <td style="text-align: justify; vertical-align: top; border: none; padding: 1.5pt 0; white-space: pre-line; font-family: inherit; font-size: 12pt;">${isiStr}</td>
+                <td style="width: 22pt; vertical-align: top; border: none; padding: 1pt 0; font-family: inherit; font-size: 12pt; line-height: 1.15;">${poinStr}</td>
+                <td style="text-align: justify; vertical-align: top; border: none; padding: 1pt 0; white-space: pre-line; font-family: inherit; font-size: 12pt; line-height: 1.15;">${isiStr}</td>
               </tr>
             `;
             })
@@ -706,10 +734,51 @@ function formatSkKonsideranHtml(
         </table>
       `;
     }
-    return `<div style="text-align: justify; white-space: pre-line; font-family: inherit; font-size: 12pt;">${fallbackText}</div>`;
+    return `<div style="text-align: justify; white-space: pre-line; font-family: inherit; font-size: 12pt; line-height: 1.15;">${fallbackText}</div>`;
   }
 
   return '';
+}
+
+/**
+ * Render paragraf isi surat keluar standar:
+ * - Spasi baris 1,15 (line-height: 1.15)
+ * - Spacing Before = 0 & After = 0 (margin: 0)
+ * - Kalimat pertama di awal paragraf menjorok ke dalam (text-indent: 28pt)
+ */
+function formatParagrafSuratHtml(
+  text: string,
+  options?: {
+    fontSize?: string;
+    italic?: boolean;
+    indent?: boolean;
+    treatFirstLineSalutation?: boolean;
+  }
+): string {
+  const raw = String(text || '').trim();
+  if (!raw) return '';
+  const fs = options?.fontSize || '12pt';
+  const useIndent = options?.indent !== false;
+  const italicCss = options?.italic ? ' font-style: italic;' : '';
+  const lines = raw
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  return lines
+    .map((line, idx) => {
+      const isSalutation =
+        Boolean(options?.treatFirstLineSalutation) &&
+        idx === 0 &&
+        /^(dengan\s+hormat|assalamu|om\s+swastyastu)/i.test(line);
+
+      if (isSalutation || !useIndent) {
+        return `<p style="text-align: justify; margin: 0; mso-margin-top-alt: 0pt; mso-margin-bottom-alt: 0pt; line-height: 1.15; font-size: ${fs};${italicCss}">${line}</p>`;
+      }
+
+      return `<p class="paragraf-surat" style="text-align: justify; margin: 0; mso-margin-top-alt: 0pt; mso-margin-bottom-alt: 0pt; line-height: 1.15; text-indent: 28pt; font-size: ${fs};${italicCss}">${line}</p>`;
+    })
+    .join('\n');
 }
 
 export interface ResolvedKepalaSekolah {
@@ -862,40 +931,116 @@ export function extractTujuanRecipients(tujuan?: string, explicitList?: string[]
  *   Tempat
  * (Without any "Bapak/Ibu/Saudara:" line)
  */
-export function buildKepadaYthBlock(options: KepadaYthBlockOptions): string {
+export function buildKepadaYthContentHtml(options: KepadaYthBlockOptions): string {
   const fs = options.fontSize || '11.5pt';
   const tempat = options.tempat || 'Tempat';
 
   const list = extractTujuanRecipients(options.tujuan, options.tujuanList);
 
-  let isiHtml = '';
   if (list.length > 1) {
-    isiHtml = `
-      <p style="margin: 0; text-align: left; font-size: ${fs};">Kepada Yth.</p>
-      <ol style="margin: 2.5pt 0 4pt 16pt; padding: 0; font-size: ${fs}; text-align: left; list-style-type: decimal;">
-        ${list.map((t) => `<li style="margin-bottom: 2pt; font-size: ${fs}; text-align: left;">${t}</li>`).join('')}
+    return `
+      <p style="margin: 0; text-align: left; font-size: ${fs}; line-height: 1.15;">Kepada Yth.</p>
+      <ol style="margin: 0 0 0 16pt; padding: 0; font-size: ${fs}; text-align: left; list-style-type: decimal; line-height: 1.15;">
+        ${list.map((t) => `<li style="margin: 0; font-size: ${fs}; text-align: left; line-height: 1.15;">${t}</li>`).join('')}
       </ol>
-      <p style="margin: 1.5pt 0 0 0; text-align: left; font-size: ${fs};">di -</p>
-      <p style="margin: 1.5pt 0 0 16pt; text-decoration: underline; text-align: left; font-size: ${fs};">${tempat}</p>
-    `;
-  } else {
-    const singleTujuan = list[0] || options.tujuan || 'Kepala Sekolah';
-    isiHtml = `
-      <p style="margin: 0; text-align: left; font-size: ${fs};">Kepada</p>
-      <p style="margin: 1.5pt 0 0 0; font-weight: bold; text-align: left; font-size: ${fs};">Yth. ${singleTujuan}</p>
-      ${options.instansi ? `<p style="margin: 1.5pt 0 0 0; text-align: left; font-size: ${fs};">${options.instansi}</p>` : ''}
-      <p style="margin: 1.5pt 0 0 0; text-align: left; font-size: ${fs};">di -</p>
-      <p style="margin: 1.5pt 0 0 18pt; text-decoration: underline; text-align: left; font-size: ${fs};">${tempat}</p>
+      <p style="margin: 0; text-align: left; font-size: ${fs}; line-height: 1.15;">di -</p>
+      <p style="margin: 0 0 0 16pt; text-decoration: underline; text-align: left; font-size: ${fs}; line-height: 1.15;">${tempat}</p>
     `;
   }
 
+  const singleTujuan = list[0] || options.tujuan || 'Kepala Sekolah';
+  return `
+    <p style="margin: 0; text-align: left; font-size: ${fs}; line-height: 1.15;">Kepada</p>
+    <p style="margin: 0; font-weight: bold; text-align: left; font-size: ${fs}; line-height: 1.15;">Yth. ${singleTujuan}</p>
+    ${options.instansi ? `<p style="margin: 0; text-align: left; font-size: ${fs}; line-height: 1.15;">${options.instansi}</p>` : ''}
+    <p style="margin: 0; text-align: left; font-size: ${fs}; line-height: 1.15;">di -</p>
+    <p style="margin: 0 0 0 18pt; text-decoration: underline; text-align: left; font-size: ${fs}; line-height: 1.15;">${tempat}</p>
+  `;
+}
+
+/**
+ * Standardize 'Kepada Yth.' layout across all outgoing letters:
+ * Renders on the right side of the paper (using a 2-column table: 52% left empty, 48% right content).
+ * If there are multiple recipients (> 1 person), renders a clean numbered list:
+ * Kepada Yth.
+ * 1. Dewan guru
+ * 2. Komite sekolah
+ * 3. Pengawas sekolah
+ * di -
+ *   Tempat
+ * (Without any "Bapak/Ibu/Saudara:" line)
+ */
+export function buildKepadaYthBlock(options: KepadaYthBlockOptions): string {
+  const fs = options.fontSize || '11.5pt';
+  const isiHtml = buildKepadaYthContentHtml(options);
+
   return `
     <!-- Format Standar Kepada Yth: Sisi Kanan Kertas (Tabel 2 Kolom) -->
-    <table class="kepada-yth-table" style="width: 100%; border: none; border-collapse: collapse; margin: 10pt 0 14pt 0;" border="0" cellpadding="0" cellspacing="0">
+    <table class="kepada-yth-table" style="width: 100%; border: none; border-collapse: collapse; margin: 8pt 0 10pt 0; line-height: 1.15;" border="0" cellpadding="0" cellspacing="0">
       <tr>
         <td style="width: 52%; border: none;">&nbsp;</td>
-        <td style="width: 48%; text-align: left; vertical-align: top; border: none; padding: 0 0 0 8pt; font-size: ${fs}; line-height: 1.4;">
+        <td style="width: 48%; text-align: left; vertical-align: top; border: none; padding: 0 0 0 8pt; font-size: ${fs}; line-height: 1.15;">
           ${isiHtml}
+        </td>
+      </tr>
+    </table>
+  `;
+}
+
+/**
+ * Tata letak header surat keluar resmi yang memiliki Nomor, Lampiran, dan Perihal:
+ * - Tanggal surat diletakkan 1 paragraf di atas Kepada Yth. (sisi kanan)
+ * - Nomor, Lampiran, dan Perihal di sisi kiri sejajar dengan blok Kepada Yth. di sisi kanan
+ */
+export function buildHeaderNomorDanKepadaHtml(options: {
+  noSurat: string;
+  lampiran?: string;
+  perihal: string;
+  tempatSurat: string;
+  tglIndo: string;
+  tujuan?: string;
+  tujuanList?: string[];
+  tempatTujuan?: string;
+  instansi?: string;
+  fontSize?: string;
+}): string {
+  const fs = options.fontSize || '12pt';
+  const lampiranText = (options.lampiran && options.lampiran.trim()) || '-';
+  const kepadaYthInnerHtml = buildKepadaYthContentHtml({
+    tujuan: options.tujuan,
+    tujuanList: options.tujuanList,
+    tempat: options.tempatTujuan || 'Tempat',
+    instansi: options.instansi,
+    fontSize: fs,
+  });
+
+  return `
+    <div style="margin: 0 0 10pt 0; text-align: right;">
+      <p style="margin: 0; text-align: right; font-size: ${fs}; line-height: 1.15; white-space: nowrap;">${options.tempatSurat}, ${options.tglIndo}</p>
+    </div>
+    <table style="width: 100%; margin: 0 0 10pt 0; border: none; border-collapse: collapse; font-size: ${fs}; line-height: 1.15;" border="0" cellpadding="0" cellspacing="0">
+      <tr>
+        <td style="width: 55%; vertical-align: top; border: none; padding: 0 12pt 0 0;">
+          <table style="width: 100%; border: none; border-collapse: collapse; font-size: ${fs}; line-height: 1.15;" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width: 68pt; padding: 1pt 0; vertical-align: top; border: none; font-size: ${fs}; line-height: 1.15;">Nomor</td>
+              <td style="width: 10pt; padding: 1pt 0; vertical-align: top; border: none; font-size: ${fs}; line-height: 1.15;">:</td>
+              <td class="nomor-surat" style="padding: 1pt 0; vertical-align: top; border: none; font-size: 11pt; line-height: 1.15;">${options.noSurat}</td>
+            </tr>
+            <tr>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: ${fs}; line-height: 1.15;">Lampiran</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: ${fs}; line-height: 1.15;">:</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: ${fs}; line-height: 1.15;">${lampiranText}</td>
+            </tr>
+            <tr>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-weight: bold; font-size: ${fs}; line-height: 1.15;">Perihal</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-weight: bold; font-size: ${fs}; line-height: 1.15;">:</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-weight: bold; font-size: ${fs}; line-height: 1.15;">${options.perihal}</td>
+            </tr>
+          </table>
+        </td>
+        <td class="kepada-yth-table" style="width: 45%; text-align: left; vertical-align: top; border: none; padding: 0 0 0 8pt; font-size: ${fs}; line-height: 1.15;">
+          ${kepadaYthInnerHtml}
         </td>
       </tr>
     </table>
@@ -1207,8 +1352,8 @@ export function buildSuratHtml(
 
       badanSurat = `
         <!-- Judul Surat Paling Atas (Tanpa Perihal dan Tanpa Lampiran) -->
-        <div style="text-align: center; margin-top: 4pt; margin-bottom: 18pt;">
-          <p style="margin: 0; text-align: center; font-size: 13.5pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px;">SURAT PERMOHONAN TIDAK MASUK SEKOLAH</p>
+        <div style="text-align: center; margin-top: 4pt; margin-bottom: 14pt; line-height: 1.15;">
+          <p style="margin: 0; text-align: center; font-size: 13.5pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px; line-height: 1.15;">SURAT PERMOHONAN TIDAK MASUK SEKOLAH</p>
         </div>
 
         <!-- Diikuti Kepada Yth Setelahnya (Format Rapi Sisi Kanan Kertas) -->
@@ -1218,73 +1363,77 @@ export function buildSuratHtml(
           fontSize: '12pt',
         })}
 
-        <p style="text-align: justify; margin-top: 14pt; margin-bottom: 8pt; line-height: 1.45; font-size: 12pt;">
-          Dengan hormat,<br>
-          Saya yang bertanda tangan di bawah ini:
-        </p>
+        <div style="margin-top: 10pt;">
+          <p style="text-align: justify; margin: 0; line-height: 1.15; font-size: 12pt;">
+            Dengan hormat,
+          </p>
+          <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
+            Saya yang bertanda tangan di bawah ini:
+          </p>
+        </div>
 
-        <table style="margin-left: 20pt; margin-bottom: 12pt; width: 92%; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+        <table style="margin: 6pt 0 8pt 20pt; width: 92%; border: none; border-collapse: collapse; line-height: 1.15; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
           <tr>
-            <td style="width: 145pt; padding: 2pt 0; vertical-align: top; border: none; font-size: 12pt;">Nama Lengkap</td>
-            <td style="width: 15pt; padding: 2pt 0; vertical-align: top; border: none; font-size: 12pt;">:</td>
-            <td style="padding: 2pt 0; vertical-align: top; font-weight: bold; border: none; font-size: 12pt;">${data.namaGuru || '-'}</td>
+            <td style="width: 145pt; padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.15;">Nama Lengkap</td>
+            <td style="width: 15pt; padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.15;">:</td>
+            <td style="padding: 1.5pt 0; vertical-align: top; font-weight: bold; border: none; font-size: 12pt; line-height: 1.15;">${data.namaGuru || '-'}</td>
           </tr>
           <tr>
-            <td style="padding: 2pt 0; vertical-align: top; border: none; font-size: 12pt;">NIP / NUPTK</td>
-            <td style="padding: 2pt 0; vertical-align: top; border: none; font-size: 12pt;">:</td>
-            <td style="padding: 2pt 0; vertical-align: top; border: none; font-size: 12pt;">${data.nipGuru || '-'}</td>
+            <td style="padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.15;">NIP / NUPTK</td>
+            <td style="padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.15;">:</td>
+            <td style="padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.15;">${data.nipGuru || '-'}</td>
           </tr>
           <tr>
-            <td style="padding: 2pt 0; vertical-align: top; border: none; font-size: 12pt;">Pangkat / Golongan</td>
-            <td style="padding: 2pt 0; vertical-align: top; border: none; font-size: 12pt;">:</td>
-            <td style="padding: 2pt 0; vertical-align: top; border: none; font-size: 12pt;">${data.pangkatGol || '-'}</td>
+            <td style="padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.15;">Pangkat / Golongan</td>
+            <td style="padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.15;">:</td>
+            <td style="padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.15;">${data.pangkatGol || '-'}</td>
           </tr>
           <tr>
-            <td style="padding: 2pt 0; vertical-align: top; border: none; font-size: 12pt;">Jabatan</td>
-            <td style="padding: 2pt 0; vertical-align: top; border: none; font-size: 12pt;">:</td>
-            <td style="padding: 2pt 0; vertical-align: top; border: none; font-size: 12pt;">${data.jabatan || 'Guru Kelas'}</td>
+            <td style="padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.15;">Jabatan</td>
+            <td style="padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.15;">:</td>
+            <td style="padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.15;">${data.jabatan || 'Guru Kelas'}</td>
           </tr>
           <tr>
-            <td style="padding: 2pt 0; vertical-align: top; border: none; font-size: 12pt;">Unit Kerja</td>
-            <td style="padding: 2pt 0; vertical-align: top; border: none; font-size: 12pt;">:</td>
-            <td style="padding: 2pt 0; vertical-align: top; border: none; font-size: 12pt;">${sekolah.namaSekolah}</td>
+            <td style="padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.15;">Unit Kerja</td>
+            <td style="padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.15;">:</td>
+            <td style="padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.15;">${sekolah.namaSekolah}</td>
           </tr>
         </table>
 
-        <p style="text-align: justify; margin-bottom: 8pt; line-height: 1.45; font-size: 12pt;">
+        <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
           Dengan ini mengajukan permohonan izin untuk tidak masuk sekolah / mengajar ${kalimatIzin} dikarenakan: ${data.alasan || surat.perihal || 'ada keperluan mendesak'}.
         </p>
 
         ${hasGuruPengganti ? `
-        <p style="text-align: justify; margin-bottom: 8pt; line-height: 1.45; font-size: 12pt;">
+        <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
           Terkait pelaksanaan tugas mengajar dan ketertiban peserta didik di kelas selama saya tidak masuk sekolah, telah saya koordinasikan dan diserahkan kepada rekan guru pengganti, yaitu: <strong>${data.guruPengganti.trim()}</strong>.
         </p>
         ` : ''}
 
-        <p style="text-align: justify; margin-top: 10pt; line-height: 1.45; font-size: 12pt;">
+        <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
           Demikian surat permohonan izin ini saya sampaikan dengan sesungguhnya. Atas perhatian, pengertian, dan izin yang Bapak/Ibu Kepala Sekolah berikan, saya sampaikan terima kasih.
         </p>
       `;
 
       // 2 Kolom TTD: Menyetujui KS di kiri, Pemohon di kanan via tabel asli agar tidak berantakan di Word
       customTtdBlock = `
-        <table class="ttd-table" style="width: 100%; margin-top: 24pt; border: none; border-collapse: collapse; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+        <table class="ttd-table" style="width: 100%; margin-top: 20pt; border: none; border-collapse: collapse; font-size: 12pt; line-height: 1.15;" border="0" cellpadding="0" cellspacing="0">
           <tr>
-            <td style="width: 50%; text-align: center; vertical-align: top; border: none; font-size: 12pt;">
-              <p style="margin: 0; font-weight: bold; text-align: center; font-size: 12pt; position: relative; z-index: 10;">Menyetujui,</p>
-              <p style="margin: 1pt 0 0 0; text-align: center; font-size: 12pt; position: relative; z-index: 10;">Kepala ${schoolNameIsi},</p>
+            <td style="width: 50%; text-align: center; vertical-align: top; border: none; font-size: 12pt; line-height: 1.15;">
+              <p style="margin: 0; font-weight: bold; text-align: center; font-size: 12pt; line-height: 1.15; position: relative; z-index: 10;">Menyetujui,</p>
+              <p style="margin: 0; text-align: center; font-size: 12pt; line-height: 1.15; position: relative; z-index: 10;">Kepala ${schoolNameIsi},</p>
               ${buildKepsekSignatureSpaceHtml(sekolah, stampOptions, '55pt')}
-              <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; font-size: 12pt; position: relative; z-index: 10;">${kepsek.nama}</p>
-              ${kepsek.pangkat ? `<p style="margin: 1.5pt 0 0 0; font-size: 11pt; text-align: center; position: relative; z-index: 10;">${kepsek.pangkat}</p>` : ''}
-              <p style="margin: 1.5pt 0 0 0; font-size: 11pt; text-align: center; position: relative; z-index: 10;">NIP. ${kepsek.nip}</p>
+              <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; font-size: 12pt; line-height: 1.15; position: relative; z-index: 10;">${kepsek.nama}</p>
+              ${kepsek.pangkat ? `<p style="margin: 0; font-size: 11pt; text-align: center; line-height: 1.15; position: relative; z-index: 10;">${kepsek.pangkat}</p>` : ''}
+              <p style="margin: 0; font-size: 11pt; text-align: center; line-height: 1.15; position: relative; z-index: 10;">NIP. ${kepsek.nip}</p>
             </td>
-            <td style="width: 50%; text-align: center; vertical-align: top; border: none; font-size: 12pt;">
-              <p style="margin: 0; text-align: center; font-size: 12pt;">${sekolah.desa || 'Pekutatan'}, ${tglIndo}</p>
-              <p style="margin: 1pt 0 0 0; font-weight: bold; text-align: center; font-size: 12pt;">Pemohon,</p>
+            <td style="width: 50%; text-align: center; vertical-align: top; border: none; font-size: 12pt; line-height: 1.15;">
+              <p style="margin: 0; text-align: center; font-size: 12pt; line-height: 1.15;">${sekolah.desa || 'Pekutatan'}, ${tglIndo}</p>
+              <p style="margin: 0; font-weight: bold; text-align: center; font-size: 12pt; line-height: 1.15;">Pemohon,</p>
               <div style="height: 55pt;">&nbsp;</div>
-              <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; font-size: 12pt;">${data.namaGuru || '-'}</p>
-              ${data.pangkatGol && data.pangkatGol !== '-' ? `<p style="margin: 1.5pt 0 0 0; font-size: 11pt; text-align: center;">${data.pangkatGol}</p>` : ''}
-              <p style="margin: 1.5pt 0 0 0; font-size: 11pt; text-align: center;">${data.nipGuru && data.nipGuru !== '-' ? `NIP. ${data.nipGuru}` : ''}</p>
+              <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; font-size: 12pt; line-height: 1.15;">${data.namaGuru || '-'}</p>
+              ${data.pangkatGol && data.pangkatGol !== '-' ? `<p style="margin: 0; font-size: 11pt; text-align: center; line-height: 1.15;">${data.pangkatGol}</p>` : ''}
+              <p style="margin: 0; font-size: 11pt; text-align: center; line-height: 1.15;">${data.nipGuru && data.nipGuru !== '-' ? `NIP. ${data.nipGuru}` : ''}</p>
             </td>
           </tr>
         </table>
@@ -1316,54 +1465,54 @@ export function buildSuratHtml(
       let subjekHtml = '';
       if (isMulti) {
         subjekHtml = `
-          <p style="text-align: justify; margin: 0 0 10pt 0; line-height: 1.4;">
+          <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
             Yang bertanda tangan di bawah ini Kepala ${schoolNameIsi}, Kecamatan ${cleanKec}, Kabupaten ${cleanKab}, Provinsi ${prov}, menerangkan dengan sebenarnya bahwa nama-nama di bawah ini:
           </p>
 
-          <div style="margin-left: 16pt; margin-bottom: 12pt;">
+          <div style="margin: 6pt 0 8pt 16pt;">
             ${subjekList.map((p, idx) => `
-              <div style="margin-bottom: 8pt; page-break-inside: avoid;">
-                <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.4;" border="0" cellpadding="0" cellspacing="0">
+              <div style="margin-bottom: 6pt; page-break-inside: avoid;">
+                <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.15;" border="0" cellpadding="0" cellspacing="0">
                   <tr>
-                    <td style="width: 22pt; padding: 1.5pt 0; vertical-align: top; font-weight: bold; border: none;">${idx + 1}.</td>
-                    <td style="width: 145pt; padding: 1.5pt 0; vertical-align: top; border: none;">Nama Lengkap</td>
-                    <td style="width: 15pt; padding: 1.5pt 0; vertical-align: top; border: none;">:</td>
-                    <td style="padding: 1.5pt 0; vertical-align: top; font-weight: bold; border: none;">${p.nama || '-'}</td>
+                    <td style="width: 22pt; padding: 1pt 0; vertical-align: top; font-weight: bold; border: none; line-height: 1.15;">${idx + 1}.</td>
+                    <td style="width: 145pt; padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">Nama Lengkap</td>
+                    <td style="width: 15pt; padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+                    <td style="padding: 1pt 0; vertical-align: top; font-weight: bold; border: none; line-height: 1.15;">${p.nama || '-'}</td>
                   </tr>
                   <tr>
                     <td style="border: none;"></td>
-                    <td style="padding: 1.5pt 0; vertical-align: top; border: none;">${isSiswa ? 'NISN / NIS' : 'NIP / NUPTK'}</td>
-                    <td style="padding: 1.5pt 0; vertical-align: top; border: none;">:</td>
-                    <td style="padding: 1.5pt 0; vertical-align: top; border: none;">${p.nisnNip || '-'}</td>
+                    <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">${isSiswa ? 'NISN / NIS' : 'NIP / NUPTK'}</td>
+                    <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+                    <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">${p.nisnNip || '-'}</td>
                   </tr>
                   ${p.tempatTglLahir ? `
                   <tr>
                     <td style="border: none;"></td>
-                    <td style="padding: 1.5pt 0; vertical-align: top; border: none;">Tempat, Tanggal Lahir</td>
-                    <td style="padding: 1.5pt 0; vertical-align: top; border: none;">:</td>
-                    <td style="padding: 1.5pt 0; vertical-align: top; border: none;">${p.tempatTglLahir}</td>
+                    <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">Tempat, Tanggal Lahir</td>
+                    <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+                    <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">${p.tempatTglLahir}</td>
                   </tr>
                   ` : ''}
                   <tr>
                     <td style="border: none;"></td>
-                    <td style="padding: 1.5pt 0; vertical-align: top; border: none;">${isSiswa ? 'Kelas' : 'Jabatan'}</td>
-                    <td style="padding: 1.5pt 0; vertical-align: top; border: none;">:</td>
-                    <td style="padding: 1.5pt 0; vertical-align: top; border: none;">${p.kelasJabatan || '-'}</td>
+                    <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">${isSiswa ? 'Kelas' : 'Jabatan'}</td>
+                    <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+                    <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">${p.kelasJabatan || '-'}</td>
                   </tr>
                   ${p.namaOrtu && p.namaOrtu !== '-' ? `
                   <tr>
                     <td style="border: none;"></td>
-                    <td style="padding: 1.5pt 0; vertical-align: top; border: none;">Nama Orang Tua / Wali</td>
-                    <td style="padding: 1.5pt 0; vertical-align: top; border: none;">:</td>
-                    <td style="padding: 1.5pt 0; vertical-align: top; border: none;">${p.namaOrtu}</td>
+                    <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">Nama Orang Tua / Wali</td>
+                    <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+                    <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">${p.namaOrtu}</td>
                   </tr>
                   ` : ''}
                   ${p.alamat && p.alamat !== '-' ? `
                   <tr>
                     <td style="border: none;"></td>
-                    <td style="padding: 1.5pt 0; vertical-align: top; border: none;">Alamat Domisili</td>
-                    <td style="padding: 1.5pt 0; vertical-align: top; border: none;">:</td>
-                    <td style="padding: 1.5pt 0; vertical-align: top; border: none;">${p.alamat}</td>
+                    <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">Alamat Domisili</td>
+                    <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+                    <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">${p.alamat}</td>
                   </tr>
                   ` : ''}
                 </table>
@@ -1374,45 +1523,45 @@ export function buildSuratHtml(
       } else {
         const item = subjekList[0] || {};
         subjekHtml = `
-          <p style="text-align: justify; margin: 0 0 10pt 0; line-height: 1.4;">
+          <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
             Yang bertanda tangan di bawah ini Kepala ${schoolNameIsi}, Kecamatan ${cleanKec}, Kabupaten ${cleanKab}, Provinsi ${prov}, menerangkan dengan sebenarnya bahwa:
           </p>
 
-          <table style="margin-left: 20pt; margin-bottom: 12pt; width: 92%; border: none; border-collapse: collapse; line-height: 1.45;" border="0" cellpadding="0" cellspacing="0">
+          <table style="margin: 6pt 0 8pt 20pt; width: 92%; border: none; border-collapse: collapse; line-height: 1.15;" border="0" cellpadding="0" cellspacing="0">
             <tr>
-              <td style="width: 155pt; padding: 1.5pt 0; vertical-align: top; border: none;">Nama Lengkap</td>
-              <td style="width: 15pt; padding: 1.5pt 0; vertical-align: top; border: none;">:</td>
-              <td style="padding: 1.5pt 0; vertical-align: top; font-weight: bold; border: none;">${item.nama || '-'}</td>
+              <td style="width: 155pt; padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">Nama Lengkap</td>
+              <td style="width: 15pt; padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+              <td style="padding: 1pt 0; vertical-align: top; font-weight: bold; border: none; line-height: 1.15;">${item.nama || '-'}</td>
             </tr>
             <tr>
-              <td style="padding: 1.5pt 0; vertical-align: top; border: none;">${isSiswa ? 'NISN / NIS' : 'NIP / NUPTK'}</td>
-              <td style="padding: 1.5pt 0; vertical-align: top; border: none;">:</td>
-              <td style="padding: 1.5pt 0; vertical-align: top; border: none;">${item.nisnNip || '-'}</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">${isSiswa ? 'NISN / NIS' : 'NIP / NUPTK'}</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">${item.nisnNip || '-'}</td>
             </tr>
             ${item.tempatTglLahir ? `
             <tr>
-              <td style="padding: 1.5pt 0; vertical-align: top; border: none;">Tempat, Tanggal Lahir</td>
-              <td style="padding: 1.5pt 0; vertical-align: top; border: none;">:</td>
-              <td style="padding: 1.5pt 0; vertical-align: top; border: none;">${item.tempatTglLahir}</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">Tempat, Tanggal Lahir</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">${item.tempatTglLahir}</td>
             </tr>
             ` : ''}
             <tr>
-              <td style="padding: 1.5pt 0; vertical-align: top; border: none;">${isSiswa ? 'Kelas' : 'Jabatan'}</td>
-              <td style="padding: 1.5pt 0; vertical-align: top; border: none;">:</td>
-              <td style="padding: 1.5pt 0; vertical-align: top; border: none;">${item.kelasJabatan || '-'}</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">${isSiswa ? 'Kelas' : 'Jabatan'}</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">${item.kelasJabatan || '-'}</td>
             </tr>
             ${item.namaOrtu && item.namaOrtu !== '-' ? `
             <tr>
-              <td style="padding: 1.5pt 0; vertical-align: top; border: none;">Nama Orang Tua / Wali</td>
-              <td style="padding: 1.5pt 0; vertical-align: top; border: none;">:</td>
-              <td style="padding: 1.5pt 0; vertical-align: top; border: none;">${item.namaOrtu}</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">Nama Orang Tua / Wali</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">${item.namaOrtu}</td>
             </tr>
             ` : ''}
             ${item.alamat && item.alamat !== '-' ? `
             <tr>
-              <td style="padding: 1.5pt 0; vertical-align: top; border: none;">Alamat Domisili</td>
-              <td style="padding: 1.5pt 0; vertical-align: top; border: none;">:</td>
-              <td style="padding: 1.5pt 0; vertical-align: top; border: none;">${item.alamat}</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">Alamat Domisili</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">${item.alamat}</td>
             </tr>
             ` : ''}
           </table>
@@ -1422,17 +1571,12 @@ export function buildSuratHtml(
       const defaultIntiSurat = `Adalah benar ${isMulti ? (isSiswa ? 'peserta didik yang terdaftar aktif' : 'pendidik / tenaga kependidikan aktif') : (isSiswa ? 'peserta didik yang terdaftar aktif' : 'pendidik / tenaga kependidikan aktif')} pada ${schoolNameIsi} Tahun Ajaran 2026/2027 dan berkelakuan baik serta mentaati segala tata tertib sekolah.`;
       const rawIntiSurat = (data.intiSurat || '').trim() || defaultIntiSurat;
 
-      const intiSuratHtml = rawIntiSurat
-        .split('\n')
-        .map((p: string) => p.trim())
-        .filter((p: string) => p.length > 0)
-        .map((p: string) => `<p style="text-align: justify; margin-bottom: 8pt; line-height: 1.4; font-size: 12pt;">${p}</p>`)
-        .join('');
+      const intiSuratHtml = formatParagrafSuratHtml(rawIntiSurat, { fontSize: '12pt' });
 
       badanSurat = `
-        <div style="text-align: center; margin: 12pt 0 16pt 0;">
-          <p style="margin: 0; text-align: center; font-size: 12pt; font-weight: bold; text-decoration: underline;">SURAT KETERANGAN</p>
-          <p class="nomor-surat" style="margin: 2pt 0 0 0; text-align: center; font-size: 11pt;">Nomor: ${surat.noSurat}</p>
+        <div style="text-align: center; margin: 10pt 0 12pt 0; line-height: 1.15;">
+          <p style="margin: 0; text-align: center; font-size: 12pt; font-weight: bold; text-decoration: underline; line-height: 1.15;">SURAT KETERANGAN</p>
+          <p class="nomor-surat" style="margin: 0; text-align: center; font-size: 11pt; line-height: 1.15;">Nomor: ${surat.noSurat}</p>
         </div>
 
         ${subjekHtml}
@@ -1440,12 +1584,12 @@ export function buildSuratHtml(
         ${intiSuratHtml}
 
         ${data.keperluan ? `
-        <p style="text-align: justify; margin-bottom: 8pt; line-height: 1.4; font-size: 12pt;">
+        <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
           Surat keterangan ini diberikan kepada yang bersangkutan untuk keperluan: <strong>${data.keperluan}</strong>.
         </p>
         ` : ''}
 
-        <p style="text-align: justify; margin-top: 10pt; line-height: 1.4; font-size: 12pt;">
+        <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
           Demikian surat keterangan ini kami buat dengan sebenarnya agar dapat dipergunakan sebagaimana mestinya oleh yang berkepentingan.
         </p>
       `;
@@ -1453,79 +1597,66 @@ export function buildSuratHtml(
     }
 
     case 'surat_undangan': {
-      const kataPengantar = data.kataPengantar || 'Sehubungan dengan rencana pelaksanaan kegiatan dan evaluasi program pembelajaran sekolah, dengan ini kami mengharap kehadiran Bapak/Ibu/Saudara pada pertemuan dinas yang akan dilaksanakan pada:';
-      const kalimatPenutup = data.kalimatPenutup || 'Mengingat sangat pentingnya acara tersebut di atas, kami sangat mengharapkan kehadiran Bapak/Ibu tepat pada waktunya. Atas perhatian dan kerja samanya kami ucapkan terima kasih.';
+      const kataPengantarRaw = data.kataPengantar || 'Dengan hormat,\nSehubungan dengan rencana pelaksanaan kegiatan dan evaluasi program pembelajaran sekolah, dengan ini kami mengharap kehadiran Bapak/Ibu/Saudara pada pertemuan dinas yang akan dilaksanakan pada:';
+      const kataPengantarFull = /^\s*dengan\s+hormat/i.test(kataPengantarRaw)
+        ? kataPengantarRaw
+        : `Dengan hormat,\n${kataPengantarRaw}`;
+      const kataPengantarHtml = formatParagrafSuratHtml(kataPengantarFull, {
+        fontSize: '12pt',
+        treatFirstLineSalutation: true,
+      });
+      const kalimatPenutupHtml = formatParagrafSuratHtml(
+        data.kalimatPenutup || 'Mengingat sangat pentingnya acara tersebut di atas, kami sangat mengharapkan kehadiran Bapak/Ibu tepat pada waktunya. Atas perhatian dan kerja samanya kami ucapkan terima kasih.',
+        { fontSize: '12pt' }
+      );
 
       const rawTujuanList: string[] = Array.isArray(data.tujuanList) && data.tujuanList.length > 0
         ? data.tujuanList.filter((t: string) => t && t.trim().length > 0)
         : (surat.tujuan ? [surat.tujuan] : []);
 
-      const tujuanHtml = buildKepadaYthBlock({
+      const headerUndanganHtml = buildHeaderNomorDanKepadaHtml({
+        noSurat: surat.noSurat,
+        lampiran: '-',
+        perihal: surat.perihal,
+        tempatSurat: sekolah.desa || 'Pekutatan',
+        tglIndo,
         tujuan: surat.tujuan || 'Dewan Guru SDN 1 Pekutatan',
         tujuanList: rawTujuanList,
-        tempat: 'Tempat',
+        tempatTujuan: 'Tempat',
         fontSize: '12pt',
       });
 
       badanSurat = `
-        <table style="width: 100%; margin-bottom: 12pt; border: none; border-collapse: collapse; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+        ${headerUndanganHtml}
+
+        ${kataPengantarHtml}
+
+        <table style="margin: 6pt 0 8pt 28pt; width: 90%; border: none; border-collapse: collapse; line-height: 1.15; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
           <tr>
-            <td style="width: 75pt; padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt;">Nomor</td>
-            <td style="width: 12pt; padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt;">:</td>
-            <td class="nomor-surat" style="padding: 1.5pt 0; vertical-align: top; border: none; font-size: 11pt;">${surat.noSurat}</td>
-            <td style="text-align: right; vertical-align: top; border: none; white-space: nowrap; font-size: 12pt;">${sekolah.desa || 'Pekutatan'}, ${tglIndo}</td>
+            <td style="width: 140pt; padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">Hari / Tanggal</td>
+            <td style="width: 15pt; padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+            <td style="padding: 1pt 0; vertical-align: top; font-weight: bold; border: none; line-height: 1.15;">${data.hariTanggal || '-'}</td>
           </tr>
           <tr>
-            <td style="padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt;">Lampiran</td>
-            <td style="padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt;">:</td>
-            <td style="padding: 1.5pt 0; vertical-align: top; border: none; font-size: 12pt;" colspan="2">-</td>
+            <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">Waktu</td>
+            <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+            <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">${data.waktu || '09.00 WITA - Selesai'}</td>
           </tr>
           <tr>
-            <td style="padding: 1.5pt 0; vertical-align: top; border: none; font-weight: bold; font-size: 12pt;">Perihal</td>
-            <td style="padding: 1.5pt 0; vertical-align: top; border: none; font-weight: bold; font-size: 12pt;">:</td>
-            <td style="padding: 1.5pt 0; vertical-align: top; border: none; font-weight: bold; font-size: 12pt;" colspan="2">${surat.perihal}</td>
+            <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">Tempat</td>
+            <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+            <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">${data.tempat || 'Ruang Pertemuan SDN 1 Pekutatan'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">Acara / Agenda</td>
+            <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+            <td style="padding: 1pt 0; vertical-align: top; font-weight: bold; border: none; line-height: 1.15;">${data.acara || surat.perihal}</td>
           </tr>
         </table>
 
-        ${tujuanHtml}
+        ${data.catatanTambahan ? formatParagrafSuratHtml(`Catatan: ${data.catatanTambahan}`, { fontSize: '12pt', italic: true }) : ''}
 
-        <p style="text-align: justify; margin-bottom: 8pt; line-height: 1.4;">
-          Dengan hormat,<br>
-          ${kataPengantar}
-        </p>
-
-        <table style="margin-left: 20pt; margin-bottom: 12pt; width: 92%; border: none; border-collapse: collapse; line-height: 1.45;" border="0" cellpadding="0" cellspacing="0">
-          <tr>
-            <td style="width: 140pt; padding: 1.5pt 0; vertical-align: top; border: none;">Hari / Tanggal</td>
-            <td style="width: 15pt; padding: 1.5pt 0; vertical-align: top; border: none;">:</td>
-            <td style="padding: 1.5pt 0; vertical-align: top; font-weight: bold; border: none;">${data.hariTanggal || '-'}</td>
-          </tr>
-          <tr>
-            <td style="padding: 1.5pt 0; vertical-align: top; border: none;">Waktu</td>
-            <td style="padding: 1.5pt 0; vertical-align: top; border: none;">:</td>
-            <td style="padding: 1.5pt 0; vertical-align: top; border: none;">${data.waktu || '09.00 WITA - Selesai'}</td>
-          </tr>
-          <tr>
-            <td style="padding: 1.5pt 0; vertical-align: top; border: none;">Tempat</td>
-            <td style="padding: 1.5pt 0; vertical-align: top; border: none;">:</td>
-            <td style="padding: 1.5pt 0; vertical-align: top; border: none;">${data.tempat || 'Ruang Pertemuan SDN 1 Pekutatan'}</td>
-          </tr>
-          <tr>
-            <td style="padding: 1.5pt 0; vertical-align: top; border: none;">Acara / Agenda</td>
-            <td style="padding: 1.5pt 0; vertical-align: top; border: none;">:</td>
-            <td style="padding: 1.5pt 0; vertical-align: top; font-weight: bold; border: none;">${data.acara || surat.perihal}</td>
-          </tr>
-        </table>
-
-        ${data.catatanTambahan ? `
-        <p style="text-align: justify; margin-bottom: 8pt; font-style: italic; line-height: 1.4;">
-          Catatan: ${data.catatanTambahan}
-        </p>
-        ` : ''}
-
-        <p style="text-align: justify; margin-top: 10pt; line-height: 1.4;">
-          ${kalimatPenutup}
-        </p>
+        ${kalimatPenutupHtml}
       `;
       break;
     }
@@ -1558,79 +1689,83 @@ export function buildSuratHtml(
       );
 
       badanSurat = `
-        <div style="text-align: center; margin: 12pt 0 16pt 0; font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif;">
-          <p style="margin: 0; text-align: center; font-size: 12pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.3px;">KEPUTUSAN KEPALA ${(schoolNameIsi || 'SEKOLAH DASAR NEGERI 1 PEKUTATAN').toUpperCase()}</p>
-          <p class="nomor-sk" style="margin: 2pt 0 0 0; text-align: center; font-size: 11pt; font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif; font-weight: normal;">Nomor: ${surat.noSurat}</p>
+        <div style="text-align: center; margin: 10pt 0 12pt 0; font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif; line-height: 1.15;">
+          <p style="margin: 0; text-align: center; font-size: 12pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.3px; line-height: 1.15;">KEPUTUSAN KEPALA ${(schoolNameIsi || 'SEKOLAH DASAR NEGERI 1 PEKUTATAN').toUpperCase()}</p>
+          <p class="nomor-sk" style="margin: 0; text-align: center; font-size: 11pt; font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif; font-weight: normal; line-height: 1.15;">Nomor: ${surat.noSurat}</p>
           ${data.adaLampiran && data.lampiranKeterangan ? `
-            <p class="lampiran-keterangan-sk" style="margin: 2pt 0 0 0; text-align: center; font-size: 10pt; font-family: 'Bookman Old Style', serif; font-style: italic; color: #334155;">
+            <p class="lampiran-keterangan-sk" style="margin: 0; text-align: center; font-size: 10pt; font-family: 'Bookman Old Style', serif; font-style: italic; color: #334155; line-height: 1.15;">
               Lampiran: ${data.lampiranKeterangan}
             </p>
           ` : ''}
-          <p style="margin: 8pt 0 0 0; text-align: center; font-size: 12pt; font-weight: bold; text-transform: uppercase;">
-            TENTANG<br>${data.tentang || surat.perihal}
+          <div style="margin: 6pt 0 0 0;">
+            <p style="margin: 0; text-align: center; font-size: 12pt; font-weight: bold; text-transform: uppercase; line-height: 1.15;">
+              TENTANG<br>${data.tentang || surat.perihal}
+            </p>
+          </div>
+        </div>
+
+        <div style="margin: 8pt 0;">
+          <p style="margin: 0; text-align: center; font-weight: bold; font-size: 12pt; line-height: 1.15;">
+            KEPALA ${(schoolNameIsi || 'SEKOLAH DASAR NEGERI 1 PEKUTATAN').toUpperCase()},
           </p>
         </div>
 
-        <p style="text-align: center; font-weight: bold; font-size: 12pt; margin: 10pt 0;">
-          KEPALA ${(schoolNameIsi || 'SEKOLAH DASAR NEGERI 1 PEKUTATAN').toUpperCase()},
-        </p>
-
-        <table style="width: 100%; margin-bottom: 10pt; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+        <table style="width: 100%; margin-bottom: 8pt; border: none; border-collapse: collapse; line-height: 1.15; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
           <tr>
-            <td style="width: 100pt; font-weight: bold; vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">Menimbang</td>
-            <td style="width: 14pt; vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">:</td>
-            <td style="vertical-align: top; padding: 2pt 0; border: none;">${menimbangHtml}</td>
+            <td style="width: 100pt; font-weight: bold; vertical-align: top; padding: 1.5pt 0; border: none; font-size: 12pt; line-height: 1.15;">Menimbang</td>
+            <td style="width: 14pt; vertical-align: top; padding: 1.5pt 0; border: none; font-size: 12pt; line-height: 1.15;">:</td>
+            <td style="vertical-align: top; padding: 1.5pt 0; border: none; line-height: 1.15;">${menimbangHtml}</td>
           </tr>
           <tr>
-            <td style="font-weight: bold; vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">Mengingat</td>
-            <td style="vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">:</td>
-            <td style="vertical-align: top; padding: 2pt 0; border: none;">${mengingatHtml}</td>
+            <td style="font-weight: bold; vertical-align: top; padding: 1.5pt 0; border: none; font-size: 12pt; line-height: 1.15;">Mengingat</td>
+            <td style="vertical-align: top; padding: 1.5pt 0; border: none; font-size: 12pt; line-height: 1.15;">:</td>
+            <td style="vertical-align: top; padding: 1.5pt 0; border: none; line-height: 1.15;">${mengingatHtml}</td>
           </tr>
           ${memperhatikanHtml ? `
           <tr>
-            <td style="font-weight: bold; vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">Memperhatikan</td>
-            <td style="vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">:</td>
-            <td style="vertical-align: top; padding: 2pt 0; border: none;">${memperhatikanHtml}</td>
+            <td style="font-weight: bold; vertical-align: top; padding: 1.5pt 0; border: none; font-size: 12pt; line-height: 1.15;">Memperhatikan</td>
+            <td style="vertical-align: top; padding: 1.5pt 0; border: none; font-size: 12pt; line-height: 1.15;">:</td>
+            <td style="vertical-align: top; padding: 1.5pt 0; border: none; line-height: 1.15;">${memperhatikanHtml}</td>
           </tr>
           ` : ''}
         </table>
 
-        <div style="text-align: center; font-weight: bold; font-size: 12pt; margin: 12pt 0;">
+        <div style="text-align: center; font-weight: bold; font-size: 12pt; margin: 10pt 0; line-height: 1.15;">
           MEMUTUSKAN:
         </div>
 
-        <table style="width: 100%; margin-bottom: 12pt; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+        <table style="width: 100%; margin-bottom: 10pt; border: none; border-collapse: collapse; line-height: 1.15; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
           <tr>
-            <td style="width: 100pt; font-weight: bold; vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">Menetapkan</td>
-            <td style="width: 14pt; vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">:</td>
-            <td style="text-align: justify; font-weight: bold; vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">
+            <td style="width: 100pt; font-weight: bold; vertical-align: top; padding: 1.5pt 0; border: none; font-size: 12pt; line-height: 1.15;">Menetapkan</td>
+            <td style="width: 14pt; vertical-align: top; padding: 1.5pt 0; border: none; font-size: 12pt; line-height: 1.15;">:</td>
+            <td style="text-align: justify; font-weight: bold; vertical-align: top; padding: 1.5pt 0; border: none; font-size: 12pt; line-height: 1.15;">
               ${data.tentang || surat.perihal}
             </td>
           </tr>
           ${diktumItems.map((d, idx) => `
             <tr>
-              <td style="font-weight: bold; vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">${formatDiktumLabel(d.label, idx)}</td>
-              <td style="vertical-align: top; padding: 2pt 0; border: none; font-size: 12pt;">:</td>
-              <td style="text-align: justify; vertical-align: top; padding: 2pt 0; border: none; white-space: pre-line; font-size: 12pt;">${d.isi}</td>
+              <td style="font-weight: bold; vertical-align: top; padding: 1.5pt 0; border: none; font-size: 12pt; line-height: 1.15;">${formatDiktumLabel(d.label, idx)}</td>
+              <td style="vertical-align: top; padding: 1.5pt 0; border: none; font-size: 12pt; line-height: 1.15;">:</td>
+              <td style="text-align: justify; vertical-align: top; padding: 1.5pt 0; border: none; white-space: pre-line; font-size: 12pt; line-height: 1.15;">${d.isi}</td>
             </tr>
           `).join('')}
         </table>
 
         <!-- Tempat dan Tanggal Penetapan SK (Sejajar di sisi kanan atas TTD) -->
-        <table style="width: 100%; margin-top: 14pt; border: none; border-collapse: collapse; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+        <table style="width: 100%; margin-top: 10pt; border: none; border-collapse: collapse; font-size: 12pt; line-height: 1.15;" border="0" cellpadding="0" cellspacing="0">
           <tr>
             <td style="width: 52%; border: none;">&nbsp;</td>
             <td style="width: 48%; border: none; vertical-align: top;">
-              <table style="border: none; border-collapse: collapse; width: 100%; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+              <table style="border: none; border-collapse: collapse; width: 100%; font-size: 12pt; line-height: 1.15;" border="0" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="width: 85pt; padding: 1pt 0; border: none; font-size: 12pt;">Ditetapkan di</td>
-                  <td style="width: 12pt; padding: 1pt 0; border: none; font-size: 12pt;">:</td>
-                  <td style="padding: 1pt 0; border: none; font-size: 12pt; font-weight: 500;">${sekolah.desa || 'Pekutatan'}</td>
+                  <td style="width: 85pt; padding: 1pt 0; border: none; font-size: 12pt; line-height: 1.15;">Ditetapkan di</td>
+                  <td style="width: 12pt; padding: 1pt 0; border: none; font-size: 12pt; line-height: 1.15;">:</td>
+                  <td style="padding: 1pt 0; border: none; font-size: 12pt; font-weight: 500; line-height: 1.15;">${sekolah.desa || 'Pekutatan'}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 1pt 0; border: none; font-size: 12pt;">Pada tanggal</td>
-                  <td style="padding: 1pt 0; border: none; font-size: 12pt;">:</td>
-                  <td style="padding: 1pt 0; border: none; font-size: 12pt; font-weight: 500;">${tglIndo}</td>
+                  <td style="padding: 1pt 0; border: none; font-size: 12pt; line-height: 1.15;">Pada tanggal</td>
+                  <td style="padding: 1pt 0; border: none; font-size: 12pt; line-height: 1.15;">:</td>
+                  <td style="padding: 1pt 0; border: none; font-size: 12pt; font-weight: 500; line-height: 1.15;">${tglIndo}</td>
                 </tr>
               </table>
             </td>
@@ -1654,23 +1789,25 @@ export function buildSuratHtml(
       const schoolName = schoolNameIsi;
 
       const pembukaHtml = isTtdKepsek ? `
-        <p style="text-align: justify; margin: 0 0 10pt 0; line-height: 1.45; font-size: 12pt;">
+        <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
           Yang bertanda tangan dibawah ini Kepala ${schoolName}, Kecamatan ${cleanKec}, Kabupaten ${cleanKab}-${prov} menugaskan kepada :
         </p>
       ` : `
-        <table style="width: 100%; margin-bottom: 10pt; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+        <table style="width: 100%; margin-bottom: 8pt; border: none; border-collapse: collapse; line-height: 1.15; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
           <tr>
-            <td style="width: 80pt; vertical-align: top; border: none; font-weight: bold; font-size: 12pt;">Dasar</td>
-            <td style="width: 15pt; vertical-align: top; border: none; font-size: 12pt;">:</td>
-            <td style="text-align: justify; vertical-align: top; border: none; font-size: 12pt;">${data.dasarTugas || 'Surat Edaran / Program Kerja Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana.'}</td>
+            <td style="width: 80pt; vertical-align: top; border: none; font-weight: bold; font-size: 12pt; line-height: 1.15;">Dasar</td>
+            <td style="width: 15pt; vertical-align: top; border: none; font-size: 12pt; line-height: 1.15;">:</td>
+            <td style="text-align: justify; vertical-align: top; border: none; font-size: 12pt; line-height: 1.15;">${data.dasarTugas || 'Surat Edaran / Program Kerja Dinas Pendidikan Kepemudaan dan Olahraga Kab. Jembrana.'}</td>
           </tr>
         </table>
 
-        <div style="text-align: center; font-weight: bold; font-size: 12pt; margin: 12pt 0;">
+        <div style="text-align: center; font-weight: bold; font-size: 12pt; margin: 8pt 0; line-height: 1.15;">
           MEMERINTAHKAN:
         </div>
 
-        <p style="margin: 0 0 6pt 0; font-weight: bold; font-size: 12pt;">Kepada:</p>
+        <div style="margin: 0 0 4pt 0;">
+          <p style="margin: 0; font-weight: bold; font-size: 12pt; line-height: 1.15;">Kepada:</p>
+        </div>
       `;
 
       let penerimaHtml = '';
@@ -1680,7 +1817,7 @@ export function buildSuratHtml(
         if (siswaListTugas.length > 3) {
           // Lebih dari 3 siswa: format tabel proporsional 100% pas margin (Nama diperbesar maks 2 baris, NISN & Kelas diperkecil)
           penerimaHtml = `
-            <table style="width: 100%; max-width: 100%; border-collapse: collapse; font-size: 10pt; margin-top: 4pt; margin-bottom: 6pt; table-layout: fixed; box-sizing: border-box;" border="1" cellpadding="4" cellspacing="0">
+            <table style="width: 100%; max-width: 100%; border-collapse: collapse; font-size: 10pt; margin-top: 4pt; margin-bottom: 6pt; table-layout: fixed; box-sizing: border-box; line-height: 1.15;" border="1" cellpadding="4" cellspacing="0">
               <colgroup>
                 <col style="width: 5%;">
                 <col style="width: 45%;">
@@ -1701,10 +1838,10 @@ export function buildSuratHtml(
                 ${siswaListTugas.map((s: any, idx: number) => `
                   <tr>
                     <td style="border: 1px solid #000; padding: 4pt 2pt; text-align: center; vertical-align: middle; box-sizing: border-box;">${idx + 1}.</td>
-                    <td style="border: 1px solid #000; padding: 4pt 6pt; vertical-align: middle; font-weight: 600; font-size: 10pt; line-height: 1.25; word-wrap: break-word; overflow-wrap: break-word; word-break: normal; box-sizing: border-box;">${s.nama || '-'}</td>
+                    <td style="border: 1px solid #000; padding: 4pt 6pt; vertical-align: middle; font-weight: 600; font-size: 10pt; line-height: 1.15; word-wrap: break-word; overflow-wrap: break-word; word-break: normal; box-sizing: border-box;">${s.nama || '-'}</td>
                     <td style="border: 1px solid #000; padding: 4pt 2pt; vertical-align: middle; text-align: center; font-size: 9pt; white-space: nowrap; box-sizing: border-box;">${s.nisn || s.nis || '-'}</td>
                     <td style="border: 1px solid #000; padding: 4pt 2pt; vertical-align: middle; text-align: center; font-size: 9pt; white-space: nowrap; box-sizing: border-box;">${s.kelas || '-'}</td>
-                    <td style="border: 1px solid #000; padding: 4pt 5pt; vertical-align: middle; font-size: 9pt; line-height: 1.2; word-wrap: break-word; overflow-wrap: break-word; word-break: normal; box-sizing: border-box;">${s.sekolah || schoolName}</td>
+                    <td style="border: 1px solid #000; padding: 4pt 5pt; vertical-align: middle; font-size: 9pt; line-height: 1.15; word-wrap: break-word; overflow-wrap: break-word; word-break: normal; box-sizing: border-box;">${s.sekolah || schoolName}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -1713,61 +1850,61 @@ export function buildSuratHtml(
         } else if (siswaListTugas.length > 0) {
           // 1 - 3 siswa: format perincian baris
           penerimaHtml = siswaListTugas.map((s: any, idx: number) => `
-            <div style="margin-bottom: 8pt; page-break-inside: avoid;">
-              <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+            <div style="margin-bottom: 6pt; page-break-inside: avoid;">
+              <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.15; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="width: 22pt; vertical-align: top; border: none; padding: 2pt 0;">${siswaListTugas.length > 1 ? `${idx + 1}.` : ''}</td>
-                  <td style="width: 135pt; vertical-align: top; border: none; padding: 2pt 0;">Nama Siswa</td>
-                  <td style="width: 15pt; vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; font-weight: bold; border: none; padding: 2pt 0;">${s.nama || '-'}</td>
+                  <td style="width: 22pt; vertical-align: top; border: none; padding: 1.5pt 0;">${siswaListTugas.length > 1 ? `${idx + 1}.` : ''}</td>
+                  <td style="width: 135pt; vertical-align: top; border: none; padding: 1.5pt 0;">Nama Siswa</td>
+                  <td style="width: 15pt; vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; font-weight: bold; border: none; padding: 1.5pt 0;">${s.nama || '-'}</td>
                 </tr>
                 <tr>
                   <td style="border: none;"></td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">NISN / NIS</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${s.nisn || s.nis || '-'}</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">NISN / NIS</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${s.nisn || s.nis || '-'}</td>
                 </tr>
                 <tr>
                   <td style="border: none;"></td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">Kelas</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${s.kelas || '-'}</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Kelas</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${s.kelas || '-'}</td>
                 </tr>
                 <tr>
                   <td style="border: none;"></td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">Asal Sekolah</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${s.sekolah || schoolName}</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Asal Sekolah</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${s.sekolah || schoolName}</td>
                 </tr>
               </table>
             </div>
           `).join('');
         } else {
           penerimaHtml = `
-            <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+            <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.15; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
               <tr>
-                <td style="width: 22pt; vertical-align: top; border: none; padding: 2pt 0;">1.</td>
-                <td style="width: 135pt; vertical-align: top; border: none; padding: 2pt 0;">Nama Siswa</td>
-                <td style="width: 15pt; vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                <td style="vertical-align: top; font-weight: bold; border: none; padding: 2pt 0;">${surat.tujuan || '-'}</td>
+                <td style="width: 22pt; vertical-align: top; border: none; padding: 1.5pt 0;">1.</td>
+                <td style="width: 135pt; vertical-align: top; border: none; padding: 1.5pt 0;">Nama Siswa</td>
+                <td style="width: 15pt; vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                <td style="vertical-align: top; font-weight: bold; border: none; padding: 1.5pt 0;">${surat.tujuan || '-'}</td>
               </tr>
               <tr>
                 <td style="border: none;"></td>
-                <td style="vertical-align: top; border: none; padding: 2pt 0;">NISN / NIS</td>
-                <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                <td style="vertical-align: top; border: none; padding: 2pt 0;">-</td>
+                <td style="vertical-align: top; border: none; padding: 1.5pt 0;">NISN / NIS</td>
+                <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                <td style="vertical-align: top; border: none; padding: 1.5pt 0;">-</td>
               </tr>
               <tr>
                 <td style="border: none;"></td>
-                <td style="vertical-align: top; border: none; padding: 2pt 0;">Kelas</td>
-                <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                <td style="vertical-align: top; border: none; padding: 2pt 0;">-</td>
+                <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Kelas</td>
+                <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                <td style="vertical-align: top; border: none; padding: 1.5pt 0;">-</td>
               </tr>
               <tr>
                 <td style="border: none;"></td>
-                <td style="vertical-align: top; border: none; padding: 2pt 0;">Asal Sekolah</td>
-                <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                <td style="vertical-align: top; border: none; padding: 2pt 0;">${schoolName}</td>
+                <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Asal Sekolah</td>
+                <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${schoolName}</td>
               </tr>
             </table>
           `;
@@ -1777,7 +1914,7 @@ export function buildSuratHtml(
         if (pegawaiList.length > 3) {
           // Lebih dari 3 guru: format tabel proporsional 100% pas margin (Nama diperbesar maks 2 baris)
           penerimaHtml = `
-            <table style="width: 100%; max-width: 100%; border-collapse: collapse; font-size: 10pt; margin-top: 4pt; margin-bottom: 6pt; table-layout: fixed; box-sizing: border-box;" border="1" cellpadding="4" cellspacing="0">
+            <table style="width: 100%; max-width: 100%; border-collapse: collapse; font-size: 10pt; margin-top: 4pt; margin-bottom: 6pt; table-layout: fixed; box-sizing: border-box; line-height: 1.15;" border="1" cellpadding="4" cellspacing="0">
               <colgroup>
                 <col style="width: 5%;">
                 <col style="width: 41%;">
@@ -1798,10 +1935,10 @@ export function buildSuratHtml(
                 ${pegawaiList.map((p: any, idx: number) => `
                   <tr>
                     <td style="border: 1px solid #000; padding: 4pt 2pt; text-align: center; vertical-align: middle; box-sizing: border-box;">${idx + 1}.</td>
-                    <td style="border: 1px solid #000; padding: 4pt 6pt; vertical-align: middle; font-weight: 600; font-size: 10pt; line-height: 1.25; word-wrap: break-word; overflow-wrap: break-word; word-break: normal; box-sizing: border-box;">${p.nama || '-'}</td>
-                    <td style="border: 1px solid #000; padding: 4pt 2pt; vertical-align: middle; text-align: center; font-size: 9pt; line-height: 1.2; box-sizing: border-box;">${p.nip || p.nipppk || '-'}</td>
-                    <td style="border: 1px solid #000; padding: 4pt 2pt; vertical-align: middle; text-align: center; font-size: 9pt; line-height: 1.2; box-sizing: border-box;">${p.pangkatGol || p.pangkat || '-'}</td>
-                    <td style="border: 1px solid #000; padding: 4pt 5pt; vertical-align: middle; font-size: 9pt; line-height: 1.2; word-wrap: break-word; overflow-wrap: break-word; word-break: normal; box-sizing: border-box;">${p.jabatan || 'Guru ' + schoolName}</td>
+                    <td style="border: 1px solid #000; padding: 4pt 6pt; vertical-align: middle; font-weight: 600; font-size: 10pt; line-height: 1.15; word-wrap: break-word; overflow-wrap: break-word; word-break: normal; box-sizing: border-box;">${p.nama || '-'}</td>
+                    <td style="border: 1px solid #000; padding: 4pt 2pt; vertical-align: middle; text-align: center; font-size: 9pt; line-height: 1.15; box-sizing: border-box;">${p.nip || p.nipppk || '-'}</td>
+                    <td style="border: 1px solid #000; padding: 4pt 2pt; vertical-align: middle; text-align: center; font-size: 9pt; line-height: 1.15; box-sizing: border-box;">${p.pangkatGol || p.pangkat || '-'}</td>
+                    <td style="border: 1px solid #000; padding: 4pt 5pt; vertical-align: middle; font-size: 9pt; line-height: 1.15; word-wrap: break-word; overflow-wrap: break-word; word-break: normal; box-sizing: border-box;">${p.jabatan || 'Guru ' + schoolName}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -1809,61 +1946,61 @@ export function buildSuratHtml(
           `;
         } else if (pegawaiList.length > 0) {
           penerimaHtml = pegawaiList.map((p: any, idx: number) => `
-            <div style="margin-bottom: 8pt; page-break-inside: avoid;">
-              <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+            <div style="margin-bottom: 6pt; page-break-inside: avoid;">
+              <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.15; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="width: 22pt; vertical-align: top; border: none; padding: 2pt 0;">${pegawaiList.length > 1 ? `${idx + 1}.` : ''}</td>
-                  <td style="width: 135pt; vertical-align: top; border: none; padding: 2pt 0;">Nama</td>
-                  <td style="width: 15pt; vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; font-weight: bold; border: none; padding: 2pt 0;">${p.nama || '-'}</td>
+                  <td style="width: 22pt; vertical-align: top; border: none; padding: 1.5pt 0;">${pegawaiList.length > 1 ? `${idx + 1}.` : ''}</td>
+                  <td style="width: 135pt; vertical-align: top; border: none; padding: 1.5pt 0;">Nama</td>
+                  <td style="width: 15pt; vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; font-weight: bold; border: none; padding: 1.5pt 0;">${p.nama || '-'}</td>
                 </tr>
                 <tr>
                   <td style="border: none;"></td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">NIP / NIPPPK</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${p.nip || p.nipppk || '-'}</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">NIP / NIPPPK</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${p.nip || p.nipppk || '-'}</td>
                 </tr>
                 <tr>
                   <td style="border: none;"></td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">Pangkat / Golongan</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${p.pangkatGol || p.pangkat || '-'}</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Pangkat / Golongan</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${p.pangkatGol || p.pangkat || '-'}</td>
                 </tr>
                 <tr>
                   <td style="border: none;"></td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">Jabatan</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${p.jabatan || 'Guru ' + schoolName}</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Jabatan</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${p.jabatan || 'Guru ' + schoolName}</td>
                 </tr>
               </table>
             </div>
           `).join('');
         } else {
           penerimaHtml = `
-            <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+            <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.15; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
               <tr>
-                <td style="width: 22pt; vertical-align: top; border: none; padding: 2pt 0;">1.</td>
-                <td style="width: 135pt; vertical-align: top; border: none; padding: 2pt 0;">Nama</td>
-                <td style="width: 15pt; vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                <td style="vertical-align: top; font-weight: bold; border: none; padding: 2pt 0;">${surat.tujuan || '-'}</td>
+                <td style="width: 22pt; vertical-align: top; border: none; padding: 1.5pt 0;">1.</td>
+                <td style="width: 135pt; vertical-align: top; border: none; padding: 1.5pt 0;">Nama</td>
+                <td style="width: 15pt; vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                <td style="vertical-align: top; font-weight: bold; border: none; padding: 1.5pt 0;">${surat.tujuan || '-'}</td>
               </tr>
               <tr>
                 <td style="border: none;"></td>
-                <td style="vertical-align: top; border: none; padding: 2pt 0;">NIP / NIPPPK</td>
-                <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                <td style="vertical-align: top; border: none; padding: 2pt 0;">-</td>
+                <td style="vertical-align: top; border: none; padding: 1.5pt 0;">NIP / NIPPPK</td>
+                <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                <td style="vertical-align: top; border: none; padding: 1.5pt 0;">-</td>
               </tr>
               <tr>
                 <td style="border: none;"></td>
-                <td style="vertical-align: top; border: none; padding: 2pt 0;">Pangkat / Golongan</td>
-                <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                <td style="vertical-align: top; border: none; padding: 2pt 0;">-</td>
+                <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Pangkat / Golongan</td>
+                <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                <td style="vertical-align: top; border: none; padding: 1.5pt 0;">-</td>
               </tr>
               <tr>
                 <td style="border: none;"></td>
-                <td style="vertical-align: top; border: none; padding: 2pt 0;">Jabatan</td>
-                <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                <td style="vertical-align: top; border: none; padding: 2pt 0;">Guru ${schoolName}</td>
+                <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Jabatan</td>
+                <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Guru ${schoolName}</td>
               </tr>
             </table>
           `;
@@ -1871,49 +2008,51 @@ export function buildSuratHtml(
       }
 
       badanSurat = `
-        <div style="text-align: center; margin: 12pt 0 16pt 0;">
-          <p style="margin: 0; text-align: center; font-size: 12pt; font-weight: bold; text-decoration: underline;">SURAT PERINTAH TUGAS</p>
-          <p class="nomor-surat" style="margin: 2pt 0 0 0; text-align: center; font-size: 11pt;">Nomor: ${surat.noSurat}</p>
+        <div style="text-align: center; margin: 10pt 0 12pt 0; line-height: 1.15;">
+          <p style="margin: 0; text-align: center; font-size: 12pt; font-weight: bold; text-decoration: underline; line-height: 1.15;">SURAT PERINTAH TUGAS</p>
+          <p class="nomor-surat" style="margin: 0; text-align: center; font-size: 11pt; line-height: 1.15;">Nomor: ${surat.noSurat}</p>
         </div>
 
         ${pembukaHtml}
 
-        <div style="${isTableFormat ? 'margin: 6pt 0 10pt 0; width: 100%; box-sizing: border-box;' : 'margin-left: 16pt; margin-bottom: 10pt;'}">
+        <div style="${isTableFormat ? 'margin: 6pt 0 8pt 0; width: 100%; box-sizing: border-box;' : 'margin: 6pt 0 8pt 16pt;'}">
           ${penerimaHtml}
         </div>
 
-        <p style="margin: 0 0 6pt 0; font-weight: bold;">Untuk:</p>
+        <div style="margin: 0 0 4pt 0;">
+          <p style="margin: 0; font-weight: bold; line-height: 1.15;">Untuk:</p>
+        </div>
 
-        <table style="margin-left: 16pt; margin-bottom: 12pt; width: calc(100% - 16pt); border: none; border-collapse: collapse; line-height: 1.45; box-sizing: border-box;" border="0" cellpadding="0" cellspacing="0">
+        <table style="margin: 0 0 8pt 16pt; width: calc(100% - 16pt); border: none; border-collapse: collapse; line-height: 1.15; box-sizing: border-box;" border="0" cellpadding="0" cellspacing="0">
           <tr>
-            <td style="width: 20pt; vertical-align: top; border: none; padding: 2pt 0;">1.</td>
-            <td style="text-align: justify; vertical-align: top; border: none; padding: 2pt 0;">
+            <td style="width: 20pt; vertical-align: top; border: none; padding: 1.5pt 0;">1.</td>
+            <td style="text-align: justify; vertical-align: top; border: none; padding: 1.5pt 0;">
               Melaksanakan tugas: ${data.tujuanTugas || surat.perihal}
             </td>
           </tr>
           <tr>
-            <td style="vertical-align: top; border: none; padding: 2pt 0;">2.</td>
-            <td style="vertical-align: top; border: none; padding: 2pt 0;">
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0;">2.</td>
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0;">
               Tempat pelaksanaan: ${data.tempatTugas || '-'}
             </td>
           </tr>
           <tr>
-            <td style="vertical-align: top; border: none; padding: 2pt 0;">3.</td>
-            <td style="vertical-align: top; border: none; padding: 2pt 0;">
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0;">3.</td>
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0;">
               Waktu pelaksanaan: ${data.tglMulai ? formatTanggalIndonesia(data.tglMulai) : tglIndo}${data.tglSelesai && data.tglSelesai !== data.tglMulai ? ` s.d. ${formatTanggalIndonesia(data.tglSelesai)}` : ''}${data.waktu ? ` (${data.waktu})` : ''}
             </td>
           </tr>
           ${!isSiswa ? `
           <tr>
-            <td style="vertical-align: top; border: none; padding: 2pt 0;">4.</td>
-            <td style="text-align: justify; vertical-align: top; border: none; padding: 2pt 0;">
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0;">4.</td>
+            <td style="text-align: justify; vertical-align: top; border: none; padding: 1.5pt 0;">
               Melaporkan hasil pelaksanaan tugas kepada atasan langsung setelah kegiatan selesai.
             </td>
           </tr>
           ` : ''}
         </table>
 
-        <p style="text-align: justify; margin-top: 10pt; line-height: 1.4;">
+        <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
           ${isSiswa
             ? 'Demikian surat perintah tugas ini diberikan kepada siswa yang bersangkutan untuk dilaksanakan dengan sebaik-baiknya dan penuh rasa tanggung jawab.'
             : 'Demikian surat perintah tugas ini dibuat untuk dilaksanakan dengan sebaik-baiknya dan penuh rasa tanggung jawab.'}
@@ -1949,12 +2088,12 @@ export function buildSuratHtml(
         let tembusanHtml = '';
         if (tembusanLines.length > 0) {
           tembusanHtml = `
-            <div style="text-align: left; font-size: 10pt; line-height: 1.35; margin-top: 4pt;">
-              <p style="margin: 0; font-weight: bold; text-decoration: underline; font-size: 10pt;">Tembusan disampaikan kepada Yth.:</p>
-              <div style="margin: 3pt 0 0 2pt;">
+            <div style="text-align: left; font-size: 10pt; line-height: 1.15; margin-top: 4pt;">
+              <p style="margin: 0; font-weight: bold; text-decoration: underline; font-size: 10pt; line-height: 1.15;">Tembusan disampaikan kepada Yth.:</p>
+              <div style="margin: 2pt 0 0 2pt;">
                 ${tembusanLines.map((line: string, idx: number) => {
                   const clean = line.replace(/^[0-9]+[\.\)]\s*/, '');
-                  return `<p style="margin: 1.5pt 0; font-size: 10pt; text-align: left;">${idx + 1}. ${clean}</p>`;
+                  return `<p style="margin: 0; font-size: 10pt; text-align: left; line-height: 1.15;">${idx + 1}. ${clean}</p>`;
                 }).join('')}
               </div>
             </div>
@@ -1972,19 +2111,15 @@ export function buildSuratHtml(
           })}
 
           <!-- 2. Judul Naskah Dinas: Surat Pengantar dan Nomor Surat di tengah -->
-          <div style="text-align: center; margin: 14pt 0 14pt 0;">
-            <p style="margin: 0; text-align: center; font-size: 12.5pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px;">SURAT PENGANTAR</p>
-            <p class="nomor-surat" style="margin: 2.5pt 0 0 0; text-align: center; font-size: 11pt;">Nomor: ${surat.noSurat}</p>
+          <div style="text-align: center; margin: 10pt 0 12pt 0; line-height: 1.15;">
+            <p style="margin: 0; text-align: center; font-size: 12.5pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px; line-height: 1.15;">SURAT PENGANTAR</p>
+            <p class="nomor-surat" style="margin: 0; text-align: center; font-size: 11pt; line-height: 1.15;">Nomor: ${surat.noSurat}</p>
           </div>
 
-          ${data.kalimatPengantar ? `
-            <p style="text-align: justify; margin: 0 0 10pt 0; line-height: 1.45; font-size: 11.5pt;">
-              ${data.kalimatPengantar}
-            </p>
-          ` : ''}
+          ${data.kalimatPengantar ? formatParagrafSuratHtml(String(data.kalimatPengantar), { fontSize: '11.5pt' }) : ''}
 
           <!-- 3. Inti Surat: Tabel Kolom No, Uraian, Jumlah, Keterangan -->
-          <table style="width: 100%; border-collapse: collapse; font-size: 11pt; margin-bottom: 14pt;" border="1" cellpadding="6" cellspacing="0">
+          <table style="width: 100%; border-collapse: collapse; font-size: 11pt; margin: 6pt 0 10pt 0; line-height: 1.15;" border="1" cellpadding="6" cellspacing="0">
             <thead>
               <tr style="text-align: center; font-weight: bold;">
                 <th style="width: 32pt; border: 1px solid #000; padding: 6pt 4pt; text-align: center;">No</th>
@@ -2001,10 +2136,10 @@ export function buildSuratHtml(
                 const ketHtml = rawKet.replace(/\n/g, '<br/>');
                 return `
                   <tr>
-                    <td style="border: 1px solid #000; padding: 8pt 4pt; text-align: center; vertical-align: top;">${idx + 1}.</td>
-                    <td style="border: 1px solid #000; padding: 8pt 8pt; vertical-align: top; text-align: left; line-height: 1.45;">${uraianHtml}</td>
-                    <td style="border: 1px solid #000; padding: 8pt 6pt; vertical-align: top; text-align: center;">${doc.jumlah || '1 bendel'}</td>
-                    <td style="border: 1px solid #000; padding: 8pt 8pt; vertical-align: top; text-align: left; line-height: 1.45;">${ketHtml}</td>
+                    <td style="border: 1px solid #000; padding: 6pt 4pt; text-align: center; vertical-align: top; line-height: 1.15;">${idx + 1}.</td>
+                    <td style="border: 1px solid #000; padding: 6pt 8pt; vertical-align: top; text-align: left; line-height: 1.15;">${uraianHtml}</td>
+                    <td style="border: 1px solid #000; padding: 6pt 6pt; vertical-align: top; text-align: center; line-height: 1.15;">${doc.jumlah || '1 bendel'}</td>
+                    <td style="border: 1px solid #000; padding: 6pt 8pt; vertical-align: top; text-align: left; line-height: 1.15;">${ketHtml}</td>
                   </tr>
                 `;
               }).join('')}
@@ -2014,7 +2149,7 @@ export function buildSuratHtml(
 
         // Tanda Tangan: Sisi kiri memuat Tembusan (di-enter ke bawah agar tidak sejajar dengan awal kolom TTD), Sisi kanan memuat TTD Kepala Sekolah
         customTtdBlock = `
-          <table class="ttd-table" style="width: 100%; margin-top: 20pt; border: none; border-collapse: collapse; line-height: 1.4;" border="0" cellpadding="0" cellspacing="0">
+          <table class="ttd-table" style="width: 100%; margin-top: 20pt; border: none; border-collapse: collapse; line-height: 1.15;" border="0" cellpadding="0" cellspacing="0">
             <tr>
               <!-- Sisi kiri kertas: Tembusan di-enter ke bawah agar tidak sejajar dengan kolom TTD -->
               <td style="width: 52%; vertical-align: bottom; border: none; padding-right: 14pt; padding-bottom: 2pt;">
@@ -2022,13 +2157,13 @@ export function buildSuratHtml(
                 ${tembusanHtml}
               </td>
               <!-- Sisi kanan kertas: TTD Kepala Sekolah -->
-              <td style="width: 48%; vertical-align: top; text-align: center; border: none; padding-left: 8pt;">
-                <p style="margin: 0 0 3pt 0; text-align: center; font-size: 11.5pt; position: relative; z-index: 10;">${sekolah.desa || 'Pekutatan'}, ${tglIndo}</p>
-                <p style="margin: 0; font-weight: bold; text-align: center; font-size: 11.5pt; position: relative; z-index: 10;">Kepala Sekolah,</p>
+              <td style="width: 48%; vertical-align: top; text-align: center; border: none; padding-left: 8pt; line-height: 1.15;">
+                <p style="margin: 0; text-align: center; font-size: 11.5pt; line-height: 1.15; position: relative; z-index: 10;">${sekolah.desa || 'Pekutatan'}, ${tglIndo}</p>
+                <p style="margin: 0; font-weight: bold; text-align: center; font-size: 11.5pt; line-height: 1.15; position: relative; z-index: 10;">Kepala Sekolah,</p>
                 ${buildKepsekSignatureSpaceHtml(sekolah, stampOptions, '50pt')}
-                <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; font-size: 11.5pt; position: relative; z-index: 10;">${kepsekNama}</p>
-                ${pangkatKepsek ? `<p style="margin: 1.5pt 0 0 0; font-size: 10.5pt; text-align: center; position: relative; z-index: 10;">${pangkatKepsek}</p>` : ''}
-                <p style="margin: 1.5pt 0 0 0; font-size: 10.5pt; text-align: center; position: relative; z-index: 10;">NIP. ${kepsekNip}</p>
+                <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; font-size: 11.5pt; line-height: 1.15; position: relative; z-index: 10;">${kepsekNama}</p>
+                ${pangkatKepsek ? `<p style="margin: 0; font-size: 10.5pt; text-align: center; line-height: 1.15; position: relative; z-index: 10;">${pangkatKepsek}</p>` : ''}
+                <p style="margin: 0; font-size: 10.5pt; text-align: center; line-height: 1.15; position: relative; z-index: 10;">NIP. ${kepsekNip}</p>
               </td>
             </tr>
           </table>
@@ -2049,16 +2184,16 @@ export function buildSuratHtml(
           })}
 
           <!-- 2. Judul Naskah Dinas: Surat Pengantar dan Nomor Surat di tengah -->
-          <div style="text-align: center; margin: 14pt 0 14pt 0;">
-            <p style="margin: 0; text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px;">SURAT PENGANTAR</p>
-            <p class="nomor-surat" style="margin: 2pt 0 0 0; text-align: center; font-size: 11pt;">Nomor: ${surat.noSurat}</p>
+          <div style="text-align: center; margin: 10pt 0 12pt 0; line-height: 1.15;">
+            <p style="margin: 0; text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px; line-height: 1.15;">SURAT PENGANTAR</p>
+            <p class="nomor-surat" style="margin: 0; text-align: center; font-size: 11pt; line-height: 1.15;">Nomor: ${surat.noSurat}</p>
           </div>
 
-          <p style="text-align: justify; margin: 0 0 8pt 0; line-height: 1.45; font-size: 12pt;">
+          <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
             Yang bertanda tangan dibawah ini Kepala ${schoolName}, Kecamatan ${cleanKec}, Kabupaten ${cleanKab} dengan ini menerangkan dan mengantarkan bahwa peserta didik di bawah ini:
           </p>
 
-          <table style="width: 100%; border-collapse: collapse; font-size: 11pt; margin: 8pt 0 12pt 0;" border="1" cellpadding="4" cellspacing="0">
+          <table style="width: 100%; border-collapse: collapse; font-size: 11pt; margin: 6pt 0 8pt 0; line-height: 1.15;" border="1" cellpadding="4" cellspacing="0">
             <thead>
               <tr style="background: #f8fafc; text-align: center; font-weight: bold;">
                 <th style="width: 25pt; border: 1px solid #000; padding: 4pt 2pt; text-align: center;">No</th>
@@ -2083,36 +2218,36 @@ export function buildSuratHtml(
             </tbody>
           </table>
 
-          <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt; margin-bottom: 10pt;" border="0" cellpadding="0" cellspacing="0">
+          <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.15; font-size: 12pt; margin: 4pt 0 8pt 0;" border="0" cellpadding="0" cellspacing="0">
             <tr>
-              <td style="width: 135pt; vertical-align: top; border: none; padding: 2pt 0;">Untuk Kegiatan</td>
-              <td style="width: 15pt; vertical-align: top; border: none; padding: 2pt 0;">:</td>
-              <td style="vertical-align: top; font-weight: bold; border: none; padding: 2pt 0;">${data.keperluan || surat.perihal}</td>
+              <td style="width: 135pt; vertical-align: top; border: none; padding: 1.5pt 0;">Untuk Kegiatan</td>
+              <td style="width: 15pt; vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+              <td style="vertical-align: top; font-weight: bold; border: none; padding: 1.5pt 0;">${data.keperluan || surat.perihal}</td>
             </tr>
             ${data.tempatKegiatan ? `
             <tr>
-              <td style="vertical-align: top; border: none; padding: 2pt 0;">Tempat Pelaksanaan</td>
-              <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-              <td style="vertical-align: top; border: none; padding: 2pt 0;">${data.tempatKegiatan}</td>
+              <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Tempat Pelaksanaan</td>
+              <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+              <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${data.tempatKegiatan}</td>
             </tr>
             ` : ''}
             ${data.tglKegiatan ? `
             <tr>
-              <td style="vertical-align: top; border: none; padding: 2pt 0;">Waktu / Tanggal</td>
-              <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-              <td style="vertical-align: top; border: none; padding: 2pt 0;">${formatTanggalIndonesia(data.tglKegiatan)}</td>
+              <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Waktu / Tanggal</td>
+              <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+              <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${formatTanggalIndonesia(data.tglKegiatan)}</td>
             </tr>
             ` : ''}
             ${data.guruPendamping ? `
             <tr>
-              <td style="vertical-align: top; border: none; padding: 2pt 0;">Guru Pendamping</td>
-              <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-              <td style="vertical-align: top; font-weight: bold; border: none; padding: 2pt 0;">${data.guruPendamping}</td>
+              <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Guru Pendamping</td>
+              <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+              <td style="vertical-align: top; font-weight: bold; border: none; padding: 1.5pt 0;">${data.guruPendamping}</td>
             </tr>
             ` : ''}
           </table>
 
-          <p style="text-align: justify; margin-top: 10pt; line-height: 1.45; font-size: 12pt;">
+          <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
             Demikian surat pengantar ini kami sampaikan, atas perhatian dan kerja sama yang baik kami ucapkan terima kasih.
           </p>
         `;
@@ -2133,16 +2268,16 @@ export function buildSuratHtml(
           })}
 
           <!-- 2. Judul Naskah Dinas: Surat Pengantar dan Nomor Surat di tengah -->
-          <div style="text-align: center; margin: 14pt 0 14pt 0;">
-            <p style="margin: 0; text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px;">SURAT PENGANTAR</p>
-            <p class="nomor-surat" style="margin: 2pt 0 0 0; text-align: center; font-size: 11pt;">Nomor: ${surat.noSurat}</p>
+          <div style="text-align: center; margin: 10pt 0 12pt 0; line-height: 1.15;">
+            <p style="margin: 0; text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px; line-height: 1.15;">SURAT PENGANTAR</p>
+            <p class="nomor-surat" style="margin: 0; text-align: center; font-size: 11pt; line-height: 1.15;">Nomor: ${surat.noSurat}</p>
           </div>
 
-          <p style="text-align: justify; margin: 0 0 8pt 0; line-height: 1.45; font-size: 12pt;">
+          <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
             Bersama ini kami sampaikan dengan hormat berkas usulan Pendidik dan Tenaga Kependidikan (PTK) ${schoolName}, Kecamatan ${cleanKec}, Kabupaten ${cleanKab} sebagaimana daftar di bawah ini:
           </p>
 
-          <table style="width: 100%; border-collapse: collapse; font-size: 11pt; margin: 8pt 0 12pt 0;" border="1" cellpadding="4" cellspacing="0">
+          <table style="width: 100%; border-collapse: collapse; font-size: 11pt; margin: 6pt 0 8pt 0; line-height: 1.15;" border="1" cellpadding="4" cellspacing="0">
             <thead>
               <tr style="background: #f8fafc; text-align: center; font-weight: bold;">
                 <th style="width: 25pt; border: 1px solid #000; padding: 4pt 2pt; text-align: center;">No</th>
@@ -2167,15 +2302,15 @@ export function buildSuratHtml(
             </tbody>
           </table>
 
-          <p style="text-align: justify; margin: 0 0 8pt 0; line-height: 1.45; font-size: 12pt;">
+          <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
             Untuk keperluan: <strong>${data.keperluan || surat.perihal}</strong>.
           </p>
 
-          <p style="text-align: justify; margin: 0 0 10pt 0; line-height: 1.45; font-size: 12pt;">
+          <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
             Berkas usulan tersebut telah kami periksa kelengkapan administrasinya dan disampaikan dengan hormat untuk dapat diproses lebih lanjut sesuai dengan ketentuan yang berlaku.
           </p>
 
-          <p style="text-align: justify; margin-top: 10pt; line-height: 1.45; font-size: 12pt;">
+          <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
             Demikian surat pengantar ini kami buat dengan sebenarnya, atas perhatian dan kerja samanya kami ucapkan terima kasih.
           </p>
         `;
@@ -2218,18 +2353,14 @@ export function buildSuratHtml(
 
         const hasPertimbangan = Boolean(data.dasarPertimbangan && data.dasarPertimbangan.trim());
         const catatanHtml = hasPertimbangan
-          ? `
-          <p style="text-align: justify; margin: 0 0 10pt 0; line-height: 1.45; font-size: 12pt;">
-            ${data.dasarPertimbangan.trim()}
-          </p>
-          `
+          ? formatParagrafSuratHtml(data.dasarPertimbangan.trim(), { fontSize: '12pt' })
           : '';
 
         let subjekContentHtml = '';
         if (useTable) {
           // Format tabel bergaris HANYA jika siswa lebih dari 3 orang
           subjekContentHtml = `
-            <table style="width: 100%; border-collapse: collapse; margin: 8pt 0 12pt 0; font-size: 11pt; line-height: 1.35;" border="1" cellpadding="5" cellspacing="0">
+            <table style="width: 100%; border-collapse: collapse; margin: 6pt 0 8pt 0; font-size: 11pt; line-height: 1.15;" border="1" cellpadding="5" cellspacing="0">
               <thead>
                 <tr style="background-color: #f1f5f9; font-weight: bold; text-align: center;">
                   <th style="width: 24pt; border: 1px solid #334155; padding: 5pt 3pt; text-align: center;">No</th>
@@ -2261,50 +2392,50 @@ export function buildSuratHtml(
         } else if (isMulti) {
           // Format vertikal bernomor (1 s.d. 3 siswa) TANPA tabel border kotak
           subjekContentHtml = `
-            <div style="margin-left: 16pt; margin-bottom: 12pt;">
+            <div style="margin: 6pt 0 8pt 16pt;">
               ${rawDaftar.map((s: any, idx: number) => `
-                <div style="margin-bottom: 10pt; page-break-inside: avoid;">
-                  <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+                <div style="margin-bottom: 6pt; page-break-inside: avoid;">
+                  <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.15; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
                     <tr>
-                      <td style="width: 22pt; vertical-align: top; border: none; padding: 2pt 0; font-weight: bold;">${idx + 1}.</td>
-                      <td style="width: 140pt; vertical-align: top; border: none; padding: 2pt 0;">Nama Lengkap</td>
-                      <td style="width: 15pt; vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                      <td style="vertical-align: top; font-weight: bold; border: none; padding: 2pt 0;">${s.nama || '-'}</td>
+                      <td style="width: 22pt; vertical-align: top; border: none; padding: 1.5pt 0; font-weight: bold;">${idx + 1}.</td>
+                      <td style="width: 140pt; vertical-align: top; border: none; padding: 1.5pt 0;">Nama Lengkap</td>
+                      <td style="width: 15pt; vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                      <td style="vertical-align: top; font-weight: bold; border: none; padding: 1.5pt 0;">${s.nama || '-'}</td>
                     </tr>
                     <tr>
                       <td style="border: none;"></td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">NISN / NIS</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">${s.nisn || '-'}</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">NISN / NIS</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${s.nisn || '-'}</td>
                     </tr>
                     ${s.tempatTglLahir ? `
                     <tr>
                       <td style="border: none;"></td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">Tempat, Tanggal Lahir</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">${s.tempatTglLahir}</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Tempat, Tanggal Lahir</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${s.tempatTglLahir}</td>
                     </tr>
                     ` : ''}
                     <tr>
                       <td style="border: none;"></td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">Kelas</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">${s.kelas || '-'}</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Kelas</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${s.kelas || '-'}</td>
                     </tr>
                     ${s.namaOrtu && s.namaOrtu.trim() && s.namaOrtu !== '-' ? `
                     <tr>
                       <td style="border: none;"></td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">Nama Orang Tua / Wali</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">${s.namaOrtu}</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Nama Orang Tua / Wali</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${s.namaOrtu}</td>
                     </tr>
                     ` : ''}
                     ${s.alamat && s.alamat.trim() && s.alamat !== '-' ? `
                     <tr>
                       <td style="border: none;"></td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">Alamat Domisili</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">${s.alamat}</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Alamat Domisili</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${s.alamat}</td>
                     </tr>
                     ` : ''}
                   </table>
@@ -2315,38 +2446,38 @@ export function buildSuratHtml(
         } else {
           // Format tunggal vertikal (1 orang siswa)
           subjekContentHtml = `
-            <div style="margin-left: 16pt; margin-bottom: 12pt;">
-              <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+            <div style="margin: 6pt 0 8pt 16pt;">
+              <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.15; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="width: 140pt; vertical-align: top; border: none; padding: 2pt 0;">Nama Lengkap</td>
-                  <td style="width: 15pt; vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; font-weight: bold; border: none; padding: 2pt 0;">${singleSiswa.nama || '-'}</td>
+                  <td style="width: 140pt; vertical-align: top; border: none; padding: 1.5pt 0;">Nama Lengkap</td>
+                  <td style="width: 15pt; vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; font-weight: bold; border: none; padding: 1.5pt 0;">${singleSiswa.nama || '-'}</td>
                 </tr>
                 <tr>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">NISN / NIS</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${singleSiswa.nisn || '-'}</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">NISN / NIS</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${singleSiswa.nisn || '-'}</td>
                 </tr>
                 <tr>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">Tempat, Tanggal Lahir</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${singleSiswa.tempatTglLahir || '-'}</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Tempat, Tanggal Lahir</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${singleSiswa.tempatTglLahir || '-'}</td>
                 </tr>
                 <tr>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">Kelas</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${singleSiswa.kelas || '-'}</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Kelas</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${singleSiswa.kelas || '-'}</td>
                 </tr>
                 <tr>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">Nama Orang Tua / Wali</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${singleSiswa.namaOrtu || '-'}</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Nama Orang Tua / Wali</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${singleSiswa.namaOrtu || '-'}</td>
                 </tr>
                 ${singleSiswa.alamat && singleSiswa.alamat.trim() ? `
                 <tr>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">Alamat</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${singleSiswa.alamat}</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Alamat</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${singleSiswa.alamat}</td>
                 </tr>
                 ` : ''}
               </table>
@@ -2363,28 +2494,28 @@ export function buildSuratHtml(
           : `Dengan ini memberikan <strong>REKOMENDASI</strong> kepada peserta didik tersebut di atas untuk:`;
 
         badanSurat = `
-          <div style="text-align: center; margin: 12pt 0 16pt 0;">
-            <p style="margin: 0; text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px;">SURAT REKOMENDASI</p>
-            <p class="nomor-surat" style="margin: 2pt 0 0 0; text-align: center; font-size: 11pt;">Nomor: ${surat.noSurat}</p>
+          <div style="text-align: center; margin: 10pt 0 12pt 0; line-height: 1.15;">
+            <p style="margin: 0; text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px; line-height: 1.15;">SURAT REKOMENDASI</p>
+            <p class="nomor-surat" style="margin: 0; text-align: center; font-size: 11pt; line-height: 1.15;">Nomor: ${surat.noSurat}</p>
           </div>
 
-          <p style="text-align: justify; margin: 0 0 10pt 0; line-height: 1.45; font-size: 12pt;">
+          <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
             ${pembukaSiswa}
           </p>
 
           ${subjekContentHtml}
 
-          <p style="text-align: justify; margin: 0 0 8pt 0; line-height: 1.45; font-size: 12pt;">
+          <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
             ${peruntukanTeks}
           </p>
 
-          <div style="margin-left: ${useTable ? '0' : '16pt'}; margin-bottom: 10pt; padding: 8pt 12pt; background-color: #f8fafc; border-left: 3px solid #1e293b;">
-            <p style="margin: 0; font-size: 12pt; font-weight: bold; line-height: 1.45;">
+          <div style="margin: 4pt 0 6pt ${useTable ? '0' : '28pt'}; padding: 6pt 12pt; background-color: #f8fafc; border-left: 3px solid #1e293b; line-height: 1.15;">
+            <p style="margin: 0; font-size: 12pt; font-weight: bold; line-height: 1.15;">
               ${data.keperluanRekomendasi || surat.perihal}
             </p>
           </div>
           ${catatanHtml}
-          <p style="text-align: justify; margin-top: 10pt; line-height: 1.45; font-size: 12pt;">
+          <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
             Demikian surat rekomendasi ini dibuat dengan sebenarnya dengan penuh rasa tanggung jawab agar dapat dipergunakan sebagaimana mestinya.
           </p>
         `;
@@ -2417,18 +2548,14 @@ export function buildSuratHtml(
 
         const hasPertimbangan = Boolean(data.dasarPertimbangan && data.dasarPertimbangan.trim());
         const catatanHtml = hasPertimbangan
-          ? `
-          <p style="text-align: justify; margin: 0 0 10pt 0; line-height: 1.45; font-size: 12pt;">
-            ${data.dasarPertimbangan.trim()}
-          </p>
-          `
+          ? formatParagrafSuratHtml(data.dasarPertimbangan.trim(), { fontSize: '12pt' })
           : '';
 
         let subjekContentHtml = '';
         if (useTablePtk) {
           // Format tabel bergaris HANYA jika PTK lebih dari 3 orang
           subjekContentHtml = `
-            <table style="width: 100%; border-collapse: collapse; margin: 8pt 0 12pt 0; font-size: 11pt; line-height: 1.35;" border="1" cellpadding="5" cellspacing="0">
+            <table style="width: 100%; border-collapse: collapse; margin: 6pt 0 8pt 0; font-size: 11pt; line-height: 1.15;" border="1" cellpadding="5" cellspacing="0">
               <thead>
                 <tr style="background-color: #f1f5f9; font-weight: bold; text-align: center;">
                   <th style="width: 24pt; border: 1px solid #334155; padding: 5pt 3pt; text-align: center;">No</th>
@@ -2460,47 +2587,47 @@ export function buildSuratHtml(
         } else if (isMultiPtk) {
           // Format vertikal bernomor (1 s.d. 3 PTK) TANPA tabel border kotak
           subjekContentHtml = `
-            <div style="margin-left: 16pt; margin-bottom: 12pt;">
+            <div style="margin: 6pt 0 8pt 16pt;">
               ${rawDaftarPtk.map((p: any, idx: number) => `
-                <div style="margin-bottom: 10pt; page-break-inside: avoid;">
-                  <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+                <div style="margin-bottom: 6pt; page-break-inside: avoid;">
+                  <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.15; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
                     <tr>
-                      <td style="width: 22pt; vertical-align: top; border: none; padding: 2pt 0; font-weight: bold;">${idx + 1}.</td>
-                      <td style="width: 140pt; vertical-align: top; border: none; padding: 2pt 0;">Nama Lengkap & Gelar</td>
-                      <td style="width: 15pt; vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                      <td style="vertical-align: top; font-weight: bold; border: none; padding: 2pt 0;">${p.nama || '-'}</td>
+                      <td style="width: 22pt; vertical-align: top; border: none; padding: 1.5pt 0; font-weight: bold;">${idx + 1}.</td>
+                      <td style="width: 140pt; vertical-align: top; border: none; padding: 1.5pt 0;">Nama Lengkap & Gelar</td>
+                      <td style="width: 15pt; vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                      <td style="vertical-align: top; font-weight: bold; border: none; padding: 1.5pt 0;">${p.nama || '-'}</td>
                     </tr>
                     <tr>
                       <td style="border: none;"></td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">NIP / NIPPPK</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">${p.nip || '-'}</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">NIP / NIPPPK</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${p.nip || '-'}</td>
                     </tr>
                     ${p.nuptk && p.nuptk !== '-' ? `
                     <tr>
                       <td style="border: none;"></td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">NUPTK</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">${p.nuptk}</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">NUPTK</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${p.nuptk}</td>
                     </tr>
                     ` : ''}
                     <tr>
                       <td style="border: none;"></td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">Pangkat / Golongan</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">${p.pangkatGol || '-'}</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Pangkat / Golongan</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${p.pangkatGol || '-'}</td>
                     </tr>
                     <tr>
                       <td style="border: none;"></td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">Jabatan</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">${p.jabatan || 'Guru SDN 1 Pekutatan'}</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Jabatan</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${p.jabatan || 'Guru SDN 1 Pekutatan'}</td>
                     </tr>
                     <tr>
                       <td style="border: none;"></td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">Unit Kerja</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                      <td style="vertical-align: top; border: none; padding: 2pt 0;">${p.unitKerja || schoolName}</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Unit Kerja</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                      <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${p.unitKerja || schoolName}</td>
                     </tr>
                   </table>
                 </div>
@@ -2510,39 +2637,39 @@ export function buildSuratHtml(
         } else {
           // Format tunggal vertikal (1 orang PTK)
           subjekContentHtml = `
-            <div style="margin-left: 16pt; margin-bottom: 12pt;">
-              <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.45; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+            <div style="margin: 6pt 0 8pt 16pt;">
+              <table style="width: 100%; border: none; border-collapse: collapse; line-height: 1.15; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="width: 140pt; vertical-align: top; border: none; padding: 2pt 0;">Nama Lengkap & Gelar</td>
-                  <td style="width: 15pt; vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; font-weight: bold; border: none; padding: 2pt 0;">${singlePtk.nama || '-'}</td>
+                  <td style="width: 140pt; vertical-align: top; border: none; padding: 1.5pt 0;">Nama Lengkap & Gelar</td>
+                  <td style="width: 15pt; vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; font-weight: bold; border: none; padding: 1.5pt 0;">${singlePtk.nama || '-'}</td>
                 </tr>
                 <tr>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">NIP / NIPPPK</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${singlePtk.nip || '-'}</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">NIP / NIPPPK</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${singlePtk.nip || '-'}</td>
                 </tr>
                 ${singlePtk.nuptk && singlePtk.nuptk !== '-' ? `
                 <tr>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">NUPTK</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${singlePtk.nuptk}</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">NUPTK</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${singlePtk.nuptk}</td>
                 </tr>
                 ` : ''}
                 <tr>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">Pangkat / Golongan</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${singlePtk.pangkatGol || '-'}</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Pangkat / Golongan</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${singlePtk.pangkatGol || '-'}</td>
                 </tr>
                 <tr>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">Jabatan</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${singlePtk.jabatan || 'Guru SDN 1 Pekutatan'}</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Jabatan</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${singlePtk.jabatan || 'Guru SDN 1 Pekutatan'}</td>
                 </tr>
                 <tr>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">Unit Kerja</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">:</td>
-                  <td style="vertical-align: top; border: none; padding: 2pt 0;">${singlePtk.unitKerja || schoolName}</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Unit Kerja</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+                  <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${singlePtk.unitKerja || schoolName}</td>
                 </tr>
               </table>
             </div>
@@ -2554,22 +2681,22 @@ export function buildSuratHtml(
           : `Yang bertanda tangan dibawah ini Kepala ${schoolName}, Kecamatan ${cleanKec}, Kabupaten ${cleanKab}-${prov}, dengan ini memberikan rekomendasi kepada:`;
 
         badanSurat = `
-          <div style="text-align: center; margin: 12pt 0 16pt 0;">
-            <p style="margin: 0; text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px;">SURAT REKOMENDASI</p>
-            <p class="nomor-surat" style="margin: 2pt 0 0 0; text-align: center; font-size: 11pt;">Nomor: ${surat.noSurat}</p>
+          <div style="text-align: center; margin: 10pt 0 12pt 0; line-height: 1.15;">
+            <p style="margin: 0; text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px; line-height: 1.15;">SURAT REKOMENDASI</p>
+            <p class="nomor-surat" style="margin: 0; text-align: center; font-size: 11pt; line-height: 1.15;">Nomor: ${surat.noSurat}</p>
           </div>
 
-          <p style="text-align: justify; margin: 0 0 10pt 0; line-height: 1.45; font-size: 12pt;">
+          <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
             ${pembukaPtk}
           </p>
 
           ${subjekContentHtml}
 
-          <p style="text-align: justify; margin: 0 0 8pt 0; line-height: 1.45; font-size: 12pt;">
+          <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
             Untuk: <strong>${data.keperluanRekomendasi || surat.perihal}</strong>.
           </p>
           ${catatanHtml}
-          <p style="text-align: justify; margin-top: 10pt; line-height: 1.45; font-size: 12pt;">
+          <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
             Demikian surat rekomendasi ini kami buat dengan sebenarnya untuk dapat dipergunakan sebagaimana mestinya dan menjadi bahan pertimbangan bagi pihak yang berwenang.
           </p>
         `;
@@ -2577,11 +2704,109 @@ export function buildSuratHtml(
       break;
     }
 
+    case 'surat_permohonan': {
+      const lampiranText = (data.lampiran && String(data.lampiran).trim()) || '-';
+      const pembukaanHtml = formatParagrafSuratHtml(
+        String(
+          data.pembukaan ||
+            'Dengan hormat,\nSehubungan dengan pelaksanaan program kegiatan sekolah di SDN 1 Pekutatan, bersama ini kami mengajukan permohonan kepada Bapak/Ibu agar berkenan untuk:'
+        ),
+        { fontSize: '12pt', treatFirstLineSalutation: true }
+      );
+
+      const yangDimohonRaw = String(data.yangDimohon || surat.perihal || '').trim();
+      const yangDimohonHtml = formatParagrafSuratHtml(yangDimohonRaw, { fontSize: '12pt' });
+
+      const penutupHtml = formatParagrafSuratHtml(
+        String(
+          data.penutup ||
+            'Demikian surat permohonan ini kami sampaikan. Atas perhatian, bantuan, dan kerja sama Bapak/Ibu kami ucapkan terima kasih.'
+        ),
+        { fontSize: '12pt' }
+      );
+
+      const hariVal = String(data.hariTanggal || '').trim();
+      const waktuVal = String(data.waktu || '').trim();
+      const tempatVal = String(data.tempat || '').trim();
+      const showKegiatan = Boolean(
+        data.sertakanKegiatan !== false && (hariVal || waktuVal || tempatVal)
+      );
+
+      const kegiatanRows: string[] = [];
+      if (hariVal) {
+        kegiatanRows.push(`
+          <tr>
+            <td style="width: 130pt; padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">Hari / Tanggal</td>
+            <td style="width: 14pt; padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+            <td style="padding: 1pt 0; vertical-align: top; font-weight: bold; border: none; line-height: 1.15;">${hariVal}</td>
+          </tr>
+        `);
+      }
+      if (waktuVal) {
+        kegiatanRows.push(`
+          <tr>
+            <td style="width: 130pt; padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">Waktu</td>
+            <td style="width: 14pt; padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+            <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">${waktuVal}</td>
+          </tr>
+        `);
+      }
+      if (tempatVal) {
+        kegiatanRows.push(`
+          <tr>
+            <td style="width: 130pt; padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">Tempat</td>
+            <td style="width: 14pt; padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">:</td>
+            <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.15;">${tempatVal}</td>
+          </tr>
+        `);
+      }
+
+      const kegiatanTableHtml = showKegiatan
+        ? `
+        <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
+          Adapun kegiatan tersebut akan kami laksanakan pada:
+        </p>
+        <table style="margin: 4pt 0 6pt 28pt; width: 90%; border: none; border-collapse: collapse; line-height: 1.15; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+          ${kegiatanRows.join('')}
+        </table>
+      `
+        : '';
+
+      const rawTujuanList: string[] = Array.isArray(data.tujuanList) && data.tujuanList.length > 0
+        ? data.tujuanList.filter((t: string) => t && t.trim().length > 0)
+        : (surat.tujuan ? [surat.tujuan] : []);
+
+      const headerPermohonanHtml = buildHeaderNomorDanKepadaHtml({
+        noSurat: surat.noSurat,
+        lampiran: lampiranText,
+        perihal: surat.perihal,
+        tempatSurat: sekolah.desa || 'Pekutatan',
+        tglIndo,
+        tujuan: surat.tujuan || '-',
+        tujuanList: rawTujuanList,
+        tempatTujuan: (data.tempatTujuan && String(data.tempatTujuan).trim()) || 'Tempat',
+        fontSize: '12pt',
+      });
+
+      badanSurat = `
+        ${headerPermohonanHtml}
+
+        ${pembukaanHtml}
+
+        ${yangDimohonHtml}
+
+        ${kegiatanTableHtml}
+
+        ${penutupHtml}
+      `;
+      break;
+    }
+
     case 'surat_eksternal': {
       const lampiranNama = surat.lampiranNama || data.lampiranNama;
       const lampiranUkuran = (surat as any).lampiranUkuran || data.lampiranUkuran;
       const lampiranInfo = lampiranNama
-        ? `<div style="margin-top: 10pt; padding: 6pt 10pt; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4pt; font-size: 11pt;">
+        ? `<div style="margin-top: 8pt; padding: 6pt 10pt; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4pt; font-size: 11pt; line-height: 1.15;">
              <strong>Berkas Dokumen Terlampir:</strong> ${lampiranNama} ${lampiranUkuran ? `(${lampiranUkuran})` : ''}
            </div>`
         : '';
@@ -2589,54 +2814,56 @@ export function buildSuratHtml(
       const tempatArsipFisik = surat.tempatArsip || data.tempatArsip;
 
       badanSurat = `
-        <div style="text-align: center; margin: 12pt 0 16pt 0;">
-          <p style="margin: 0; text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px;">LEMBAR PENCATATAN SURAT LAINNYA</p>
-          <p class="nomor-surat" style="margin: 2pt 0 0 0; text-align: center; font-size: 11pt;">Nomor: ${surat.noSurat}</p>
+        <div style="text-align: center; margin: 10pt 0 12pt 0; line-height: 1.15;">
+          <p style="margin: 0; text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px; line-height: 1.15;">LEMBAR PENCATATAN SURAT LAINNYA</p>
+          <p class="nomor-surat" style="margin: 0; text-align: center; font-size: 11pt; line-height: 1.15;">Nomor: ${surat.noSurat}</p>
         </div>
 
-        <p style="text-align: justify; margin: 0 0 10pt 0; line-height: 1.45; font-size: 12pt;">
+        <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 12pt;">
           Surat ini merupakan naskah dinas keluar resmi yang diterbitkan dan dicatat dalam Buku Agenda Surat Keluar ${schoolNameIsi} untuk kategori Surat Lainnya, dengan rincian data sebagai berikut:
         </p>
 
-        <table style="width: 100%; margin-bottom: 12pt; border: none; border-collapse: collapse; line-height: 1.5; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+        <table style="width: 100%; margin: 6pt 0 8pt 0; border: none; border-collapse: collapse; line-height: 1.15; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
           <tr>
-            <td style="width: 140pt; vertical-align: top; border: none; padding: 2.5pt 0;">Kode & Klasifikasi</td>
-            <td style="width: 15pt; vertical-align: top; border: none; padding: 2.5pt 0;">:</td>
-            <td style="vertical-align: top; border: none; padding: 2.5pt 0; font-family: monospace; font-weight: bold;">[${surat.kodeKlasifikasi}] ${surat.namaKlasifikasi}</td>
+            <td style="width: 140pt; vertical-align: top; border: none; padding: 1.5pt 0;">Kode & Klasifikasi</td>
+            <td style="width: 15pt; vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0; font-family: monospace; font-weight: bold;">[${surat.kodeKlasifikasi}] ${surat.namaKlasifikasi}</td>
           </tr>
           <tr>
-            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">Tanggal Surat</td>
-            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">:</td>
-            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">${tglIndo}</td>
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Tanggal Surat</td>
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0;">${tglIndo}</td>
           </tr>
           <tr>
-            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">Tujuan / Kepada</td>
-            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">:</td>
-            <td style="vertical-align: top; border: none; padding: 2.5pt 0; font-weight: bold;">${surat.tujuan || '-'}</td>
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Tujuan / Kepada</td>
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0; font-weight: bold;">${surat.tujuan || '-'}</td>
           </tr>
           <tr>
-            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">Perihal Surat</td>
-            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">:</td>
-            <td style="vertical-align: top; border: none; padding: 2.5pt 0; font-weight: bold;">${surat.perihal}</td>
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Perihal Surat</td>
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0; font-weight: bold;">${surat.perihal}</td>
           </tr>
           ${tempatArsipFisik ? `
           <tr>
-            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">Tempat Arsip Fisik</td>
-            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">:</td>
-            <td style="vertical-align: top; border: none; padding: 2.5pt 0; font-weight: bold;">${tempatArsipFisik}</td>
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Tempat Arsip Fisik</td>
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0; font-weight: bold;">${tempatArsipFisik}</td>
           </tr>` : ''}
           <tr>
-            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">Keterangan Naskah</td>
-            <td style="vertical-align: top; border: none; padding: 2.5pt 0;">:</td>
-            <td style="vertical-align: top; border: none; padding: 2.5pt 0; text-align: justify;">${surat.isiSurat || data.keterangan || 'Naskah surat keluar kategori Surat Lainnya tercatat resmi di buku agenda penomoran surat sekolah.'}</td>
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0;">Keterangan Naskah</td>
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0;">:</td>
+            <td style="vertical-align: top; border: none; padding: 1.5pt 0; text-align: justify;">${surat.isiSurat || data.keterangan || 'Naskah surat keluar kategori Surat Lainnya tercatat resmi di buku agenda penomoran surat sekolah.'}</td>
           </tr>
         </table>
 
         ${lampiranInfo}
 
-        <p style="text-align: justify; margin-top: 12pt; line-height: 1.45; font-size: 11pt; color: #475569; font-style: italic;">
-          * Lembar pencatatan ini membuktikan keabsahan alokasi nomor surat keluar resmi sesuai Permendagri No. 83 Tahun 2022 pada ${schoolNameIsi}.
-        </p>
+        <div style="margin-top: 8pt;">
+          <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.15; text-indent: 28pt; font-size: 11pt; color: #475569; font-style: italic;">
+            * Lembar pencatatan ini membuktikan keabsahan alokasi nomor surat keluar resmi sesuai Permendagri No. 83 Tahun 2022 pada ${schoolNameIsi}.
+          </p>
+        </div>
       `;
       break;
     }
@@ -2646,18 +2873,18 @@ export function buildSuratHtml(
   const defaultJabatanKepsek = formatJabatanPenandatangan(surat.jabatanPenandatangan || kepsek.jabatan, sekolah?.namaSekolah);
 
   const ttdBlock = customTtdBlock || `
-    <table class="ttd-table" style="width: 100%; margin-top: 24pt; border: none; border-collapse: collapse;" border="0" cellpadding="0" cellspacing="0">
+    <table class="ttd-table" style="width: 100%; margin-top: 20pt; border: none; border-collapse: collapse; line-height: 1.15;" border="0" cellpadding="0" cellspacing="0">
       <tr>
         <td style="width: 52%; border: none;">&nbsp;</td>
-        <td style="width: 48%; text-align: center; vertical-align: top; border: none;">
+        <td style="width: 48%; text-align: center; vertical-align: top; border: none; line-height: 1.15;">
           ${surat.jenisSurat !== 'surat_keputusan' ? `
-            <p style="margin: 0 0 3pt 0; text-align: center; position: relative; z-index: 10;">${sekolah.desa || 'Pekutatan'}, ${tglIndo}</p>
+            <p style="margin: 0; text-align: center; line-height: 1.15; position: relative; z-index: 10;">${sekolah.desa || 'Pekutatan'}, ${tglIndo}</p>
           ` : ''}
-          <p style="margin: 0; font-weight: bold; text-align: center; position: relative; z-index: 10;">${defaultJabatanKepsek},</p>
+          <p style="margin: 0; font-weight: bold; text-align: center; line-height: 1.15; position: relative; z-index: 10;">${defaultJabatanKepsek},</p>
           ${buildKepsekSignatureSpaceHtml(sekolah, stampOptions, '55pt')}
-          <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; position: relative; z-index: 10;">${kepsek.nama}</p>
-          ${kepsek.pangkat ? `<p style="margin: 1.5pt 0 0 0; font-size: 11pt; text-align: center; position: relative; z-index: 10;">${kepsek.pangkat}</p>` : ''}
-          <p style="margin: 2pt 0 0 0; font-size: 11pt; text-align: center; position: relative; z-index: 10;">NIP. ${kepsek.nip}</p>
+          <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; line-height: 1.15; position: relative; z-index: 10;">${kepsek.nama}</p>
+          ${kepsek.pangkat ? `<p style="margin: 0; font-size: 11pt; text-align: center; line-height: 1.15; position: relative; z-index: 10;">${kepsek.pangkat}</p>` : ''}
+          <p style="margin: 0; font-size: 11pt; text-align: center; line-height: 1.15; position: relative; z-index: 10;">NIP. ${kepsek.nip}</p>
         </td>
       </tr>
     </table>
@@ -2829,11 +3056,11 @@ export function buildSuratHtml(
                         : (cleanNip === '-' ? '-' : '');
 
                       renderedContent = `
-                        <div style="font-weight: bold; line-height: 1.25; word-wrap: break-word; overflow-wrap: break-word; font-family: 'Bookman Old Style', serif;">
+                        <div style="font-weight: bold; line-height: 1.15; word-wrap: break-word; overflow-wrap: break-word; font-family: 'Bookman Old Style', serif;">
                           ${namaText || '-'}
                         </div>
                         ${formattedNip ? `
-                          <div style="font-size: 8.5pt; font-weight: normal; color: #1e293b; margin-top: 2.5pt; line-height: 1.2; word-wrap: break-word; overflow-wrap: break-word; font-family: 'Bookman Old Style', serif;">
+                          <div style="font-size: 8.5pt; font-weight: normal; color: #1e293b; margin-top: 2.5pt; line-height: 1.15; word-wrap: break-word; overflow-wrap: break-word; font-family: 'Bookman Old Style', serif;">
                             ${formattedNip}
                           </div>
                         ` : ''}
@@ -2854,7 +3081,7 @@ export function buildSuratHtml(
                       pg = pg.replace(/^[\(\)\-\,\/]+|[\(\)\-\,\/]+$/g, '').trim();
 
                       renderedContent = `
-                        <div style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3; font-family: 'Bookman Old Style', serif;">
+                        <div style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.15; font-family: 'Bookman Old Style', serif;">
                           ${pg || '-'}
                         </div>
                       `;
@@ -2869,7 +3096,7 @@ export function buildSuratHtml(
                       jbt = jbt.replace(/^[\(\)\-\,\/\s]+|[\(\)\-\,\/\s]+$/g, '').trim();
 
                       renderedContent = `
-                        <div style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3; font-family: 'Bookman Old Style', serif;">
+                        <div style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.15; font-family: 'Bookman Old Style', serif;">
                           ${jbt || '-'}
                         </div>
                       `;
@@ -2877,14 +3104,14 @@ export function buildSuratHtml(
                     // 4. Kolom umum lainnya
                     else {
                       renderedContent = `
-                        <div style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3; font-family: 'Bookman Old Style', serif;">
+                        <div style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.15; font-family: 'Bookman Old Style', serif;">
                           ${cellVal || '-'}
                         </div>
                       `;
                     }
 
                     return `
-                      <td style="border: 1px solid #000; padding: 4pt 5pt; text-align: ${col.align || (isCenter ? 'center' : 'left')}; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word; box-sizing: border-box; width: ${w} !important; max-width: ${w}; font-size: 9.5pt; line-height: 1.35; font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif;">
+                      <td style="border: 1px solid #000; padding: 4pt 5pt; text-align: ${col.align || (isCenter ? 'center' : 'left')}; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word; box-sizing: border-box; width: ${w} !important; max-width: ${w}; font-size: 9.5pt; line-height: 1.15; font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif;">
                         ${renderedContent}
                       </td>
                     `;
@@ -2898,20 +3125,20 @@ export function buildSuratHtml(
         const hasUraianList = Array.isArray(lampItem.uraianList) && lampItem.uraianList.length > 0;
         const lampiranTeksHtml = (mode === 'teks' || mode === 'kombinasi' || (!hasRows && (lampItem.isiTeks || hasUraianList))) && (hasUraianList || lampItem.isiTeks) ? (
           hasUraianList ? `
-            <div style="text-align: justify; font-size: 11pt; line-height: 1.45; margin-top: 8pt; margin-bottom: 12pt; width: 100%;">
+            <div style="text-align: justify; font-size: 11pt; line-height: 1.15; margin-top: 6pt; margin-bottom: 10pt; width: 100%;">
               ${lampItem.uraianList.map((u: any, uIdx: number) => {
-                const judulHtml = u.judul ? `<div style="font-weight: bold; margin-bottom: 3pt; font-size: 11pt;">${u.judul}</div>` : '';
+                const judulHtml = u.judul ? `<div style="font-weight: bold; margin-bottom: 2pt; font-size: 11pt; line-height: 1.15;">${u.judul}</div>` : '';
                 const nomorStr = u.nomor ? u.nomor.trim() : '';
                 if (nomorStr) {
                   return `
-                    <div style="margin-bottom: 6pt; page-break-inside: avoid;">
+                    <div style="margin-bottom: 4pt; page-break-inside: avoid;">
                       ${judulHtml}
-                      <table style="width: 100%; border-collapse: collapse; border: none; font-family: inherit; font-size: 11pt; line-height: 1.45;">
+                      <table style="width: 100%; border-collapse: collapse; border: none; font-family: inherit; font-size: 11pt; line-height: 1.15;">
                         <tr style="border: none;">
-                          <td style="border: none; padding: 0 6pt 0 0; vertical-align: top; width: 26pt; font-weight: 600; text-align: left;">
+                          <td style="border: none; padding: 0 6pt 0 0; vertical-align: top; width: 26pt; font-weight: 600; text-align: left; line-height: 1.15;">
                             ${nomorStr}
                           </td>
-                          <td style="border: none; padding: 0; vertical-align: top; text-align: justify; word-wrap: break-word; overflow-wrap: break-word;">
+                          <td style="border: none; padding: 0; vertical-align: top; text-align: justify; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.15;">
                             ${u.teks}
                           </td>
                         </tr>
@@ -2920,17 +3147,17 @@ export function buildSuratHtml(
                   `;
                 } else {
                   return `
-                    <div style="margin-bottom: 6pt; text-align: justify; word-wrap: break-word; overflow-wrap: break-word; page-break-inside: avoid;">
+                    <div style="margin-bottom: 4pt; text-align: justify; word-wrap: break-word; overflow-wrap: break-word; page-break-inside: avoid;">
                       ${judulHtml}
-                      <p style="margin: 0; line-height: 1.45; text-indent: 20pt;">${u.teks}</p>
+                      <p class="paragraf-surat" style="margin: 0; line-height: 1.15; text-indent: 28pt;">${u.teks}</p>
                     </div>
                   `;
                 }
               }).join('')}
             </div>
           ` : `
-            <div style="text-align: justify; font-size: 11pt; line-height: 1.45; margin-top: 8pt; margin-bottom: 12pt; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;">
-              ${lampItem.isiTeks}
+            <div style="text-align: justify; font-size: 11pt; line-height: 1.15; margin-top: 6pt; margin-bottom: 10pt; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;">
+              ${formatParagrafSuratHtml(String(lampItem.isiTeks || ''), { fontSize: '11pt' })}
             </div>
           `
         ) : '';
@@ -2943,13 +3170,13 @@ export function buildSuratHtml(
             </span>
           </div>
 
-          <div class="sk-lampiran-container is-surat-keputusan" style="font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif; font-size: 11pt; line-height: 1.35; color: #000000; width: 100%; max-width: 100%; box-sizing: border-box; margin: 0;">
+          <div class="sk-lampiran-container is-surat-keputusan" style="font-family: 'Bookman Old Style', 'Bookman', 'URW Bookman L', serif; font-size: 11pt; line-height: 1.15; color: #000000; width: 100%; max-width: 100%; box-sizing: border-box; margin: 0;">
             <!-- Header Lampiran (Sisi Kanan Atas) -->
-            <table style="width: 100%; margin-bottom: 14pt; border: none; border-collapse: collapse; font-size: 10pt;" border="0" cellpadding="0" cellspacing="0">
+            <table style="width: 100%; margin-bottom: 12pt; border: none; border-collapse: collapse; font-size: 10pt; line-height: 1.15;" border="0" cellpadding="0" cellspacing="0">
               <tr>
                 <td style="width: 44%; border: none;">&nbsp;</td>
                 <td style="width: 56%; border: none; vertical-align: top;">
-                  <table style="width: 100%; border-collapse: collapse; font-size: 9.5pt; line-height: 1.3;" border="0" cellpadding="1" cellspacing="0">
+                  <table style="width: 100%; border-collapse: collapse; font-size: 9.5pt; line-height: 1.15;" border="0" cellpadding="1" cellspacing="0">
                     <tr>
                       <td style="width: 76pt; font-weight: bold; vertical-align: top; border: none; white-space: nowrap;">${lampiranLabel}</td>
                       <td style="width: 8pt; font-weight: bold; vertical-align: top; border: none;">:</td>
@@ -2980,39 +3207,39 @@ export function buildSuratHtml(
             </table>
 
             <!-- Judul Rincian Lampiran -->
-            <div style="text-align: center; margin: 12pt 0 14pt 0;">
-              <p style="margin: 0; font-size: 11pt; font-weight: bold; text-transform: uppercase; text-decoration: underline; letter-spacing: 0.3px; word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="text-align: center; margin: 10pt 0 12pt 0; line-height: 1.15;">
+              <p style="margin: 0; font-size: 11pt; font-weight: bold; text-transform: uppercase; text-decoration: underline; letter-spacing: 0.3px; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.15;">
                 ${lampItem.subjudul || `RINCIAN PENETAPAN ${data.tentang || surat.perihal}`}
               </p>
             </div>
 
             ${lampItem.pengantar ? `
-              <p style="text-align: justify; margin: 0 0 10pt 0; font-size: 10.5pt; line-height: 1.4; word-wrap: break-word; overflow-wrap: break-word;">
-                ${lampItem.pengantar}
-              </p>
+              <div style="margin: 0 0 6pt 0;">
+                ${formatParagrafSuratHtml(String(lampItem.pengantar), { fontSize: '10.5pt' })}
+              </div>
             ` : ''}
 
             ${lampiranTableHtml}
             ${lampiranTeksHtml}
 
             ${lampItem.catatan ? `
-              <div style="font-size: 9.5pt; font-style: italic; margin-top: 6pt; margin-bottom: 10pt; word-wrap: break-word; overflow-wrap: break-word;">
+              <div style="font-size: 9.5pt; font-style: italic; margin-top: 6pt; margin-bottom: 10pt; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.15;">
                 Catatan: ${lampItem.catatan}
               </div>
             ` : ''}
 
             <!-- Tanda Tangan Lampiran -->
-            <table class="ttd-lampiran-sk-table" style="width: 100%; margin-top: 20pt; border: none; border-collapse: collapse; font-size: 11pt;" border="0" cellpadding="0" cellspacing="0">
+            <table class="ttd-lampiran-sk-table" style="width: 100%; margin-top: 20pt; border: none; border-collapse: collapse; font-size: 11pt; line-height: 1.15;" border="0" cellpadding="0" cellspacing="0">
               <tr>
                 <td style="width: 52%; border: none;">&nbsp;</td>
-                <td style="width: 48%; text-align: center; vertical-align: top; border: none;">
-                  <p style="margin: 0 0 2pt 0; text-align: center; font-size: 11pt; position: relative; z-index: 10;">Ditetapkan di : ${sekolah.desa || 'Pekutatan'}</p>
-                  <p style="margin: 0 0 4pt 0; text-align: center; font-size: 11pt; position: relative; z-index: 10;">Pada tanggal : ${tglIndo}</p>
-                  <p style="margin: 0; font-weight: bold; text-align: center; font-size: 11pt; position: relative; z-index: 10;">${defaultJabatanKepsek},</p>
+                <td style="width: 48%; text-align: center; vertical-align: top; border: none; line-height: 1.15;">
+                  <p style="margin: 0; text-align: center; font-size: 11pt; line-height: 1.15; position: relative; z-index: 10;">Ditetapkan di : ${sekolah.desa || 'Pekutatan'}</p>
+                  <p style="margin: 0; text-align: center; font-size: 11pt; line-height: 1.15; position: relative; z-index: 10;">Pada tanggal : ${tglIndo}</p>
+                  <p style="margin: 0; font-weight: bold; text-align: center; font-size: 11pt; line-height: 1.15; position: relative; z-index: 10;">${defaultJabatanKepsek},</p>
                   ${buildKepsekSignatureSpaceHtml(sekolah, stampOptions, '52pt')}
-                  <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; font-size: 11pt; position: relative; z-index: 10;">${kepsek.nama}</p>
-                  ${kepsek.pangkat ? `<p style="margin: 1.5pt 0 0 0; font-size: 10pt; text-align: center; position: relative; z-index: 10;">${kepsek.pangkat}</p>` : ''}
-                  <p style="margin: 2pt 0 0 0; font-size: 10pt; text-align: center; position: relative; z-index: 10;">NIP. ${kepsek.nip}</p>
+                  <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; font-size: 11pt; line-height: 1.15; position: relative; z-index: 10;">${kepsek.nama}</p>
+                  ${kepsek.pangkat ? `<p style="margin: 0; font-size: 10pt; text-align: center; line-height: 1.15; position: relative; z-index: 10;">${kepsek.pangkat}</p>` : ''}
+                  <p style="margin: 0; font-size: 10pt; text-align: center; line-height: 1.15; position: relative; z-index: 10;">NIP. ${kepsek.nip}</p>
                 </td>
               </tr>
             </table>
@@ -3023,9 +3250,9 @@ export function buildSuratHtml(
   }
 
   return `
-    <div class="surat-resmi ${isSuratKeputusan ? 'is-surat-keputusan' : ''}" style="font-family: ${suratFontFamily}; font-size: 12pt; line-height: 1.35; color: #000000;">
+    <div class="surat-resmi ${isSuratKeputusan ? 'is-surat-keputusan' : ''}" style="font-family: ${suratFontFamily}; font-size: 12pt; line-height: 1.15; color: #000000;">
       ${kopHtml}
-      <div class="surat-body">
+      <div class="surat-body" style="line-height: 1.15;">
         ${cleanBadanSurat}
         ${cleanTtdBlock}
         ${skLampiranHtml}

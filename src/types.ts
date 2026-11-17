@@ -8,6 +8,7 @@ export type JenisSuratKeluar =
   | 'surat_tugas'
   | 'surat_pengantar'
   | 'surat_rekomendasi'
+  | 'surat_permohonan'
   | 'surat_eksternal';
 
 export type StatusSuratKeluar = 'Konsep' | 'Disetujui' | 'Terkirim' | 'Diarsipkan';

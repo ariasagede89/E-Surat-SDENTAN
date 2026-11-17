@@ -29,7 +29,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string", "maxLength": 128 },
-        "jenisSurat": { "type": "string", "enum": ["surat_ijin_guru", "surat_keterangan", "surat_undangan", "surat_keputusan", "surat_tugas", "lainnya"] },
+        "jenisSurat": { "type": "string", "enum": ["surat_ijin_guru", "surat_keterangan", "surat_undangan", "surat_keputusan", "surat_tugas", "surat_pengantar", "surat_rekomendasi", "surat_permohonan", "surat_eksternal", "lainnya"] },
         "noSurat": { "type": "string", "maxLength": 150 },
         "kodeKlasifikasi": { "type": "string", "maxLength": 50 },
         "namaKlasifikasi": { "type": "string", "maxLength": 200 },

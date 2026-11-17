@@ -335,6 +335,11 @@ export function getKodeDefaultByJenis(jenis: string): { kode: string; nama: stri
         kode: '400.3.5.1',
         nama: 'Kurikulum, bahan ajar',
       };
+    case 'surat_permohonan':
+      return {
+        kode: '400.3.5',
+        nama: 'Pendidikan Dasar dan Menengah Pertama (Operasional Umum)',
+      };
     case 'surat_eksternal':
       return {
         kode: '400.3.5',
