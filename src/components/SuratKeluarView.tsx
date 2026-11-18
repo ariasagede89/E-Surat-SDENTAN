@@ -84,6 +84,8 @@ import {
 import { formatDiktumLabel, getIndonesianOrdinalWord } from '../utils/diktumUtils';
 import { readFileAsDataUrl, openOrDownloadDocument } from '../utils/fileUtils';
 
+import type { AutoNumberEditContext } from './AutoNumberModal';
+
 interface SuratKeluarViewProps {
   suratKeluarList: SuratKeluar[];
   arsipList: ArsipSurat[];
@@ -96,7 +98,7 @@ interface SuratKeluarViewProps {
   onAddArsip: (arsip: Omit<ArsipSurat, 'id'>) => void;
   onUpdateArsip?: (arsip: ArsipSurat) => void;
   onDeleteArsip: (id: string) => void;
-  onOpenAutoNumberModal: () => void;
+  onOpenAutoNumberModal: (context?: AutoNumberEditContext) => void;
   onPreviewSurat: (surat: SuratKeluar) => void;
   initialSelectedNumber?: {
     noSurat: string;
@@ -2549,7 +2551,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
             </button>
 
             <button
-              onClick={onOpenAutoNumberModal}
+              onClick={() => onOpenAutoNumberModal()}
               className="w-full sm:w-auto py-4 sm:py-4.5 px-6 sm:px-8 bg-white hover:bg-slate-50 text-slate-800 hover:text-slate-900 border-2 border-slate-300 font-bold text-base sm:text-lg rounded-2xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2.5 active:scale-[0.99] cursor-pointer shrink-0"
               title="Minta Nomor Surat Permendagri No. 83 Tahun 2022"
             >
@@ -3130,9 +3132,25 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                         </button>
                         <button
                           type="button"
-                          onClick={onOpenAutoNumberModal}
+                          onClick={() =>
+                            onOpenAutoNumberModal({
+                              mode: 'ubah_kode',
+                              noSurat,
+                              kodeKlasifikasi,
+                              namaKlasifikasi,
+                              tglSurat,
+                              onApply: (result) => {
+                                setNoSurat(result.noSurat);
+                                setKodeKlasifikasi(result.kodeKlasifikasi);
+                                setNamaKlasifikasi(result.namaKlasifikasi);
+                                if (result.tglSurat) {
+                                  setTglSurat(result.tglSurat);
+                                }
+                              },
+                            })
+                          }
                           className="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
-                          title="Pilih Klasifikasi Manual"
+                          title="Ubah Kode Klasifikasi atau Nomor Urut Surat"
                         >
                           Ubah Kode
                         </button>
@@ -3166,8 +3184,23 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       const newTgl = e.target.value;
                       setTglSurat(newTgl);
                       if (jenisSurat !== 'surat_ijin_guru') {
-                        const auto = hitungNomorOtomatis(jenisSurat, newTgl);
-                        setNoSurat(auto.nomor);
+                        const existingSeq = extractNomorUrut(noSurat);
+                        if (editingId && existingSeq) {
+                          const dateObj = newTgl ? new Date(newTgl) : new Date();
+                          const kodeAktif =
+                            kodeKlasifikasi || getKodeDefaultByJenis(jenisSurat).kode;
+                          setNoSurat(
+                            generateNomorSurat(
+                              kodeAktif,
+                              existingSeq,
+                              sekolah.kodeSuratSekolah || 'SDN1PKT',
+                              dateObj
+                            )
+                          );
+                        } else {
+                          const auto = hitungNomorOtomatis(jenisSurat, newTgl);
+                          setNoSurat(auto.nomor);
+                        }
                       }
                     }}
                     className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none shadow-2xs bg-white"
@@ -6644,15 +6677,15 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                         <li key={idx}>{t}</li>
                                       ))}
                                     </ol>
-                                    <p>di -</p>
-                                    <p className="underline pl-4">{spTempatTujuan || 'Tempat'}</p>
+                                    <p className="ml-[4.8em]">di -</p>
+                                    <p className="ml-[5.85em]">{spTempatTujuan || 'Tempat'}</p>
                                   </>
                                 ) : (
                                   <>
                                     <p>Kepada</p>
                                     <p className="font-bold">Yth. {tujuan || 'Kepala Dinas Pendidikan Kepemudaan dan Olahraga'}</p>
-                                    <p>di -</p>
-                                    <p className="underline pl-4">{spTempatTujuan || 'Tempat'}</p>
+                                    <p className="ml-[1.6em]">di -</p>
+                                    <p className="ml-[2.65em]">{spTempatTujuan || 'Tempat'}</p>
                                   </>
                                 )}
                               </div>

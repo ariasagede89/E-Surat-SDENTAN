@@ -26,6 +26,7 @@ import {
   getNextNomorUrut,
   formatNomorUrut,
   resolveYear,
+  extractNomorUrut,
 } from '../utils/numberGenerator';
 import { KLASIFIKASI_MENDAGRI_83_2022 } from '../data/klasifikasiMendagri';
 import {
@@ -39,6 +40,20 @@ import {
 import { resolveKepalaSekolahData } from '../utils/exportUtils';
 import { readFileAsDataUrl, UploadedFileResult } from '../utils/fileUtils';
 
+export interface AutoNumberEditContext {
+  mode: 'ubah_kode';
+  noSurat: string;
+  kodeKlasifikasi: string;
+  namaKlasifikasi?: string;
+  tglSurat?: string;
+  onApply: (result: {
+    noSurat: string;
+    kodeKlasifikasi: string;
+    namaKlasifikasi: string;
+    tglSurat: string;
+  }) => void;
+}
+
 interface AutoNumberModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -47,6 +62,7 @@ interface AutoNumberModalProps {
   suratKeluarList?: SuratKeluar[];
   arsipList?: ArsipSurat[];
   guruList?: Guru[];
+  editContext?: AutoNumberEditContext | null;
   onSelectNumber?: (
     noSurat: string,
     klasifikasi: KlasifikasiMendagriItem,
@@ -62,10 +78,10 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
   isOpen,
   onClose,
   sekolah,
-  totalSuratKeluar = 0,
   suratKeluarList = [],
   arsipList = [],
   guruList = [],
+  editContext = null,
   onSelectNumber,
   onAddSuratKeluar,
   onAddArsip,
@@ -79,6 +95,7 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
   const [selectedItem, setSelectedItem] = useState<KlasifikasiMendagriItem>(() => {
     return KLASIFIKASI_MENDAGRI_83_2022[0];
   });
+  const [kodeSuratInput, setKodeSuratInput] = useState<string>(() => KLASIFIKASI_MENDAGRI_83_2022[0].kode);
   const [tanggalSurat, setTanggalSurat] = useState(() => new Date().toISOString().slice(0, 10));
 
   const calculateSeq = (dateStr?: string) => {
@@ -88,6 +105,7 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
   };
 
   const [nomorUrut, setNomorUrut] = useState(() => calculateSeq());
+  const [nomorUrutInput, setNomorUrutInput] = useState(() => String(calculateSeq()));
   const [copied, setCopied] = useState(false);
 
   // Form State untuk Surat Eksternal (Luar Sistem)
@@ -107,7 +125,6 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setNomorUrut(calculateSeq());
       setStep('pilih_nomor');
       setExtPerihal('');
       setExtTujuan('');
@@ -118,14 +135,65 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
       setExtPenandatanganNama(resolvedKepsek.nama);
       setExtPenandatanganNip(resolvedKepsek.nip);
       setExtPenandatanganJabatan(resolvedKepsek.jabatan);
+
+      if (editContext && editContext.mode === 'ubah_kode') {
+        const initTgl = editContext.tglSurat || new Date().toISOString().slice(0, 10);
+        const rawKode = (
+          editContext.kodeKlasifikasi ||
+          (editContext.noSurat && editContext.noSurat.includes('/')
+            ? editContext.noSurat.split('/')[0]
+            : '') ||
+          KLASIFIKASI_MENDAGRI_83_2022[0].kode
+        ).trim();
+        const matched = KLASIFIKASI_MENDAGRI_83_2022.find((k) => k.kode === rawKode);
+        const existingSeq = extractNomorUrut(editContext.noSurat);
+        const initSeq = existingSeq ?? calculateSeq(initTgl);
+
+        setTanggalSurat(initTgl);
+        setKodeSuratInput(rawKode);
+        setSelectedItem(
+          matched || {
+            kode: rawKode,
+            uraian: editContext.namaKlasifikasi || 'Klasifikasi Surat',
+            kategori: 'Lainnya',
+          }
+        );
+        setNomorUrut(initSeq);
+        setNomorUrutInput(String(initSeq));
+      } else {
+        const today = new Date().toISOString().slice(0, 10);
+        const defItem = KLASIFIKASI_MENDAGRI_83_2022[0];
+        const nextSeq = calculateSeq(today);
+        setTanggalSurat(today);
+        setSelectedItem(defItem);
+        setKodeSuratInput(defItem.kode);
+        setNomorUrut(nextSeq);
+        setNomorUrutInput(String(nextSeq));
+      }
     }
-  }, [isOpen, suratKeluarList, arsipList, totalSuratKeluar]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
-  const dateObj = new Date(tanggalSurat);
+  const parsedTgl = new Date(tanggalSurat);
+  const dateObj = isNaN(parsedTgl.getTime()) ? new Date() : parsedTgl;
+  const activeKode = kodeSuratInput.trim() || selectedItem.kode;
+  const matchedKlasifikasi = KLASIFIKASI_MENDAGRI_83_2022.find((k) => k.kode === activeKode);
+  const activeKlasifikasiItem: KlasifikasiMendagriItem = matchedKlasifikasi
+    ? matchedKlasifikasi
+    : {
+        kode: activeKode,
+        uraian:
+          editContext?.kodeKlasifikasi === activeKode && editContext.namaKlasifikasi
+            ? editContext.namaKlasifikasi
+            : selectedItem.kode === activeKode
+            ? selectedItem.uraian
+            : `Kode Surat (${activeKode})`,
+        kategori: selectedItem.kategori || 'Lainnya',
+      };
+  const safeNomorUrut = Math.max(1, nomorUrut || 1);
   const nomorSuratOtomatis = generateNomorSurat(
-    selectedItem.kode,
-    nomorUrut,
+    activeKode,
+    safeNomorUrut,
     sekolah.kodeSuratSekolah || 'SDN1PKT',
     dateObj
   );
@@ -136,10 +204,23 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Mode Ubah Kode: Terapkan langsung ke Surat Keluar yang sedang diedit / dibuat
+  const handleApplyEditKode = () => {
+    if (editContext?.onApply) {
+      editContext.onApply({
+        noSurat: nomorSuratOtomatis,
+        kodeKlasifikasi: activeKode,
+        namaKlasifikasi: activeKlasifikasiItem.uraian,
+        tglSurat: tanggalSurat,
+      });
+    }
+    onClose();
+  };
+
   // Pilihan 1: Gunakan untuk Buat Surat (Sesuai Template di Sistem)
   const handleUseForTemplate = () => {
     if (onSelectNumber) {
-      onSelectNumber(nomorSuratOtomatis, selectedItem);
+      onSelectNumber(nomorSuratOtomatis, activeKlasifikasiItem);
     }
     if (onNavigateToSuratKeluar) {
       onNavigateToSuratKeluar();
@@ -150,7 +231,7 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
   // Pilihan 2: Gunakan untuk Surat Lainnya (Diarahkan langsung ke Surat Lainnya pada menu Buat Surat)
   const handleUseForSuratLainnya = () => {
     if (onSelectNumber) {
-      onSelectNumber(nomorSuratOtomatis, selectedItem, 'surat_eksternal');
+      onSelectNumber(nomorSuratOtomatis, activeKlasifikasiItem, 'surat_eksternal');
     }
     if (onNavigateToSuratKeluar) {
       onNavigateToSuratKeluar();
@@ -268,7 +349,7 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl lg:max-w-5xl overflow-hidden flex flex-col max-h-[94vh] animate-fade-in">
         {/* ======================================================== */}
         {/* STEP 1: GENERATOR & PEMILIHAN PENGGUNAAN NOMOR SURAT     */}
@@ -282,9 +363,15 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-base sm:text-lg font-bold">Minta Nomor Surat Otomatis</h2>
+                  <h2 className="text-base sm:text-lg font-bold">
+                    {editContext?.mode === 'ubah_kode'
+                      ? 'Ubah Kode & Nomor Urut Surat'
+                      : 'Minta Nomor Surat Otomatis'}
+                  </h2>
                   <p className="text-xs text-blue-200">
-                    Sesuai Permendagri No. 83 Th 2022 (Pendidikan Dasar & Kepegawaian)
+                    {editContext?.mode === 'ubah_kode'
+                      ? 'Sesuaikan kode klasifikasi atau nomor urut, lalu terapkan ke surat yang sedang diedit'
+                      : 'Sesuai Permendagri No. 83 Th 2022 (Pendidikan Dasar & Kepegawaian)'}
                   </p>
                 </div>
               </div>
@@ -331,7 +418,7 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
               <div className="mt-2.5 text-xs text-slate-600 flex flex-wrap gap-2 items-center">
                 <span className="font-semibold text-blue-900">Perihal Klasifikasi:</span>
                 <span className="bg-white px-2.5 py-1 rounded-lg border border-slate-200 font-medium text-slate-800 text-xs">
-                  [{selectedItem.kode}] {selectedItem.uraian}
+                  [{activeKode}] {activeKlasifikasiItem.uraian}
                 </span>
               </div>
             </div>
@@ -350,7 +437,11 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                     onChange={(e) => {
                       const newTgl = e.target.value;
                       setTanggalSurat(newTgl);
-                      setNomorUrut(calculateSeq(newTgl));
+                      if (editContext?.mode !== 'ubah_kode') {
+                        const seq = calculateSeq(newTgl);
+                        setNomorUrut(seq);
+                        setNomorUrutInput(String(seq));
+                      }
                     }}
                     className="w-full text-sm sm:text-base border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
                   />
@@ -367,13 +458,30 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                     <input
                       type="number"
                       min="1"
-                      value={nomorUrut}
-                      onChange={(e) => setNomorUrut(parseInt(e.target.value) || 1)}
+                      value={nomorUrutInput}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        setNomorUrutInput(raw);
+                        const parsed = parseInt(raw, 10);
+                        if (!isNaN(parsed) && parsed >= 1) {
+                          setNomorUrut(parsed);
+                        }
+                      }}
+                      onBlur={() => {
+                        const parsed = parseInt(nomorUrutInput, 10);
+                        const clamped = !isNaN(parsed) && parsed >= 1 ? parsed : 1;
+                        setNomorUrut(clamped);
+                        setNomorUrutInput(String(clamped));
+                      }}
                       className="w-full text-sm sm:text-base border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 font-mono font-bold bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
                     />
                     <button
                       type="button"
-                      onClick={() => setNomorUrut(calculateSeq(tanggalSurat))}
+                      onClick={() => {
+                        const seq = calculateSeq(tanggalSurat);
+                        setNomorUrut(seq);
+                        setNomorUrutInput(String(seq));
+                      }}
                       className="text-xs sm:text-sm text-blue-700 hover:text-blue-900 whitespace-nowrap bg-blue-50 hover:bg-blue-100 font-semibold px-3 py-2.5 sm:py-3 rounded-xl border border-blue-200 transition-colors cursor-pointer shadow-2xs"
                       title={`Hitung otomatis nomor urut berikutnya untuk tahun ${dateObj.getFullYear()}`}
                     >
@@ -381,83 +489,130 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                     </button>
                   </div>
                   <p className="text-[11px] sm:text-xs text-slate-500 mt-1 italic">
-                    * Otomatis membaca nomor tertinggi dari Surat Keluar & Buku Arsip.
+                    * Ubah angka di atas untuk menyesuaikan nomor urut surat secara manual, atau klik Otomatis.
                   </p>
                 </div>
               </div>
 
-              {/* Dropdown Kode Klasifikasi Surat Keluar */}
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+              {/* Kode Klasifikasi Surat Keluar (Dropdown Standar + Input Manual) */}
+              <div className="space-y-3">
+                <label className="block text-xs sm:text-sm font-semibold text-slate-700 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <BookOpen className="w-4 h-4 text-blue-700" />
                     <span>Kode Klasifikasi Surat Keluar</span>
                   </span>
                   <span className="text-xs text-slate-500 font-mono">
-                    Kode: <strong className="text-blue-900">{selectedItem.kode}</strong>
+                    Kode Aktif: <strong className="text-blue-900">{activeKode}</strong>
                   </span>
                 </label>
 
-                <select
-                  value={selectedItem.kode}
-                  onChange={(e) => {
-                    const found = KLASIFIKASI_MENDAGRI_83_2022.find((k) => k.kode === e.target.value);
-                    if (found) setSelectedItem(found);
-                  }}
-                  className="w-full text-sm sm:text-base border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 bg-white text-slate-900 font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
-                >
-                  <optgroup label="── Pendidikan Dasar (400.3) ──">
-                    {KLASIFIKASI_MENDAGRI_83_2022.filter((k) => k.kategori === 'Pendidikan Dasar').map((k) => (
-                      <option key={k.kode} value={k.kode}>
-                        [{k.kode}] {k.uraian}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="── Kepegawaian (800) ──">
-                    {KLASIFIKASI_MENDAGRI_83_2022.filter((k) => k.kategori === 'Kepegawaian').map((k) => (
-                      <option key={k.kode} value={k.kode}>
-                        [{k.kode}] {k.uraian}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="── Klasifikasi Lainnya ──">
-                    {KLASIFIKASI_MENDAGRI_83_2022.filter((k) => k.kategori !== 'Pendidikan Dasar' && k.kategori !== 'Kepegawaian').map((k) => (
-                      <option key={k.kode} value={k.kode}>
-                        [{k.kode}] {k.uraian}
-                      </option>
-                    ))}
-                  </optgroup>
-                </select>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                      Kode Surat (Bisa Diubah Manual)
+                    </label>
+                    <input
+                      type="text"
+                      value={kodeSuratInput}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setKodeSuratInput(val);
+                        const trimmed = val.trim();
+                        const found = KLASIFIKASI_MENDAGRI_83_2022.find((k) => k.kode === trimmed);
+                        if (found) {
+                          setSelectedItem(found);
+                        }
+                      }}
+                      placeholder="Contoh: 400.3.5"
+                      className="w-full text-sm sm:text-base border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 bg-white text-blue-950 font-mono font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
+                    />
+                  </div>
 
-                {selectedItem.subUraian && (
+                  <div className="sm:col-span-2">
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                      Atau Pilih dari Daftar Klasifikasi Permendagri 83/2022
+                    </label>
+                    <select
+                      value={matchedKlasifikasi ? matchedKlasifikasi.kode : ''}
+                      onChange={(e) => {
+                        const found = KLASIFIKASI_MENDAGRI_83_2022.find((k) => k.kode === e.target.value);
+                        if (found) {
+                          setSelectedItem(found);
+                          setKodeSuratInput(found.kode);
+                        }
+                      }}
+                      className="w-full text-sm sm:text-base border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 bg-white text-slate-900 font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
+                    >
+                      {!matchedKlasifikasi && (
+                        <option value="">
+                          [{activeKode}] {activeKlasifikasiItem.uraian} (Kustom / Sesuai Surat)
+                        </option>
+                      )}
+                      <optgroup label="── Pendidikan Dasar (400.3) ──">
+                        {KLASIFIKASI_MENDAGRI_83_2022.filter((k) => k.kategori === 'Pendidikan Dasar').map((k) => (
+                          <option key={k.kode} value={k.kode}>
+                            [{k.kode}] {k.uraian}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="── Kepegawaian (800) ──">
+                        {KLASIFIKASI_MENDAGRI_83_2022.filter((k) => k.kategori === 'Kepegawaian').map((k) => (
+                          <option key={k.kode} value={k.kode}>
+                            [{k.kode}] {k.uraian}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="── Klasifikasi Lainnya ──">
+                        {KLASIFIKASI_MENDAGRI_83_2022.filter((k) => k.kategori !== 'Pendidikan Dasar' && k.kategori !== 'Kepegawaian').map((k) => (
+                          <option key={k.kode} value={k.kode}>
+                            [{k.kode}] {k.uraian}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+                  </div>
+                </div>
+
+                {activeKlasifikasiItem.subUraian && (
                   <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                    {selectedItem.subUraian}
+                    {activeKlasifikasiItem.subUraian}
                   </p>
                 )}
               </div>
 
               {/* Tombol Penggunaan Nomor Surat */}
               <div className="pt-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {editContext?.mode === 'ubah_kode' ? (
                   <button
                     type="button"
-                    onClick={handleUseForTemplate}
-                    className="py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+                    onClick={handleApplyEditKode}
+                    className="w-full py-3.5 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
                   >
-                    <FileText className="w-4 h-4" />
-                    <span>Template Sistem</span>
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Gunakan Kode &amp; Nomor Surat Ini</span>
                   </button>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={handleUseForTemplate}
+                      className="py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>Template Sistem</span>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={handleUseForSuratLainnya}
-                    className="py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
-                    title="Gunakan nomor ini untuk membuat Surat Lainnya pada menu Buat Surat"
-                  >
-                    <FileText className="w-4 h-4" />
-                    <span>Surat Lainnya</span>
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      onClick={handleUseForSuratLainnya}
+                      className="py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+                      title="Gunakan nomor ini untuk membuat Surat Lainnya pada menu Buat Surat"
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>Surat Lainnya</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -468,7 +623,7 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                 onClick={onClose}
                 className="px-4 py-2 text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
               >
-                Tutup
+                {editContext?.mode === 'ubah_kode' ? 'Batal' : 'Tutup'}
               </button>
             </div>
           </>

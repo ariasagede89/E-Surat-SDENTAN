@@ -73,7 +73,7 @@ import { SuratKeluarView } from './components/SuratKeluarView';
 import { GuruSiswaView } from './components/GuruSiswaView';
 import { FilterSuratView } from './components/FilterSuratView';
 import { PengaturanView } from './components/PengaturanView';
-import { AutoNumberModal } from './components/AutoNumberModal';
+import { AutoNumberModal, AutoNumberEditContext } from './components/AutoNumberModal';
 import { SuratModal } from './components/SuratModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
 
@@ -86,7 +86,89 @@ type MenuTab =
   | 'filter'
   | 'pengaturan';
 
+function safeReadJsonFromStorage<T>(key: string, fallback: T): T {
+  try {
+    const saved = localStorage.getItem(key);
+    if (!saved) return fallback;
+    return JSON.parse(saved) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function stripHeavyBase64ForCache(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => {
+      if (item && typeof item === 'object') {
+        const copy: Record<string, any> = { ...(item as Record<string, any>) };
+        if (typeof copy.lampiranUrl === 'string' && copy.lampiranUrl.length > 50_000) {
+          delete copy.lampiranUrl;
+        }
+        return copy;
+      }
+      return item;
+    });
+  }
+  if (value && typeof value === 'object') {
+    const copy: Record<string, any> = { ...(value as Record<string, any>) };
+    if (typeof copy.kopImageUrl === 'string' && copy.kopImageUrl.length > 100_000) {
+      delete copy.kopImageUrl;
+    }
+    if (typeof copy.capSekolahUrl === 'string' && copy.capSekolahUrl.length > 100_000) {
+      delete copy.capSekolahUrl;
+    }
+    if (typeof copy.ttdKepalaSekolahUrl === 'string' && copy.ttdKepalaSekolahUrl.length > 100_000) {
+      delete copy.ttdKepalaSekolahUrl;
+    }
+    return copy;
+  }
+  return value;
+}
+
+function safeWriteJsonToStorage(key: string, value: unknown): void {
+  try {
+    const serialized = JSON.stringify(value);
+    // Hindari menyimpan payload > 900KB ke localStorage agar tidak melebihi kuota 5MB browser
+    if (serialized.length > 900_000) {
+      const compact = JSON.stringify(stripHeavyBase64ForCache(value));
+      if (compact.length <= 900_000) {
+        localStorage.setItem(key, compact);
+      }
+      return;
+    }
+    localStorage.setItem(key, serialized);
+  } catch {
+    // Jika QuotaExceededError atau akses storage diblokir, coba simpan versi ringkas tanpa base64
+    try {
+      const compact = JSON.stringify(stripHeavyBase64ForCache(value));
+      localStorage.setItem(key, compact);
+    } catch {
+      // Abaikan secara aman agar aplikasi tetap berjalan normal dengan state memori / Cloud Firestore
+    }
+  }
+}
+
+function safeRemoveFromStorage(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
 function normalizePTK(guru: Guru): Guru {
+  if (!guru || typeof guru !== 'object') {
+    return {
+      id: 'ptk_' + Date.now(),
+      nip: '-',
+      nama: '-',
+      jabatan: 'Guru',
+      pangkatGol: '-',
+      jenisPtk: 'guru',
+      noHp: '',
+      email: '',
+    };
+  }
   if (guru.jenisPtk) return guru;
   const jab = (guru.jabatan || '').toLowerCase();
   if (jab.includes('kepala sekolah')) {
@@ -130,63 +212,41 @@ export default function App() {
 
   // Core Data States: If Firebase is connected, start clean and rely strictly on Firestore
   const [sekolah, setSekolah] = useState<PengaturanSekolah>(() => {
-    const saved = localStorage.getItem('simas_sekolah');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.kepalaSekolah === 'I Wayan Sudiarta, S.Pd., M.Pd.') {
-          parsed.kepalaSekolah = 'Gede Ariasa, S.Pd';
-          parsed.nipKepalaSekolah = '198906232014031002';
-          parsed.email = 'sdnegeri1pekutatan@gmail.com';
-          parsed.instansiBaris3 = 'SATUAN PENDIDIKAN FORMAL';
-          parsed.alamat = 'Jalan Cempaka No. 2, Br. Dangin Pangkung, Desa Pekutatan (82262)';
-          localStorage.setItem('simas_sekolah', JSON.stringify(parsed));
-        }
-        return parsed;
-      } catch {
-        return initialSekolah;
+    const parsed = safeReadJsonFromStorage<Partial<PengaturanSekolah> | null>('simas_sekolah', null);
+    if (parsed && typeof parsed === 'object') {
+      const merged: PengaturanSekolah = { ...initialSekolah, ...parsed };
+      if (merged.kepalaSekolah === 'I Wayan Sudiarta, S.Pd., M.Pd.') {
+        merged.kepalaSekolah = 'Gede Ariasa, S.Pd';
+        merged.nipKepalaSekolah = '198906232014031002';
+        merged.email = 'sdnegeri1pekutatan@gmail.com';
+        merged.instansiBaris3 = 'SATUAN PENDIDIKAN FORMAL';
+        merged.alamat = 'Jalan Cempaka No. 2, Br. Dangin Pangkung, Desa Pekutatan (82262)';
+        safeWriteJsonToStorage('simas_sekolah', merged);
       }
+      return merged;
     }
     return initialSekolah;
   });
 
   const [suratMasukList, setSuratMasukList] = useState<SuratMasuk[]>(() => {
     if (isFirebaseConfigured()) {
-      const saved = localStorage.getItem('simas_surat_masuk');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          return Array.isArray(parsed)
-            ? parsed.filter((s: any) => !DUMMY_IDS.has(s.id)).sort(compareSuratMasukDesc)
-            : [];
-        } catch {
-          return [];
-        }
-      }
-      return [];
+      const parsed = safeReadJsonFromStorage<SuratMasuk[] | null>('simas_surat_masuk', null);
+      return Array.isArray(parsed)
+        ? parsed.filter((s: any) => s && !DUMMY_IDS.has(s.id)).sort(compareSuratMasukDesc)
+        : [];
     }
-    const saved = localStorage.getItem('simas_surat_masuk');
-    const items = saved ? JSON.parse(saved) : initialSuratMasuk;
+    const items = safeReadJsonFromStorage<SuratMasuk[]>('simas_surat_masuk', initialSuratMasuk);
     return Array.isArray(items) ? [...items].sort(compareSuratMasukDesc) : [];
   });
 
   const [suratKeluarList, setSuratKeluarList] = useState<SuratKeluar[]>(() => {
     if (isFirebaseConfigured()) {
-      const saved = localStorage.getItem('simas_surat_keluar');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          return Array.isArray(parsed)
-            ? parsed.filter((s: any) => !DUMMY_IDS.has(s.id)).sort(compareSuratKeluarDesc)
-            : [];
-        } catch {
-          return [];
-        }
-      }
-      return [];
+      const parsed = safeReadJsonFromStorage<SuratKeluar[] | null>('simas_surat_keluar', null);
+      return Array.isArray(parsed)
+        ? parsed.filter((s: any) => s && !DUMMY_IDS.has(s.id)).sort(compareSuratKeluarDesc)
+        : [];
     }
-    const saved = localStorage.getItem('simas_surat_keluar');
-    let items = saved ? JSON.parse(saved) : initialSuratKeluar;
+    let items = safeReadJsonFromStorage<SuratKeluar[]>('simas_surat_keluar', initialSuratKeluar);
     if (Array.isArray(items)) {
       items = items.map((s: SuratKeluar) => {
         if (s.id === 'sk-5' && s.tglSurat === '2026-09-01') {
@@ -215,64 +275,41 @@ export default function App() {
 
   const [arsipList, setArsipList] = useState<ArsipSurat[]>(() => {
     if (isFirebaseConfigured()) {
-      const saved = localStorage.getItem('simas_arsip');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          return Array.isArray(parsed)
-            ? parsed.filter((s: any) => !DUMMY_IDS.has(s.id)).sort(compareSuratKeluarDesc)
-            : [];
-        } catch {
-          return [];
-        }
-      }
-      return [];
+      const parsed = safeReadJsonFromStorage<ArsipSurat[] | null>('simas_arsip', null);
+      return Array.isArray(parsed)
+        ? parsed.filter((s: any) => s && !DUMMY_IDS.has(s.id)).sort(compareSuratKeluarDesc)
+        : [];
     }
-    const saved = localStorage.getItem('simas_arsip');
-    const items = saved ? JSON.parse(saved) : initialArsipSurat;
+    const items = safeReadJsonFromStorage<ArsipSurat[]>('simas_arsip', initialArsipSurat);
     return Array.isArray(items) ? [...items].sort(compareSuratKeluarDesc) : [];
   });
 
   const [guruList, setGuruList] = useState<Guru[]>(() => {
-    const saved = localStorage.getItem('simas_guru');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const normalized = parsed.map(normalizePTK);
-          const hasTU = normalized.some((g) => g.jenisPtk === 'tu');
-          if (!hasTU) {
-            const tuDefaults = initialGuru.filter((g) => g.jenisPtk === 'tu');
-            return [...normalized, ...tuDefaults];
-          }
-          return normalized;
-        }
-      } catch {
-        // fallback
+    const parsed = safeReadJsonFromStorage<Guru[] | null>('simas_guru', null);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      const normalized = parsed.map(normalizePTK);
+      const hasTU = normalized.some((g) => g.jenisPtk === 'tu');
+      if (!hasTU) {
+        const tuDefaults = initialGuru.filter((g) => g.jenisPtk === 'tu');
+        return [...normalized, ...tuDefaults];
       }
+      return normalized;
     }
     return initialGuru.map(normalizePTK);
   });
 
   const [siswaList, setSiswaList] = useState<Siswa[]>(() => {
     if (isFirebaseConfigured()) {
-      const saved = localStorage.getItem('simas_siswa');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          return Array.isArray(parsed) ? sortSiswa(parsed) : [];
-        } catch {
-          return [];
-        }
-      }
-      return [];
+      const parsed = safeReadJsonFromStorage<Siswa[] | null>('simas_siswa', null);
+      return Array.isArray(parsed) ? sortSiswa(parsed) : [];
     }
-    const saved = localStorage.getItem('simas_siswa');
-    return saved ? sortSiswa(JSON.parse(saved)) : sortSiswa(initialSiswa);
+    const items = safeReadJsonFromStorage<Siswa[]>('simas_siswa', initialSiswa);
+    return Array.isArray(items) ? sortSiswa(items) : [];
   });
 
   // Modals & Navigation Helpers
   const [isAutoNumberModalOpen, setIsAutoNumberModalOpen] = useState(false);
+  const [autoNumberEditContext, setAutoNumberEditContext] = useState<AutoNumberEditContext | null>(null);
   const [previewSuratKeluar, setPreviewSuratKeluar] = useState<SuratKeluar | null>(null);
   const [editingSuratMasuk, setEditingSuratMasuk] = useState<SuratMasuk | null>(null);
   const [selectedAutoNumber, setSelectedAutoNumber] = useState<{
@@ -330,14 +367,15 @@ export default function App() {
     });
     const unsubSettings = subscribeToSettings((data) => {
       if (data && data.namaSekolah) {
-        if (data.kepalaSekolah === 'I Wayan Sudiarta, S.Pd., M.Pd.') {
-          data.kepalaSekolah = 'Gede Ariasa, S.Pd';
-          data.nipKepalaSekolah = '198906232014031002';
-          data.email = 'sdnegeri1pekutatan@gmail.com';
-          data.instansiBaris3 = 'SATUAN PENDIDIKAN FORMAL';
-          data.alamat = 'Jalan Cempaka No. 2, Br. Dangin Pangkung, Desa Pekutatan (82262)';
+        const merged: PengaturanSekolah = { ...initialSekolah, ...data };
+        if (merged.kepalaSekolah === 'I Wayan Sudiarta, S.Pd., M.Pd.') {
+          merged.kepalaSekolah = 'Gede Ariasa, S.Pd';
+          merged.nipKepalaSekolah = '198906232014031002';
+          merged.email = 'sdnegeri1pekutatan@gmail.com';
+          merged.instansiBaris3 = 'SATUAN PENDIDIKAN FORMAL';
+          merged.alamat = 'Jalan Cempaka No. 2, Br. Dangin Pangkung, Desa Pekutatan (82262)';
         }
-        setSekolah(data);
+        setSekolah(merged);
       }
     });
 
@@ -375,29 +413,29 @@ export default function App() {
     };
   }, [firebaseActive]);
 
-  // Sync to LocalStorage (offline resilient backup)
+  // Sync to LocalStorage (offline resilient backup, safe against QuotaExceededError / iframe restrictions)
   useEffect(() => {
-    localStorage.setItem('simas_sekolah', JSON.stringify(sekolah));
+    safeWriteJsonToStorage('simas_sekolah', sekolah);
   }, [sekolah]);
 
   useEffect(() => {
-    localStorage.setItem('simas_surat_masuk', JSON.stringify(suratMasukList));
+    safeWriteJsonToStorage('simas_surat_masuk', suratMasukList);
   }, [suratMasukList]);
 
   useEffect(() => {
-    localStorage.setItem('simas_surat_keluar', JSON.stringify(suratKeluarList));
+    safeWriteJsonToStorage('simas_surat_keluar', suratKeluarList);
   }, [suratKeluarList]);
 
   useEffect(() => {
-    localStorage.setItem('simas_arsip', JSON.stringify(arsipList));
+    safeWriteJsonToStorage('simas_arsip', arsipList);
   }, [arsipList]);
 
   useEffect(() => {
-    localStorage.setItem('simas_guru', JSON.stringify(guruList));
+    safeWriteJsonToStorage('simas_guru', guruList);
   }, [guruList]);
 
   useEffect(() => {
-    localStorage.setItem('simas_siswa', JSON.stringify(siswaList));
+    safeWriteJsonToStorage('simas_siswa', siswaList);
   }, [siswaList]);
 
   // Handlers for Surat Masuk with Firestore Sync
@@ -485,14 +523,14 @@ export default function App() {
   const handleClearSuratMasukFirestore = async () => {
     await clearFirestoreCollection('suratMasuk');
     setSuratMasukList([]);
-    localStorage.setItem('simas_surat_masuk', JSON.stringify([]));
+    safeWriteJsonToStorage('simas_surat_masuk', []);
     showToast('Semua data Surat Masuk di Firestore telah dibersihkan', 'info');
   };
 
   const handleClearSuratKeluarFirestore = async () => {
     await clearFirestoreCollection('suratKeluar');
     setSuratKeluarList([]);
-    localStorage.setItem('simas_surat_keluar', JSON.stringify([]));
+    safeWriteJsonToStorage('simas_surat_keluar', []);
     showToast('Semua data Surat Keluar di Firestore telah dibersihkan', 'info');
   };
 
@@ -505,9 +543,9 @@ export default function App() {
   };
 
   const handleResetLocalCache = () => {
-    localStorage.removeItem('simas_surat_masuk');
-    localStorage.removeItem('simas_surat_keluar');
-    localStorage.removeItem('simas_arsip');
+    safeRemoveFromStorage('simas_surat_masuk');
+    safeRemoveFromStorage('simas_surat_keluar');
+    safeRemoveFromStorage('simas_arsip');
     setSuratMasukList([]);
     setSuratKeluarList([]);
     setArsipList([]);
@@ -723,8 +761,11 @@ export default function App() {
     return res;
   };
 
-  // Navigation from Beranda
-  const handleOpenAutoNumber = () => {
+  // Navigation from Beranda / Edit Surat Keluar (Ubah Kode)
+  const handleOpenAutoNumber = (context?: AutoNumberEditContext) => {
+    setAutoNumberEditContext(
+      context && context.mode === 'ubah_kode' ? context : null
+    );
     setIsAutoNumberModalOpen(true);
   };
 
@@ -1007,7 +1048,7 @@ export default function App() {
             suratKeluarList={suratKeluarList}
             sekolah={sekolah}
             userRole={userRole}
-            onOpenAutoNumber={handleOpenAutoNumber}
+            onOpenAutoNumber={() => handleOpenAutoNumber()}
             onNavigateTab={(tab) => handleNavigateTab(tab as MenuTab)}
             onPreviewSuratKeluar={(sk) => setPreviewSuratKeluar(sk)}
             onEditSuratMasuk={handleNavigateToDisposisi}
@@ -1213,12 +1254,16 @@ export default function App() {
       {/* Global Modal: Generator Nomor Surat Otomatis Permendagri 83/2022 */}
       <AutoNumberModal
         isOpen={isAutoNumberModalOpen}
-        onClose={() => setIsAutoNumberModalOpen(false)}
+        onClose={() => {
+          setIsAutoNumberModalOpen(false);
+          setAutoNumberEditContext(null);
+        }}
         sekolah={sekolah}
         totalSuratKeluar={suratKeluarList.length}
         suratKeluarList={suratKeluarList}
         arsipList={arsipList}
         guruList={guruList}
+        editContext={autoNumberEditContext}
         onSelectNumber={handleSelectNumberForSurat}
         onAddSuratKeluar={handleAddSuratKeluar}
         onAddArsip={handleAddArsip}

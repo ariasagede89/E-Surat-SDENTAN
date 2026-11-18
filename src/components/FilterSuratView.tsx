@@ -69,7 +69,7 @@ export const FilterSuratView: React.FC<FilterSuratViewProps> = ({
       tipe: 'Keluar' as const,
       nomor: k.noSurat,
       kodeKlasifikasi: k.kodeKlasifikasi,
-      perihal: `[${k.jenisSurat.replace(/_/g, ' ').toUpperCase()}] ${k.perihal}`,
+      perihal: `[${(k.jenisSurat || 'surat_eksternal').replace(/_/g, ' ').toUpperCase()}] ${k.perihal || ''}`,
       pihakTerkait: `Kepada: ${k.tujuan}`,
       tgl: k.tglSurat,
       status: k.status,

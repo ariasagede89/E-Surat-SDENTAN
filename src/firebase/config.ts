@@ -39,7 +39,11 @@ export function getStoredFirebaseConfig(): FirebaseAppConfig {
 }
 
 export function saveStoredFirebaseConfig(config: FirebaseAppConfig): void {
-  localStorage.setItem(STORAGE_KEY_FIREBASE_CONFIG, JSON.stringify(config));
+  try {
+    localStorage.setItem(STORAGE_KEY_FIREBASE_CONFIG, JSON.stringify(config));
+  } catch {
+    // ignore storage quota/security errors
+  }
   cachedApp = null;
   cachedDb = null;
 }

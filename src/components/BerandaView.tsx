@@ -92,7 +92,7 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
       };
       const diffPriority = (priorityWeight[b.sifat] || 1) - (priorityWeight[a.sifat] || 1);
       if (diffPriority !== 0) return diffPriority;
-      return (a.tglTindakLanjut || '').localeCompare(b.tglTindakLanjut || '');
+      return String(a.tglTindakLanjut || '').localeCompare(String(b.tglTindakLanjut || ''));
     });
 
   // c. Log surat keluar terbaru / no urut tertinggi paling atas
@@ -166,7 +166,7 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
               Sistem Informasi Administrasi Surat
             </h1>
             <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed">
-              Selamat datang di portal administrasi persuratan resmi {sekolah.namaSekolah}.
+              Selamat datang di portal administrasi persuratan resmi {sekolah?.namaSekolah || 'SDN 1 Pekutatan'}.
             </p>
           </div>
 
@@ -592,7 +592,7 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
-                        {sk.jenisSurat.replace(/_/g, ' ').toUpperCase()}
+                        {(sk.jenisSurat || 'surat_eksternal').replace(/_/g, ' ').toUpperCase()}
                       </span>
                       <span className="text-[11px] font-mono font-bold text-slate-800">
                         {sk.noSurat}
