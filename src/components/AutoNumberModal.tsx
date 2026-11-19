@@ -29,6 +29,7 @@ import {
   extractNomorUrut,
 } from '../utils/numberGenerator';
 import { KLASIFIKASI_MENDAGRI_83_2022 } from '../data/klasifikasiMendagri';
+import { KalenderKecilInput } from './KalenderKecilPicker';
 import {
   KlasifikasiMendagriItem,
   PengaturanSekolah,
@@ -431,11 +432,11 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                     <Calendar className="w-4 h-4 text-blue-700" />
                     <span>Tanggal Surat</span>
                   </label>
-                  <input
-                    type="date"
+                  <KalenderKecilInput
                     value={tanggalSurat}
-                    onChange={(e) => {
-                      const newTgl = e.target.value;
+                    accentColor="blue"
+                    title="Pilih Tanggal Surat"
+                    onChange={(newTgl) => {
                       setTanggalSurat(newTgl);
                       if (editContext?.mode !== 'ubah_kode') {
                         const seq = calculateSeq(newTgl);
@@ -443,7 +444,7 @@ export const AutoNumberModal: React.FC<AutoNumberModalProps> = ({
                         setNomorUrutInput(String(seq));
                       }
                     }}
-                    className="w-full text-sm sm:text-base border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
+                    className="sm:py-3 shadow-2xs"
                   />
                   <p className="text-[11px] sm:text-xs text-blue-700 mt-1 font-medium">
                     Tahun Surat: {dateObj.getFullYear()} (Penomoran mulai 001 di setiap awal tahun)

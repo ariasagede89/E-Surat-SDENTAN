@@ -28,6 +28,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { Guru, Siswa, PengaturanSekolah, KategoriPTK, PaperSize } from '../types';
+import { KalenderKecilInput } from './KalenderKecilPicker';
 import {
   exportToCsv,
   exportToWord,
@@ -2134,11 +2135,15 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Tanggal Lahir</label>
-                  <input
-                    type="date"
+                  <KalenderKecilInput
+                    allowClear
+                    showDayName={false}
+                    minYear={1995}
                     value={sTglLahir}
-                    onChange={(e) => setSTglLahir(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                    onChange={setSTglLahir}
+                    accentColor="indigo"
+                    title="Pilih Tanggal Lahir Siswa"
+                    className="rounded-lg py-2"
                   />
                 </div>
               </div>

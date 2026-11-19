@@ -83,6 +83,13 @@ import {
 } from '../utils/numberGenerator';
 import { formatDiktumLabel, getIndonesianOrdinalWord } from '../utils/diktumUtils';
 import { readFileAsDataUrl, openOrDownloadDocument } from '../utils/fileUtils';
+import { stripRichTags } from '../utils/richTextUtils';
+import { RichTextField } from './RichTextField';
+import {
+  KalenderKecilInput,
+  KalenderKecilHariTanggalInput,
+  KalenderKecilTriggerButton,
+} from './KalenderKecilPicker';
 
 import type { AutoNumberEditContext } from './AutoNumberModal';
 
@@ -2400,8 +2407,8 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
       setEditingArsipId(null);
       setArsipNoSurat(sk.noSurat);
       setArsipKode(sk.kodeKlasifikasi);
-      setArsipPerihal(sk.perihal);
-      setArsipTujuan(sk.tujuan);
+      setArsipPerihal(stripRichTags(sk.perihal));
+      setArsipTujuan(stripRichTags(sk.tujuan));
       setArsipTglSurat(sk.tglSurat);
       setArsipTglArsip(new Date().toISOString().slice(0, 10));
       setArsipKategori(sk.jenisSurat.replace(/_/g, ' ').toUpperCase());
@@ -2487,8 +2494,8 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
     .filter((sk) => {
       const matchesSearch =
         sk.noSurat.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        sk.perihal.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        sk.tujuan.toLowerCase().includes(searchTerm.toLowerCase());
+        stripRichTags(sk.perihal).toLowerCase().includes(searchTerm.toLowerCase()) ||
+        stripRichTags(sk.tujuan).toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesJenis = filterJenis === 'Semua' || sk.jenisSurat === filterJenis;
       return matchesSearch && matchesJenis;
@@ -2695,10 +2702,10 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                         </td>
                         <td className="py-2.5 px-3 max-w-xs">
                           <p className="font-semibold text-slate-900 leading-snug text-[11.5px]">
-                            {sk.perihal}
+                            {stripRichTags(sk.perihal)}
                           </p>
                           <p className="text-[11px] text-slate-600 mt-0.5">
-                            Tujuan: <span className="font-medium text-slate-800 whitespace-pre-line">{sk.tujuan || '-'}</span>
+                            Tujuan: <span className="font-medium text-slate-800 whitespace-pre-line">{stripRichTags(sk.tujuan) || '-'}</span>
                           </p>
                           {(sk.tempatArsip || sk.dataKhusus?.tempatArsip) && (
                             <p className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1 font-medium">
@@ -2787,7 +2794,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                 setDeleteConfirm({
                                   type: 'surat',
                                   id: sk.id,
-                                  noSurat: sk.noSurat || sk.perihal,
+                                  noSurat: sk.noSurat || stripRichTags(sk.perihal),
                                 });
                               }}
                               className="p-1 text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
@@ -2885,10 +2892,10 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       </td>
                       <td className="py-2.5 px-3 max-w-xs">
                         <p className="font-semibold text-slate-900 leading-snug text-[11.5px]">
-                          {ar.perihal}
+                          {stripRichTags(ar.perihal)}
                         </p>
                         <p className="text-[11px] text-slate-600 mt-0.5">
-                          Tujuan: <span className="font-medium">{ar.tujuan || '-'}</span>
+                          Tujuan: <span className="font-medium">{stripRichTags(ar.tujuan) || '-'}</span>
                         </p>
                         {ar.keterangan && (
                           <p className="text-[10px] text-slate-500 italic mt-0.5">
@@ -2966,7 +2973,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                               setDeleteConfirm({
                                 type: 'arsip',
                                 id: ar.id,
-                                noSurat: ar.noSurat || ar.perihal,
+                                noSurat: ar.noSurat || stripRichTags(ar.perihal),
                               });
                             }}
                             className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
@@ -3176,12 +3183,12 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                   <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Tanggal Surat *
                   </label>
-                  <input
-                    type="date"
+                  <KalenderKecilInput
                     required
                     value={tglSurat}
-                    onChange={(e) => {
-                      const newTgl = e.target.value;
+                    accentColor="emerald"
+                    title="Pilih Tanggal Surat"
+                    onChange={(newTgl) => {
                       setTglSurat(newTgl);
                       if (jenisSurat !== 'surat_ijin_guru') {
                         const existingSeq = extractNomorUrut(noSurat);
@@ -3203,7 +3210,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                         }
                       }
                     }}
-                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none shadow-2xs bg-white"
+                    className="sm:py-3 shadow-2xs"
                   />
                 </div>
               </div>
@@ -3266,12 +3273,12 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                   <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Perihal Surat *
                   </label>
-                  <input
-                    type="text"
+                  <RichTextField
+                    multiline={false}
                     required
                     value={perihal}
-                    onChange={(e) => setPerihal(e.target.value)}
-                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none shadow-2xs bg-white"
+                    onChange={setPerihal}
+                    placeholder="Tuliskan perihal surat..."
                   />
                 </div>
               )}
@@ -3400,14 +3407,16 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                     {ijinTipeDurasi === 'satu_hari' ? (
                       <div>
                         <label className="block font-semibold text-slate-700 mb-1">Tanggal Izin *</label>
-                        <input
-                          type="date"
+                        <KalenderKecilInput
+                          required
                           value={ijinTglMulai}
-                          onChange={(e) => {
-                            setIjinTglMulai(e.target.value);
-                            setIjinTglSelesai(e.target.value);
+                          accentColor="emerald"
+                          title="Pilih Tanggal Izin"
+                          onChange={(val) => {
+                            setIjinTglMulai(val);
+                            setIjinTglSelesai(val);
                           }}
-                          className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                          className="rounded-lg py-2"
                         />
                         <p className="text-xs text-slate-500 mt-1">
                           Redaksi surat otomatis disesuaikan (menampilkan hari & tanggal izin tanpa rentang tanggal berulang).
@@ -3417,20 +3426,24 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block font-semibold text-slate-700 mb-1">Tanggal Mulai Izin *</label>
-                          <input
-                            type="date"
+                          <KalenderKecilInput
+                            required
                             value={ijinTglMulai}
-                            onChange={(e) => setIjinTglMulai(e.target.value)}
-                            className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                            accentColor="emerald"
+                            title="Pilih Tanggal Mulai Izin"
+                            onChange={setIjinTglMulai}
+                            className="rounded-lg py-2"
                           />
                         </div>
                         <div>
                           <label className="block font-semibold text-slate-700 mb-1">Tanggal Selesai Izin *</label>
-                          <input
-                            type="date"
+                          <KalenderKecilInput
+                            required
                             value={ijinTglSelesai}
-                            onChange={(e) => setIjinTglSelesai(e.target.value)}
-                            className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                            accentColor="emerald"
+                            title="Pilih Tanggal Selesai Izin"
+                            onChange={setIjinTglSelesai}
+                            className="rounded-lg py-2"
                           />
                         </div>
                       </div>
@@ -3438,12 +3451,11 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
 
                     <div>
                       <label className="block font-semibold text-slate-700 mb-1">Alasan Izin / Keperluan</label>
-                      <input
-                        type="text"
+                      <RichTextField
+                        multiline={false}
                         placeholder="Contoh: Menghadiri Upacara Adat / Yadnya di Pura Desa Pekutatan"
                         value={ijinAlasan}
-                        onChange={(e) => setIjinAlasan(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                        onChange={setIjinAlasan}
                       />
                     </div>
 
@@ -4091,32 +4103,32 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             Isi Kalimat Inti Surat (Bisa Diedit Bebas):
                           </label>
                           <span className="text-[10px] text-slate-500 font-mono">
-                            {ketIntiSurat.length} karakter
+                            {stripRichTags(ketIntiSurat).length} karakter
                           </span>
                         </div>
-                        <textarea
+                        <RichTextField
                           rows={4}
                           required
                           value={ketIntiSurat}
-                          onChange={(e) => setKetIntiSurat(e.target.value)}
+                          onChange={setKetIntiSurat}
                           placeholder="Contoh: Adalah benar pendidik / tenaga kependidikan aktif pada SDN 1 Pekutatan..."
-                          className="w-full border border-emerald-300 rounded-xl p-3.5 sm:p-4 bg-white text-sm text-slate-800 leading-relaxed focus:ring-2 focus:ring-emerald-600 focus:outline-none focus:border-emerald-600 font-serif shadow-2xs"
+                          className="border-emerald-300"
+                          editorClassName="font-serif"
                         />
                         <p className="text-xs text-slate-500 mt-1.5 italic">
-                          * Teks di atas akan dicetak tepat di bawah data identitas dan sebelum kalimat keperluan. Anda dapat mengedit teks ini secara bebas, atau menekan Enter bila ingin membuat paragraf baru.
+                          * Teks di atas akan dicetak tepat di bawah data identitas dan sebelum kalimat keperluan. Anda dapat mengedit teks ini secara bebas, memformat kata (Tebal / Miring / Garis Bawah), atau menekan Enter bila ingin membuat paragraf baru.
                         </p>
                       </div>
                     </div>
 
                     <div>
                       <label className="block font-semibold text-slate-700 text-sm mb-1.5">Keperluan Pembuatan Keterangan *</label>
-                      <input
-                        type="text"
+                      <RichTextField
+                        multiline={false}
                         required
                         placeholder="Contoh: Pengurusan Rekening SimPel Beasiswa PIP / Kenaikan Pangkat / Pemberkasan Dinas"
                         value={ketKeperluan}
-                        onChange={(e) => setKetKeperluan(e.target.value)}
-                        className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none shadow-2xs"
+                        onChange={setKetKeperluan}
                       />
                     </div>
                   </div>
@@ -4218,24 +4230,22 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       <label className="block font-semibold text-slate-700 mb-1">
                         Template Kata Pengantar Surat (Bisa Diedit)
                       </label>
-                      <textarea
+                      <RichTextField
                         rows={2}
                         value={undKataPengantar}
-                        onChange={(e) => setUndKataPengantar(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none text-xs"
+                        onChange={setUndKataPengantar}
                       />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block font-semibold text-slate-700 mb-1">Hari & Tanggal *</label>
-                        <input
-                          type="text"
+                        <KalenderKecilHariTanggalInput
                           required
                           placeholder="Contoh: Sabtu, 19 September 2026"
                           value={undHariTanggal}
-                          onChange={(e) => setUndHariTanggal(e.target.value)}
-                          className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                          onChange={setUndHariTanggal}
+                          accentColor="emerald"
                         />
                       </div>
                       <div>
@@ -4253,35 +4263,33 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
 
                     <div>
                       <label className="block font-semibold text-slate-700 mb-1">Tempat Acara *</label>
-                      <input
-                        type="text"
+                      <RichTextField
+                        multiline={false}
                         required
                         value={undTempat}
-                        onChange={(e) => setUndTempat(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                        onChange={setUndTempat}
                       />
                     </div>
 
                     <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Agenda / Acara *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Uraian agenda rapat"
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        Agenda / Acara <span className="text-slate-400 font-normal">(Opsional)</span>
+                      </label>
+                      <RichTextField
+                        multiline={false}
+                        placeholder="Kosongkan jika tidak ingin menampilkan baris Acara / Agenda di surat"
                         value={undAcara}
-                        onChange={(e) => setUndAcara(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                        onChange={setUndAcara}
                       />
                     </div>
 
                     <div>
                       <label className="block font-semibold text-slate-700 mb-1">Catatan Tambahan</label>
-                      <input
-                        type="text"
+                      <RichTextField
+                        multiline={false}
                         placeholder="Contoh: Dimohon hadir tepat waktu dan tidak diwakilkan"
                         value={undCatatan}
-                        onChange={(e) => setUndCatatan(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                        onChange={setUndCatatan}
                       />
                     </div>
 
@@ -4289,11 +4297,10 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       <label className="block font-semibold text-slate-700 mb-1">
                         Template Kalimat Penutup Surat (Bisa Diedit)
                       </label>
-                      <textarea
+                      <RichTextField
                         rows={2}
                         value={undKalimatPenutup}
-                        onChange={(e) => setUndKalimatPenutup(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none text-xs"
+                        onChange={setUndKalimatPenutup}
                       />
                     </div>
                   </div>
@@ -4316,12 +4323,12 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       <label className="block font-semibold text-slate-700 mb-1 text-xs">
                         Tentang (Perihal Ketetapan SK)
                       </label>
-                      <input
-                        type="text"
+                      <RichTextField
+                        multiline={false}
                         placeholder="PEMBAGIAN TUGAS GURU TAHUN AJARAN 2026/2027"
                         value={skTentang}
-                        onChange={(e) => setSkTentang(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none font-bold text-sm"
+                        onChange={setSkTentang}
+                        editorClassName="font-bold text-sm"
                       />
                     </div>
 
@@ -4362,17 +4369,18 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                               className="w-14 text-center font-bold text-xs border border-slate-300 rounded px-1 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-slate-50"
                               title="Poin / Huruf (misal a., b.)"
                             />
-                            <textarea
-                              rows={2}
-                              value={item.isi}
-                              onChange={(e) => {
-                                const updated = [...skMenimbangList];
-                                updated[idx].isi = e.target.value;
-                                setSkMenimbangList(updated);
-                              }}
-                              className="flex-1 text-xs border border-slate-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                              placeholder="bahwa dalam rangka memperlancar proses pembelajaran..."
-                            />
+                            <div className="flex-1">
+                              <RichTextField
+                                rows={2}
+                                value={item.isi}
+                                onChange={(val) => {
+                                  const updated = [...skMenimbangList];
+                                  updated[idx].isi = val;
+                                  setSkMenimbangList(updated);
+                                }}
+                                placeholder="bahwa dalam rangka memperlancar proses pembelajaran..."
+                              />
+                            </div>
                             {skMenimbangList.length > 1 && (
                               <button
                                 type="button"
@@ -4425,17 +4433,18 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                               className="w-14 text-center font-bold text-xs border border-slate-300 rounded px-1 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-slate-50"
                               title="Nomor Urut Dasar Hukum"
                             />
-                            <textarea
-                              rows={2}
-                              value={item.isi}
-                              onChange={(e) => {
-                                const updated = [...skMengingatList];
-                                updated[idx].isi = e.target.value;
-                                setSkMengingatList(updated);
-                              }}
-                              className="flex-1 text-xs border border-slate-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                              placeholder="Undang-Undang / Peraturan terkait..."
-                            />
+                            <div className="flex-1">
+                              <RichTextField
+                                rows={2}
+                                value={item.isi}
+                                onChange={(val) => {
+                                  const updated = [...skMengingatList];
+                                  updated[idx].isi = val;
+                                  setSkMengingatList(updated);
+                                }}
+                                placeholder="Undang-Undang / Peraturan terkait..."
+                              />
+                            </div>
                             {skMengingatList.length > 1 && (
                               <button
                                 type="button"
@@ -4488,17 +4497,18 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                               className="w-14 text-center font-bold text-xs border border-slate-300 rounded px-1 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-slate-50"
                               title="Nomor Urut"
                             />
-                            <textarea
-                              rows={2}
-                              value={item.isi}
-                              onChange={(e) => {
-                                const updated = [...skMemperhatikanList];
-                                updated[idx].isi = e.target.value;
-                                setSkMemperhatikanList(updated);
-                              }}
-                              className="flex-1 text-xs border border-slate-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                              placeholder="1. Hasil Rapat Dinas Dewan Guru..."
-                            />
+                            <div className="flex-1">
+                              <RichTextField
+                                rows={2}
+                                value={item.isi}
+                                onChange={(val) => {
+                                  const updated = [...skMemperhatikanList];
+                                  updated[idx].isi = val;
+                                  setSkMemperhatikanList(updated);
+                                }}
+                                placeholder="1. Hasil Rapat Dinas Dewan Guru..."
+                              />
+                            </div>
                             <button
                               type="button"
                               onClick={() => setSkMemperhatikanList(skMemperhatikanList.filter((_, i) => i !== idx))}
@@ -4560,17 +4570,18 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                               className="w-28 text-xs font-bold border border-slate-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-slate-50"
                               title="Penamaan Diktum (Contoh: Keenam)"
                             />
-                            <textarea
-                              rows={2}
-                              value={diktum.isi}
-                              onChange={(e) => {
-                                const updated = [...skDiktumList];
-                                updated[idx].isi = e.target.value;
-                                setSkDiktumList(updated);
-                              }}
-                              className="flex-1 text-xs border border-slate-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                              placeholder="Isi ketetapan diktum..."
-                            />
+                            <div className="flex-1">
+                              <RichTextField
+                                rows={2}
+                                value={diktum.isi}
+                                onChange={(val) => {
+                                  const updated = [...skDiktumList];
+                                  updated[idx].isi = val;
+                                  setSkDiktumList(updated);
+                                }}
+                                placeholder="Isi ketetapan diktum..."
+                              />
+                            </div>
                             {skDiktumList.length > 1 && (
                               <button
                                 type="button"
@@ -4670,7 +4681,7 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                   type="text"
                                   value={skLampiranTentang}
                                   onChange={(e) => setSkLampiranTentang(e.target.value)}
-                                  placeholder={skTentang || 'TENTANG PEMBAGIAN TUGAS GURU... (Opsional)'}
+                                  placeholder={stripRichTags(skTentang) || 'TENTANG PEMBAGIAN TUGAS GURU... (Opsional)'}
                                   className="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none uppercase"
                                 />
                                 <span className="text-[10px] text-slate-400">Perihal/Tentang pada header lampiran (default mengikuti perihal SK)</span>
@@ -4898,12 +4909,11 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                 <label className="block text-[11px] font-bold text-slate-700 mb-1">
                                   Teks Pengantar Lampiran (Opsional)
                                 </label>
-                                <textarea
+                                <RichTextField
                                   rows={2}
                                   value={currentActiveLampiran.pengantar || ''}
-                                  onChange={(e) => updateActiveLampiran({ pengantar: e.target.value })}
+                                  onChange={(val) => updateActiveLampiran({ pengantar: val })}
                                   placeholder="Berikut rincian pembagian tugas mengajar bagi dewan guru dan tenaga kependidikan tahun ajaran 2026/2027:"
-                                  className="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white"
                                 />
                               </div>
                             )}
@@ -5691,12 +5701,11 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                               </div>
 
                                               {/* Textarea Isi Butir Uraian */}
-                                              <textarea
+                                              <RichTextField
                                                 rows={2}
                                                 value={item.teks || ''}
-                                                onChange={(e) => handleUpdateUraianTeks(item.id, { teks: e.target.value })}
+                                                onChange={(val) => handleUpdateUraianTeks(item.id, { teks: val })}
                                                 placeholder="Tuliskan isi rincian uraian, butir ketentuan, atau petunjuk pelaksanaan tugas di sini..."
-                                                className="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none leading-relaxed bg-white"
                                               />
                                             </div>
                                           ))}
@@ -5750,15 +5759,14 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                           <span>+ Sisipkan Poin Baru di Akhir</span>
                                         </button>
                                       </div>
-                                      <textarea
+                                      <RichTextField
                                         rows={7}
                                         value={currentActiveLampiran.isiTeks || ''}
-                                        onChange={(e) => {
-                                          const val = e.target.value;
+                                        onChange={(val) => {
                                           updateActiveLampiran({ isiTeks: val, uraianList: undefined });
                                         }}
                                         placeholder="Tuliskan uraian lampiran, butir-butir pasal, petunjuk teknis pelaksanaan keputusan, atau rincian penetapan dalam bentuk narasi..."
-                                        className="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none leading-relaxed bg-white font-serif"
+                                        editorClassName="font-serif"
                                       />
                                     </div>
                                   )}
@@ -5771,12 +5779,12 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                               <label className="block text-[11px] font-bold text-slate-700 mb-1">
                                 Catatan Kaki Lampiran Ini (Opsional, Tercetak Sebelum Tanda Tangan)
                               </label>
-                              <input
-                                type="text"
+                              <RichTextField
+                                multiline={false}
                                 value={currentActiveLampiran.catatan || ''}
-                                onChange={(e) => updateActiveLampiran({ catatan: e.target.value })}
+                                onChange={(val) => updateActiveLampiran({ catatan: val })}
                                 placeholder="Keputusan pembagian tugas ini wajib dilaksanakan dengan penuh rasa tanggung jawab sejak tanggal ditetapkan."
-                                className="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none italic text-slate-700 bg-white"
+                                editorClassName="italic text-slate-700"
                               />
                             </div>
                           </div>
@@ -5914,36 +5922,33 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                     {sptFormatPembuka === 'dasar' && (
                       <div>
                         <label className="block font-semibold text-slate-700 mb-1">Dasar Surat / Instruksi Tugas *</label>
-                        <input
-                          type="text"
+                        <RichTextField
+                          multiline={false}
                           placeholder="Contoh: Surat Undangan dari Dinas Dikpora Kab. Jembrana No: 400.3.12/..."
                           value={sptDasar}
-                          onChange={(e) => setSptDasar(e.target.value)}
-                          className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none text-xs sm:text-sm"
+                          onChange={setSptDasar}
                         />
                       </div>
                     )}
 
                     <div>
                       <label className="block font-semibold text-slate-700 mb-1">Untuk Keperluan / Menghadiri</label>
-                      <input
-                        type="text"
+                      <RichTextField
+                        multiline={false}
                         placeholder="Contoh: Mengikuti Bimbingan Teknis Kurikulum Merdeka Jenjang SD"
                         value={sptKeperluan}
-                        onChange={(e) => setSptKeperluan(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                        onChange={setSptKeperluan}
                       />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block font-semibold text-slate-700 mb-1">Tempat Pelaksanaan Tugas</label>
-                        <input
-                          type="text"
+                        <RichTextField
+                          multiline={false}
                           placeholder="Contoh: Aula Dinas Dikpora Jembrana"
                           value={sptTempat}
-                          onChange={(e) => setSptTempat(e.target.value)}
-                          className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                          onChange={setSptTempat}
                         />
                       </div>
                       <div>
@@ -5961,20 +5966,24 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block font-semibold text-slate-700 mb-1">Tanggal Mulai Tugas</label>
-                        <input
-                          type="date"
+                        <KalenderKecilInput
+                          allowClear
                           value={sptTglMulai}
-                          onChange={(e) => setSptTglMulai(e.target.value)}
-                          className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                          onChange={setSptTglMulai}
+                          accentColor="emerald"
+                          title="Pilih Tanggal Mulai Tugas"
+                          className="rounded-lg py-2"
                         />
                       </div>
                       <div>
                         <label className="block font-semibold text-slate-700 mb-1">Tanggal Selesai Tugas</label>
-                        <input
-                          type="date"
+                        <KalenderKecilInput
+                          allowClear
                           value={sptTglSelesai}
-                          onChange={(e) => setSptTglSelesai(e.target.value)}
-                          className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                          onChange={setSptTglSelesai}
+                          accentColor="emerald"
+                          title="Pilih Tanggal Selesai Tugas"
+                          className="rounded-lg py-2"
                         />
                       </div>
                     </div>
@@ -6464,10 +6473,10 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                 Nama berkas / rincian penerima (dapat multi-baris)
                               </span>
                             </div>
-                            <textarea
+                            <RichTextField
+                              accentColor="teal"
                               value={spDaftarDokumen[0]?.uraian ?? ''}
-                              onChange={(e) => {
-                                const val = e.target.value;
+                              onChange={(val) => {
                                 setSpDaftarDokumen((prev) => {
                                   const base = prev[0] || {
                                     id: '1',
@@ -6481,7 +6490,6 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                               }}
                               rows={4}
                               placeholder={`Contoh:\nBerkas Pengajuan Beasiswa S2 Guru a.n\n1. SITI SWAIBATUN, S.Pd.\nNIP. 19860203 201001 2 011`}
-                              className="w-full bg-white border border-slate-300 rounded-lg p-2.5 focus:ring-1 focus:ring-teal-600 focus:outline-none text-xs font-mono leading-relaxed"
                             />
                           </div>
 
@@ -6495,11 +6503,11 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                 Satuan berkas / dokumen
                               </span>
                             </div>
-                            <input
-                              type="text"
+                            <RichTextField
+                              accentColor="teal"
+                              multiline={false}
                               value={spDaftarDokumen[0]?.jumlah ?? ''}
-                              onChange={(e) => {
-                                const val = e.target.value;
+                              onChange={(val) => {
                                 setSpDaftarDokumen((prev) => {
                                   const base = prev[0] || {
                                     id: '1',
@@ -6512,7 +6520,6 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                 });
                               }}
                               placeholder="Contoh: 1 bendel atau 1 (satu) Berkas"
-                              className="w-full bg-white border border-slate-300 rounded-lg p-2.5 focus:ring-1 focus:ring-teal-600 focus:outline-none text-xs font-medium"
                             />
                             <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                               <span className="text-[10px] text-slate-400 font-medium">Contoh Satuan:</span>
@@ -6550,10 +6557,10 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                 Maksud dan tujuan pengiriman berkas
                               </span>
                             </div>
-                            <textarea
+                            <RichTextField
+                              accentColor="teal"
                               value={spDaftarDokumen[0]?.keterangan ?? ''}
-                              onChange={(e) => {
-                                const val = e.target.value;
+                              onChange={(val) => {
                                 setSpDaftarDokumen((prev) => {
                                   const base = prev[0] || {
                                     id: '1',
@@ -6567,7 +6574,6 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                               }}
                               rows={2}
                               placeholder="Disampaikan dengan hormat sebagai permohonan dan atas perhatiannya disampaikan terima kasih"
-                              className="w-full bg-white border border-slate-300 rounded-lg p-2.5 focus:ring-1 focus:ring-teal-600 focus:outline-none text-xs leading-relaxed"
                             />
                             <div className="flex flex-col gap-1 mt-1.5">
                               <span className="text-[10px] text-slate-400 font-medium">Contoh Kalimat Keterangan:</span>
@@ -6711,13 +6717,13 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                 <tr>
                                   <td className="border border-slate-800 py-2 px-1 text-center align-top">1.</td>
                                   <td className="border border-slate-800 py-2 px-2 align-top font-medium whitespace-pre-line leading-tight">
-                                    {spDaftarDokumen[0]?.uraian || <span className="text-slate-300 italic">(Uraian berkas belum diisi)</span>}
+                                    {spDaftarDokumen[0]?.uraian ? stripRichTags(spDaftarDokumen[0].uraian) : <span className="text-slate-300 italic">(Uraian berkas belum diisi)</span>}
                                   </td>
                                   <td className="border border-slate-800 py-2 px-2 text-center align-top font-medium">
-                                    {spDaftarDokumen[0]?.jumlah || '1 bendel'}
+                                    {spDaftarDokumen[0]?.jumlah ? stripRichTags(spDaftarDokumen[0].jumlah) : '1 bendel'}
                                   </td>
                                   <td className="border border-slate-800 py-2 px-2 align-top whitespace-pre-line leading-tight">
-                                    {spDaftarDokumen[0]?.keterangan || '-'}
+                                    {spDaftarDokumen[0]?.keterangan ? stripRichTags(spDaftarDokumen[0].keterangan) : '-'}
                                   </td>
                                 </tr>
                               </tbody>
@@ -6778,12 +6784,12 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                               Untuk Kegiatan / Keperluan *
                             </label>
-                            <input
-                              type="text"
+                            <RichTextField
+                              accentColor="teal"
+                              multiline={false}
                               value={spKeperluanSiswa}
-                              onChange={(e) => setSpKeperluanSiswa(e.target.value)}
+                              onChange={setSpKeperluanSiswa}
                               placeholder="Contoh: Mengikuti Festival dan Lomba Seni Siswa Nasional (FLS2N)"
-                              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-teal-600 focus:outline-none"
                             />
                           </div>
                           <div>
@@ -6802,11 +6808,13 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                               Tanggal Pelaksanaan
                             </label>
-                            <input
-                              type="date"
+                            <KalenderKecilInput
+                              allowClear
                               value={spTglKegiatanSiswa}
-                              onChange={(e) => setSpTglKegiatanSiswa(e.target.value)}
-                              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-teal-600 focus:outline-none"
+                              onChange={setSpTglKegiatanSiswa}
+                              accentColor="teal"
+                              title="Pilih Tanggal Pelaksanaan"
+                              className="rounded-lg px-3 py-1.5"
                             />
                           </div>
                           <div>
@@ -7004,12 +7012,12 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                           <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                             Untuk Keperluan Usulan Kedinasan *
                           </label>
-                          <input
-                            type="text"
+                          <RichTextField
+                            accentColor="teal"
+                            multiline={false}
                             value={spKeperluanPtk}
-                            onChange={(e) => setSpKeperluanPtk(e.target.value)}
+                            onChange={setSpKeperluanPtk}
                             placeholder="Contoh: Pengusulan Berkas Kenaikan Pangkat Pendidik Periode Oktober 2026"
-                            className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-teal-600 focus:outline-none"
                           />
                         </div>
 
@@ -7210,12 +7218,13 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                               Rekomendasi Diberikan Untuk / Keperluan *
                             </label>
-                            <input
-                              type="text"
+                            <RichTextField
+                              accentColor="sky"
+                              multiline={false}
                               value={rekSiswaKeperluan}
-                              onChange={(e) => setRekSiswaKeperluan(e.target.value)}
+                              onChange={setRekSiswaKeperluan}
                               placeholder="Contoh: Penerimaan Bantuan Beasiswa Program Indonesia Pintar (PIP) Tahun 2026"
-                              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-sky-600 focus:outline-none font-semibold text-sky-950"
+                              editorClassName="font-semibold text-sky-950"
                             />
                           </div>
 
@@ -7246,12 +7255,12 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                 </button>
                               )}
                             </div>
-                            <textarea
+                            <RichTextField
+                              accentColor="sky"
                               value={rekSiswaPertimbangan}
-                              onChange={(e) => setRekSiswaPertimbangan(e.target.value)}
+                              onChange={setRekSiswaPertimbangan}
                               rows={2}
                               placeholder="Kosongkan jika tidak ingin memunculkan paragraf catatan/pertimbangan pada surat rekomendasi. Contoh: Bahwa peserta didik tersebut di atas berkelakuan baik, aktif dalam kegiatan pembelajaran di sekolah, dan layak diberikan rekomendasi."
-                              className="w-full bg-white border border-slate-300 rounded-lg p-2.5 focus:ring-1 focus:ring-sky-600 focus:outline-none text-xs"
                             />
                             <p className="text-[10px] text-slate-400 mt-1">
                               * Jika isian catatan ini dikosongkan, bagian catatan/pertimbangan tidak akan dimunculkan pada surat rekomendasi.
@@ -7500,12 +7509,13 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                               Rekomendasi Diberikan Untuk / Keperluan *
                             </label>
-                            <input
-                              type="text"
+                            <RichTextField
+                              accentColor="sky"
+                              multiline={false}
                               value={rekPtkKeperluan}
-                              onChange={(e) => setRekPtkKeperluan(e.target.value)}
+                              onChange={setRekPtkKeperluan}
                               placeholder="Contoh: Mengikuti Seleksi Program Pendidikan Profesi Guru (PPG) Guru Tertentu / Calon Guru Penggerak"
-                              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-sky-600 focus:outline-none font-semibold text-sky-950"
+                              editorClassName="font-semibold text-sky-950"
                             />
                           </div>
 
@@ -7536,12 +7546,12 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                                 </button>
                               )}
                             </div>
-                            <textarea
+                            <RichTextField
+                              accentColor="sky"
                               value={rekPtkPertimbangan}
-                              onChange={(e) => setRekPtkPertimbangan(e.target.value)}
+                              onChange={setRekPtkPertimbangan}
                               rows={2}
                               placeholder="Kosongkan jika tidak ingin memunculkan paragraf catatan/pertimbangan pada surat rekomendasi. Contoh: Bahwa yang bersangkutan memiliki loyalitas, integritas, kedisiplinan yang tinggi, serta rekam jejak kinerja yang sangat baik..."
-                              className="w-full bg-white border border-slate-300 rounded-lg p-2.5 focus:ring-1 focus:ring-sky-600 focus:outline-none text-xs"
                             />
                             <p className="text-[10px] text-slate-400 mt-1">
                               * Jika isian catatan ini dikosongkan, bagian catatan/pertimbangan tidak akan dimunculkan pada surat rekomendasi.
@@ -7792,12 +7802,11 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                         <label className="block font-semibold text-slate-700 mb-1 text-xs">
                           Lampiran
                         </label>
-                        <input
-                          type="text"
+                        <RichTextField
+                          multiline={false}
                           value={permLampiran}
-                          onChange={(e) => setPermLampiran(e.target.value)}
+                          onChange={setPermLampiran}
                           placeholder="Contoh: - atau 1 (satu) Berkas"
-                          className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white text-xs sm:text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -7876,13 +7885,12 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       <label className="block font-semibold text-slate-700 mb-1 text-xs sm:text-sm">
                         Isian Pembukaan Surat *
                       </label>
-                      <textarea
+                      <RichTextField
                         rows={3}
                         required
                         value={permPembukaan}
-                        onChange={(e) => setPermPembukaan(e.target.value)}
+                        onChange={setPermPembukaan}
                         placeholder="Contoh: Dengan hormat, Sehubungan dengan pelaksanaan kegiatan..."
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none text-xs sm:text-sm"
                       />
                     </div>
 
@@ -7890,13 +7898,12 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       <label className="block font-semibold text-slate-700 mb-1 text-xs sm:text-sm">
                         Isian Yang Dimohon *
                       </label>
-                      <textarea
+                      <RichTextField
                         rows={4}
                         required
                         value={permYangDimohon}
-                        onChange={(e) => setPermYangDimohon(e.target.value)}
+                        onChange={setPermYangDimohon}
                         placeholder="Tuliskan inti hal/bantuan/izin/narasumber/fasilitas yang dimohon secara rinci..."
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none text-xs sm:text-sm"
                       />
                     </div>
 
@@ -7940,36 +7947,41 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                             <label className="block font-semibold text-slate-700 mb-1 text-xs">
                               Hari / Tanggal
                             </label>
-                            <input
-                              type="text"
+                            <RichTextField
+                              multiline={false}
                               value={permHariTanggal}
-                              onChange={(e) => setPermHariTanggal(e.target.value)}
+                              onChange={setPermHariTanggal}
                               placeholder="Contoh: Senin, 23 November 2026"
-                              className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                              toolbarRight={
+                                <KalenderKecilTriggerButton
+                                  value={permHariTanggal}
+                                  onSelectHariTanggal={setPermHariTanggal}
+                                  onClear={() => setPermHariTanggal('')}
+                                  accentColor="emerald"
+                                />
+                              }
                             />
                           </div>
                           <div>
                             <label className="block font-semibold text-slate-700 mb-1 text-xs">
                               Waktu
                             </label>
-                            <input
-                              type="text"
+                            <RichTextField
+                              multiline={false}
                               value={permWaktu}
-                              onChange={(e) => setPermWaktu(e.target.value)}
+                              onChange={setPermWaktu}
                               placeholder="Contoh: 08.00 WITA - Selesai"
-                              className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                             />
                           </div>
                           <div>
                             <label className="block font-semibold text-slate-700 mb-1 text-xs">
                               Tempat
                             </label>
-                            <input
-                              type="text"
+                            <RichTextField
+                              multiline={false}
                               value={permTempat}
-                              onChange={(e) => setPermTempat(e.target.value)}
+                              onChange={setPermTempat}
                               placeholder="Contoh: Aula SDN 1 Pekutatan"
-                              className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                             />
                           </div>
                         </div>
@@ -7980,13 +7992,12 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       <label className="block font-semibold text-slate-700 mb-1 text-xs sm:text-sm">
                         Penutup Surat *
                       </label>
-                      <textarea
+                      <RichTextField
                         rows={2}
                         required
                         value={permPenutup}
-                        onChange={(e) => setPermPenutup(e.target.value)}
+                        onChange={setPermPenutup}
                         placeholder="Demikian surat permohonan ini kami sampaikan..."
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none text-xs sm:text-sm"
                       />
                     </div>
                   </div>
@@ -8004,12 +8015,11 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
                         Keterangan Tambahan / Ringkasan Isi Surat
                       </label>
-                      <textarea
+                      <RichTextField
                         rows={3}
                         value={eksternalKeterangan}
-                        onChange={(e) => setEksternalKeterangan(e.target.value)}
+                        onChange={setEksternalKeterangan}
                         placeholder="Tuliskan ringkasan isi surat, keperluan, atau informasi terkait..."
-                        className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-emerald-600 focus:outline-none"
                       />
                     </div>
 
@@ -8313,20 +8323,24 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-semibold text-slate-700 text-sm mb-1.5">Tgl Surat</label>
-                  <input
-                    type="date"
+                  <KalenderKecilInput
+                    allowClear
                     value={arsipTglSurat}
-                    onChange={(e) => setArsipTglSurat(e.target.value)}
-                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none shadow-2xs"
+                    onChange={setArsipTglSurat}
+                    accentColor="indigo"
+                    title="Pilih Tanggal Surat"
+                    className="sm:py-3 shadow-2xs"
                   />
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 text-sm mb-1.5">Tgl Pengarsipan</label>
-                  <input
-                    type="date"
+                  <KalenderKecilInput
+                    allowClear
                     value={arsipTglArsip}
-                    onChange={(e) => setArsipTglArsip(e.target.value)}
-                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none shadow-2xs"
+                    onChange={setArsipTglArsip}
+                    accentColor="indigo"
+                    title="Pilih Tanggal Pengarsipan"
+                    className="sm:py-3 shadow-2xs"
                   />
                 </div>
               </div>
@@ -8557,9 +8571,9 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
 
             <div className="p-6 space-y-5">
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700">
-                <div className="font-bold text-slate-900 truncate">{downloadWordTarget.perihal}</div>
+                <div className="font-bold text-slate-900 truncate">{stripRichTags(downloadWordTarget.perihal)}</div>
                 <div className="text-[11px] text-slate-500 mt-0.5">
-                  Tujuan: {downloadWordTarget.tujuan || '-'}
+                  Tujuan: {stripRichTags(downloadWordTarget.tujuan) || '-'}
                 </div>
               </div>
 

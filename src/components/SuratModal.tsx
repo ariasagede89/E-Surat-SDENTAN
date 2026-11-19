@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Printer, FileText, Stamp, PenTool, Check } from 'lucide-react';
 import { SuratKeluar, PengaturanSekolah, PaperSize, Guru, Siswa } from '../types';
 import { buildSuratHtml, exportToWord, printHtmlElement } from '../utils/exportUtils';
+import { stripRichTags } from '../utils/richTextUtils';
 
 interface SuratModalProps {
   surat: SuratKeluar | null;
@@ -53,7 +54,7 @@ export const SuratModal: React.FC<SuratModalProps> = ({ surat, sekolah, guruList
             <FileText className="w-5 h-5 text-amber-400 shrink-0" />
             <div className="min-w-0">
               <h3 className="text-sm font-bold truncate max-w-xs sm:max-w-md">
-                Pratinjau Surat: {surat.perihal}
+                Pratinjau Surat: {stripRichTags(surat.perihal)}
               </h3>
               <p className="text-[11px] text-slate-300 font-mono">
                 No: {surat.noSurat}

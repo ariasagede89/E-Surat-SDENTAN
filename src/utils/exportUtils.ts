@@ -1,6 +1,11 @@
 import { Guru, Siswa, PengaturanSekolah, SuratKeluar, SuratMasuk, PaperSize } from '../types';
 import { formatDiktumLabel } from './diktumUtils';
 import { sortSiswa } from './csvUtils';
+import {
+  stripRichTags,
+  splitRichTextIntoBalancedLines,
+  richTextToInlineHtml,
+} from './richTextUtils';
 
 export function getNamaHariIndonesia(dateString: string): string {
   if (!dateString) return '';
@@ -760,17 +765,17 @@ function formatParagrafSuratHtml(
   const fs = options?.fontSize || '12pt';
   const useIndent = options?.indent !== false;
   const italicCss = options?.italic ? ' font-style: italic;' : '';
-  const lines = raw
-    .split(/\r?\n/)
+  const lines = splitRichTextIntoBalancedLines(raw)
     .map((l) => l.trim())
-    .filter((l) => l.length > 0);
+    .filter((l) => stripRichTags(l).trim().length > 0);
 
   return lines
     .map((line, idx) => {
+      const plainLine = stripRichTags(line).trim();
       const isSalutation =
         Boolean(options?.treatFirstLineSalutation) &&
         idx === 0 &&
-        /^(dengan\s+hormat|assalamu|om\s+swastyastu)/i.test(line);
+        /^(dengan\s+hormat|assalamu|om\s+swastyastu)/i.test(plainLine);
 
       if (isSalutation || !useIndent) {
         return `<p style="text-align: justify; margin: 0; mso-margin-top-alt: 0pt; mso-margin-bottom-alt: 0pt; line-height: 1.5; font-size: ${fs};${italicCss}">${line}</p>`;
@@ -998,8 +1003,8 @@ export function buildKepadaYthBlock(options: KepadaYthBlockOptions): string {
 
 /**
  * Tata letak header surat keluar resmi yang memiliki Nomor, Lampiran, dan Perihal:
- * - Tanggal surat diletakkan 1 paragraf di atas Kepada Yth. (sisi kanan)
- * - Nomor, Lampiran, dan Perihal di sisi kiri sejajar dengan blok Kepada Yth. di sisi kanan
+ * - Nomor, Lampiran, dan Perihal di sisi kiri, dengan Tanggal surat sejajar pada baris Nomor di sisi kanan
+ * - Blok Kepada Yth. diletakkan rata kiri tepat di bawah huruf P pada "Perihal"
  */
 export function buildHeaderNomorDanKepadaHtml(options: {
   noSurat: string;
@@ -1016,7 +1021,7 @@ export function buildHeaderNomorDanKepadaHtml(options: {
   const fs = options.fontSize || '12pt';
   const lampiranText = (options.lampiran && options.lampiran.trim()) || '-';
   const kepadaYthInnerHtml = buildKepadaYthContentHtml({
-    tujuan: options.tujuan,
+    tujuan: options.tujuan || '-',
     tujuanList: options.tujuanList,
     tempat: options.tempatTujuan || 'Tempat',
     instansi: options.instansi,
@@ -1024,35 +1029,27 @@ export function buildHeaderNomorDanKepadaHtml(options: {
   });
 
   return `
-    <div style="margin: 0 0 10pt 0; text-align: right;">
-      <p style="margin: 0; text-align: right; font-size: ${fs}; line-height: 1.5; white-space: nowrap;">${options.tempatSurat}, ${options.tglIndo}</p>
-    </div>
-    <table style="width: 100%; margin: 0 0 10pt 0; border: none; border-collapse: collapse; font-size: ${fs}; line-height: 1.5;" border="0" cellpadding="0" cellspacing="0">
+    <table style="width: 100%; margin: 0 0 8pt 0; border: none; border-collapse: collapse; font-size: ${fs}; line-height: 1.5;" border="0" cellpadding="0" cellspacing="0">
       <tr>
-        <td style="width: 55%; vertical-align: top; border: none; padding: 0 12pt 0 0;">
-          <table style="width: 100%; border: none; border-collapse: collapse; font-size: ${fs}; line-height: 1.5;" border="0" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="width: 68pt; padding: 1pt 0; vertical-align: top; border: none; font-size: ${fs}; line-height: 1.5;">Nomor</td>
-              <td style="width: 10pt; padding: 1pt 0; vertical-align: top; border: none; font-size: ${fs}; line-height: 1.5;">:</td>
-              <td class="nomor-surat" style="padding: 1pt 0; vertical-align: top; border: none; font-size: 11pt; line-height: 1.5;">${options.noSurat}</td>
-            </tr>
-            <tr>
-              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: ${fs}; line-height: 1.5;">Lampiran</td>
-              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: ${fs}; line-height: 1.5;">:</td>
-              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: ${fs}; line-height: 1.5;">${lampiranText}</td>
-            </tr>
-            <tr>
-              <td style="padding: 1pt 0; vertical-align: top; border: none; font-weight: bold; font-size: ${fs}; line-height: 1.5;">Perihal</td>
-              <td style="padding: 1pt 0; vertical-align: top; border: none; font-weight: bold; font-size: ${fs}; line-height: 1.5;">:</td>
-              <td style="padding: 1pt 0; vertical-align: top; border: none; font-weight: bold; font-size: ${fs}; line-height: 1.5;">${options.perihal}</td>
-            </tr>
-          </table>
-        </td>
-        <td class="kepada-yth-table" style="width: 45%; text-align: left; vertical-align: top; border: none; padding: 0 0 0 8pt; font-size: ${fs}; line-height: 1.5;">
-          ${kepadaYthInnerHtml}
-        </td>
+        <td style="width: 68pt; padding: 1pt 0; vertical-align: top; border: none; font-size: ${fs}; line-height: 1.5;">Nomor</td>
+        <td style="width: 10pt; padding: 1pt 0; vertical-align: top; border: none; font-size: ${fs}; line-height: 1.5;">:</td>
+        <td class="nomor-surat" style="padding: 1pt 0; vertical-align: top; border: none; font-size: 11pt; line-height: 1.5;">${options.noSurat}</td>
+        <td style="padding: 1pt 0; vertical-align: top; text-align: right; border: none; font-size: ${fs}; line-height: 1.5; white-space: nowrap;">${options.tempatSurat}, ${options.tglIndo}</td>
+      </tr>
+      <tr>
+        <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: ${fs}; line-height: 1.5;">Lampiran</td>
+        <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: ${fs}; line-height: 1.5;">:</td>
+        <td colspan="2" style="padding: 1pt 0; vertical-align: top; border: none; font-size: ${fs}; line-height: 1.5;">${lampiranText}</td>
+      </tr>
+      <tr>
+        <td style="padding: 1pt 0; vertical-align: top; border: none; font-weight: bold; font-size: ${fs}; line-height: 1.5;">Perihal</td>
+        <td style="padding: 1pt 0; vertical-align: top; border: none; font-weight: bold; font-size: ${fs}; line-height: 1.5;">:</td>
+        <td colspan="2" style="padding: 1pt 0; vertical-align: top; border: none; font-weight: bold; font-size: ${fs}; line-height: 1.5;">${options.perihal}</td>
       </tr>
     </table>
+    <div class="kepada-yth-left" style="margin: 8pt 0 10pt 0; padding: 0; text-align: left; font-size: ${fs}; line-height: 1.5;">
+      ${kepadaYthInnerHtml}
+    </div>
   `;
 }
 
@@ -1607,7 +1604,7 @@ export function buildSuratHtml(
 
     case 'surat_undangan': {
       const kataPengantarRaw = data.kataPengantar || 'Dengan hormat,\nSehubungan dengan rencana pelaksanaan kegiatan dan evaluasi program pembelajaran sekolah, dengan ini kami mengharap kehadiran Bapak/Ibu/Saudara pada pertemuan dinas yang akan dilaksanakan pada:';
-      const kataPengantarFull = /^\s*dengan\s+hormat/i.test(kataPengantarRaw)
+      const kataPengantarFull = /^\s*dengan\s+hormat/i.test(stripRichTags(kataPengantarRaw))
         ? kataPengantarRaw
         : `Dengan hormat,\n${kataPengantarRaw}`;
       const kataPengantarHtml = formatParagrafSuratHtml(kataPengantarFull, {
@@ -1656,11 +1653,13 @@ export function buildSuratHtml(
             <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.5;">:</td>
             <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.5;">${data.tempat || 'Ruang Pertemuan SDN 1 Pekutatan'}</td>
           </tr>
+          ${stripRichTags(data.acara).trim().length > 0 ? `
           <tr>
             <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.5;">Acara / Agenda</td>
             <td style="padding: 1pt 0; vertical-align: top; border: none; line-height: 1.5;">:</td>
-            <td style="padding: 1pt 0; vertical-align: top; font-weight: bold; border: none; line-height: 1.5;">${data.acara || surat.perihal}</td>
+            <td style="padding: 1pt 0; vertical-align: top; font-weight: bold; border: none; line-height: 1.5;">${data.acara}</td>
           </tr>
+          ` : ''}
         </table>
 
         ${data.catatanTambahan ? formatParagrafSuratHtml(`Catatan: ${data.catatanTambahan}`, { fontSize: '12pt', italic: true }) : ''}
@@ -2128,7 +2127,7 @@ export function buildSuratHtml(
           ${(() => {
             const pengantarRaw = String(data.kalimatPengantar || '').trim();
             const pengantarFull = pengantarRaw
-              ? (/^\s*dengan\s+hormat/i.test(pengantarRaw) ? pengantarRaw : `Dengan hormat,\n${pengantarRaw}`)
+              ? (/^\s*dengan\s+hormat/i.test(stripRichTags(pengantarRaw)) ? pengantarRaw : `Dengan hormat,\n${pengantarRaw}`)
               : 'Dengan hormat,';
             return formatParagrafSuratHtml(pengantarFull, {
               fontSize: '11.5pt',
@@ -2149,9 +2148,9 @@ export function buildSuratHtml(
             <tbody>
               ${daftarDokumen.map((doc: any, idx: number) => {
                 const rawUraian = doc.uraian || doc.namaBerkas || surat.perihal || 'Berkas Pengajuan Kedinasan';
-                const uraianHtml = rawUraian.replace(/\n/g, '<br/>');
+                const uraianHtml = richTextToInlineHtml(rawUraian);
                 const rawKet = doc.keterangan || 'Disampaikan dengan hormat sebagai permohonan dan atas perhatiannya disampaikan terima kasih';
-                const ketHtml = rawKet.replace(/\n/g, '<br/>');
+                const ketHtml = richTextToInlineHtml(rawKet);
                 return `
                   <tr>
                     <td style="border: 1px solid #000; padding: 6pt 4pt; text-align: center; vertical-align: top; line-height: 1.5;">${idx + 1}.</td>
@@ -2734,7 +2733,7 @@ export function buildSuratHtml(
         data.pembukaan ||
           'Dengan hormat,\nSehubungan dengan pelaksanaan program kegiatan sekolah di SDN 1 Pekutatan, bersama ini kami mengajukan permohonan kepada Bapak/Ibu agar berkenan untuk:'
       ).trim();
-      const pembukaanFull = /^\s*dengan\s+hormat/i.test(pembukaanRaw)
+      const pembukaanFull = /^\s*dengan\s+hormat/i.test(stripRichTags(pembukaanRaw))
         ? pembukaanRaw
         : `Dengan hormat,\n${pembukaanRaw}`;
       const pembukaanHtml = formatParagrafSuratHtml(pembukaanFull, {

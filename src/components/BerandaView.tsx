@@ -18,6 +18,7 @@ import {
 import { SuratMasuk, SuratKeluar, PengaturanSekolah, SifatSurat, UserRole } from '../types';
 import { formatTanggalIndonesia } from '../utils/exportUtils';
 import { compareSuratKeluarDesc } from '../utils/numberGenerator';
+import { stripRichTags } from '../utils/richTextUtils';
 
 interface BerandaViewProps {
   suratMasukList: SuratMasuk[];
@@ -599,10 +600,10 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
                       </span>
                     </div>
                     <h3 className="text-xs font-bold text-slate-900 leading-tight">
-                      {sk.perihal}
+                      {stripRichTags(sk.perihal)}
                     </h3>
                     <p className="text-[11px] text-slate-600">
-                      Tujuan: <span className="font-semibold">{sk.tujuan}</span>
+                      Tujuan: <span className="font-semibold">{stripRichTags(sk.tujuan)}</span>
                     </p>
                   </div>
 

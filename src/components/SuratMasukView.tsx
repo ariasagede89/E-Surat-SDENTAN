@@ -22,6 +22,7 @@ import { SuratMasuk, PengaturanSekolah, SifatSurat, StatusSuratMasuk } from '../
 import { formatTanggalIndonesia, buildLembarDisposisiHtml, printHtmlElement } from '../utils/exportUtils';
 import { compareSuratMasukDesc } from '../utils/numberGenerator';
 import { readFileAsDataUrl, openOrDownloadDocument } from '../utils/fileUtils';
+import { KalenderKecilInput } from './KalenderKecilPicker';
 
 interface SuratMasukViewProps {
   suratMasukList: SuratMasuk[];
@@ -558,23 +559,26 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                   <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Tanggal Surat Asal
                   </label>
-                  <input
-                    type="date"
+                  <KalenderKecilInput
+                    allowClear
                     value={tglSurat}
-                    onChange={(e) => setTglSurat(e.target.value)}
-                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
+                    onChange={setTglSurat}
+                    accentColor="blue"
+                    title="Pilih Tanggal Surat Asal"
+                    className="sm:py-3 shadow-2xs"
                   />
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Tanggal Diterima di Sekolah *
                   </label>
-                  <input
-                    type="date"
+                  <KalenderKecilInput
                     required
                     value={tglTerima}
-                    onChange={(e) => setTglTerima(e.target.value)}
-                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
+                    onChange={setTglTerima}
+                    accentColor="blue"
+                    title="Pilih Tanggal Diterima"
+                    className="sm:py-3 shadow-2xs"
                   />
                 </div>
               </div>
@@ -641,11 +645,13 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                   <label className="block font-semibold text-slate-700 text-sm mb-1.5">
                     Batas Waktu TL
                   </label>
-                  <input
-                    type="date"
+                  <KalenderKecilInput
+                    allowClear
                     value={tglTindakLanjut}
-                    onChange={(e) => setTglTindakLanjut(e.target.value)}
-                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 sm:py-3 text-sm bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs"
+                    onChange={setTglTindakLanjut}
+                    accentColor="blue"
+                    title="Pilih Batas Waktu Tindak Lanjut"
+                    className="sm:py-3 shadow-2xs"
                   />
                 </div>
               </div>
@@ -900,16 +906,14 @@ export const SuratMasukView: React.FC<SuratMasukViewProps> = ({
                 <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
                   2. Tanggal Tindak Lanjut Dilaksanakan <span className="text-rose-500">*</span>
                 </label>
-                <div className="relative">
-                  <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type="date"
-                    required
-                    value={tglSelesaiTL}
-                    onChange={(e) => setTglSelesaiTL(e.target.value)}
-                    className="w-full text-xs sm:text-sm pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-600 focus:outline-none font-medium text-slate-800"
-                  />
-                </div>
+                <KalenderKecilInput
+                  required
+                  value={tglSelesaiTL}
+                  onChange={setTglSelesaiTL}
+                  accentColor="emerald"
+                  title="Pilih Tanggal Tindak Lanjut"
+                  className="py-2"
+                />
               </div>
 
               <div>

@@ -18,7 +18,9 @@ import {
 } from '../types';
 import { formatTanggalIndonesia, exportToCsv } from '../utils/exportUtils';
 import { extractNomorUrut } from '../utils/numberGenerator';
+import { stripRichTags } from '../utils/richTextUtils';
 import { KopSurat } from './KopSurat';
+import { KalenderKecilInput } from './KalenderKecilPicker';
 
 interface FilterSuratViewProps {
   suratMasukList: SuratMasuk[];
@@ -69,8 +71,8 @@ export const FilterSuratView: React.FC<FilterSuratViewProps> = ({
       tipe: 'Keluar' as const,
       nomor: k.noSurat,
       kodeKlasifikasi: k.kodeKlasifikasi,
-      perihal: `[${(k.jenisSurat || 'surat_eksternal').replace(/_/g, ' ').toUpperCase()}] ${k.perihal || ''}`,
-      pihakTerkait: `Kepada: ${k.tujuan}`,
+      perihal: `[${(k.jenisSurat || 'surat_eksternal').replace(/_/g, ' ').toUpperCase()}] ${stripRichTags(k.perihal || '')}`,
+      pihakTerkait: `Kepada: ${stripRichTags(k.tujuan)}`,
       tgl: k.tglSurat,
       status: k.status,
       detailObj: k,
@@ -285,11 +287,15 @@ export const FilterSuratView: React.FC<FilterSuratViewProps> = ({
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
               2. Tanggal Dari
             </label>
-            <input
-              type="date"
+            <KalenderKecilInput
+              allowClear
+              showDayName={false}
               value={tglMulai}
-              onChange={(e) => setTglMulai(e.target.value)}
-              className="w-full text-xs sm:text-sm border border-slate-300 rounded-xl px-3 py-2 bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
+              onChange={setTglMulai}
+              accentColor="blue"
+              title="Pilih Tanggal Dari"
+              placeholder="Pilih tanggal..."
+              className="py-2"
             />
           </div>
 
@@ -298,11 +304,15 @@ export const FilterSuratView: React.FC<FilterSuratViewProps> = ({
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
               3. Tanggal Sampai
             </label>
-            <input
-              type="date"
+            <KalenderKecilInput
+              allowClear
+              showDayName={false}
               value={tglSelesai}
-              onChange={(e) => setTglSelesai(e.target.value)}
-              className="w-full text-xs sm:text-sm border border-slate-300 rounded-xl px-3 py-2 bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
+              onChange={setTglSelesai}
+              accentColor="blue"
+              title="Pilih Tanggal Sampai"
+              placeholder="Pilih tanggal..."
+              className="py-2"
             />
           </div>
 
