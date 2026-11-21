@@ -1075,7 +1075,7 @@ export default function App() {
   const handleAdminLoginSuccess = () => {
     setUserRole('admin');
     setIsAdminLoginModalOpen(false);
-    setActiveTab('pengaturan');
+    setActiveTab('beranda');
     showToast('Berhasil masuk sebagai Administrator (Kepala Sekolah & TU)', 'success');
   };
 

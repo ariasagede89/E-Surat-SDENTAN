@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+/* Skala tampilan layar 75% (setara zoom Windows 75%) dan tetap 100% saat cetak */
+@media screen {
+  html {
+    font-size: 75%;
+  }
+}
+
+@media print {
+  html {
+    font-size: 100%;
+  }
+}
+
 /* Standar Tipografi Surat Keputusan (SK): Semua teks menggunakan Bookman Old Style */
 .is-surat-keputusan,
 .is-surat-keputusan *,
