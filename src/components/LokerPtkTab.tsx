@@ -2095,70 +2095,31 @@ export const LokerPtkTab: React.FC<LokerPtkTabProps> = ({
                     return (
                       <div
                         key={item.id}
-                        className={`p-3.5 sm:px-5 sm:py-4 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-3 ${
+                        className={`p-3.5 sm:px-5 sm:py-3.5 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-3 ${
                           isVisitorBlockedPrivat
                             ? 'bg-slate-50/60 hover:bg-slate-50'
                             : 'hover:bg-slate-50/80'
                         }`}
                       >
-                        <div className="flex items-start gap-3 min-w-0 flex-1">
-                          <span className="text-xs font-bold text-slate-400 w-5 text-center pt-2 shrink-0 hidden sm:inline-block">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <span className="text-xs font-bold text-slate-400 w-5 text-center shrink-0 hidden sm:inline-block">
                             {idx + 1}
                           </span>
                           <div
-                            className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 mt-0.5 ${cfg.badgeClass}`}
+                            className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${cfg.badgeClass}`}
                           >
                             {renderKategoriIcon(item.kategori, 'w-4 h-4')}
                           </div>
 
-                          <div className="min-w-0 flex-1 space-y-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-sm font-bold text-slate-900 leading-snug">
-                                {item.judul}
-                              </h3>
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            <h3 className="text-sm font-bold text-slate-900 leading-snug truncate">
+                              {item.judul}
+                            </h3>
 
-                              <span
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-bold ${cfg.badgeClass}`}
-                              >
-                                <span>{cfg.shortLabel}</span>
-                              </span>
+                            <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                              <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span>{formatTanggalIndonesia(item.tanggal) || item.tanggal}</span>
                             </div>
-
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-                              <span className="inline-flex items-center gap-1 text-[11px]">
-                                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                                <span>{formatTanggalIndonesia(item.tanggal) || item.tanggal}</span>
-                              </span>
-
-                              {!isVisitorBlockedPrivat && item.fileNama && (
-                                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-indigo-800 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-md max-w-full">
-                                  <Paperclip className="w-3 h-3 shrink-0" />
-                                  <span className="truncate max-w-[220px] sm:max-w-[320px]">
-                                    {item.fileNama}
-                                  </span>
-                                  {item.fileUkuran && (
-                                    <span className="text-[10px] text-indigo-600/90 font-normal shrink-0">
-                                      ({item.fileUkuran})
-                                    </span>
-                                  )}
-                                </span>
-                              )}
-                            </div>
-
-                            {isVisitorBlockedPrivat ? (
-                              <p className="text-xs text-rose-700 font-medium flex items-center gap-1.5 pt-0.5">
-                                <Lock className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                                <span>
-                                  Berkas Privat — Masukkan password untuk melihat atau mengunduh.
-                                </span>
-                              </p>
-                            ) : (
-                              item.isiCatatan && (
-                                <p className="text-xs text-slate-600 line-clamp-1 pt-0.5">
-                                  {item.isiCatatan}
-                                </p>
-                              )
-                            )}
                           </div>
                         </div>
 
