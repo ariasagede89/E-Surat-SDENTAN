@@ -26,9 +26,33 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  ClipboardCheck,
+  Sparkles,
+  ClipboardList,
+  FolderLock,
 } from 'lucide-react';
-import { Guru, Siswa, PengaturanSekolah, KategoriPTK, PaperSize } from '../types';
+import {
+  Guru,
+  Siswa,
+  PengaturanSekolah,
+  KategoriPTK,
+  PaperSize,
+  Ekstrakurikuler,
+  PresensiSiswaDoc,
+  PresensiEkstraDoc,
+  StatusPresensi,
+  LokerPtkItem,
+  LokerPtkAccess,
+  UserRole,
+  SuratKeluar,
+  ArsipSurat,
+} from '../types';
 import { KalenderKecilInput } from './KalenderKecilPicker';
+import { PresensiMuridTab } from './PresensiMuridTab';
+import { EkstraManagerTab } from './EkstraManagerTab';
+import { PresensiEkstraTab } from './PresensiEkstraTab';
+import { LokerPtkTab } from './LokerPtkTab';
+import { PresensiPtkTab } from './PresensiPtkTab';
 import {
   exportToCsv,
   exportToWord,
@@ -124,6 +148,7 @@ export function hitungUmurSiswa(tglLahir: string, acuanStrOrDate?: string | Date
 
 interface GuruSiswaViewProps {
   mode?: 'guru' | 'siswa';
+  userRole?: UserRole;
   guruList: Guru[];
   siswaList: Siswa[];
   sekolah: PengaturanSekolah;
@@ -137,10 +162,33 @@ interface GuruSiswaViewProps {
   onImportSiswa: (siswas: Omit<Siswa, 'id'>[], mode?: 'merge' | 'replace' | 'append') => void;
   onClearAllSiswa?: () => void;
   onResetSiswaDefault?: () => void;
+  ekstraList?: Ekstrakurikuler[];
+  presensiSiswaList?: PresensiSiswaDoc[];
+  presensiEkstraList?: PresensiEkstraDoc[];
+  onAddEkstra?: (item: Omit<Ekstrakurikuler, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void> | void;
+  onUpdateEkstra?: (item: Ekstrakurikuler) => Promise<void> | void;
+  onDeleteEkstra?: (id: string) => Promise<void> | void;
+  onSavePresensiSiswa?: (doc: Omit<PresensiSiswaDoc, 'id' | 'updatedAt'> & { id?: string }) => Promise<void> | void;
+  onSavePresensiEkstra?: (doc: Omit<PresensiEkstraDoc, 'id' | 'updatedAt'> & { id?: string }) => Promise<void> | void;
+  onDeletePresensiEkstra?: (id: string) => Promise<void> | void;
+  lokerPtkList?: LokerPtkItem[];
+  lokerPtkAccessList?: LokerPtkAccess[];
+  onAddLokerPtk?: (item: Omit<LokerPtkItem, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void> | void;
+  onUpdateLokerPtk?: (item: LokerPtkItem) => Promise<void> | void;
+  onDeleteLokerPtk?: (id: string) => Promise<void> | void;
+  onSaveLokerPtkAccess?: (access: LokerPtkAccess) => Promise<void> | void;
+  onDeleteLokerLocker?: (ptkId: string) => Promise<void> | void;
+  suratKeluarList?: SuratKeluar[];
+  arsipList?: ArsipSurat[];
+  onAddSuratKeluar?: (item: Omit<SuratKeluar, 'id' | 'createdAt'>) => Promise<void> | void;
+  onUpdateSuratKeluar?: (item: SuratKeluar) => Promise<void> | void;
+  onDeleteSuratKeluar?: (id: string) => Promise<void> | void;
+  onPreviewSuratKeluar?: (surat: SuratKeluar) => void;
 }
 
 export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
   mode,
+  userRole = 'guru',
   guruList,
   siswaList,
   sekolah,
@@ -154,8 +202,35 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
   onImportSiswa,
   onClearAllSiswa,
   onResetSiswaDefault,
+  ekstraList = [],
+  presensiSiswaList = [],
+  presensiEkstraList = [],
+  onAddEkstra = () => {},
+  onUpdateEkstra = () => {},
+  onDeleteEkstra = () => {},
+  onSavePresensiSiswa = () => {},
+  onSavePresensiEkstra = () => {},
+  onDeletePresensiEkstra = () => {},
+  lokerPtkList = [],
+  lokerPtkAccessList = [],
+  onAddLokerPtk = () => {},
+  onUpdateLokerPtk = () => {},
+  onDeleteLokerPtk = () => {},
+  onSaveLokerPtkAccess = () => {},
+  onDeleteLokerLocker,
+  suratKeluarList = [],
+  arsipList = [],
+  onAddSuratKeluar = () => {},
+  onUpdateSuratKeluar = () => {},
+  onDeleteSuratKeluar = () => {},
+  onPreviewSuratKeluar = () => {},
 }) => {
   const [activeTab, setActiveTab] = useState<'guru' | 'siswa'>(mode || 'guru');
+  const [ptkSubTab, setPtkSubTab] = useState<'data_ptk' | 'presensi_ptk' | 'loker_ptk'>('presensi_ptk');
+  const [siswaSubTab, setSiswaSubTab] = useState<
+    'data_murid' | 'presensi_murid' | 'daftar_ekstra' | 'presensi_ekstra'
+  >('data_murid');
+  const [selectedEkstraForPresensi, setSelectedEkstraForPresensi] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -248,11 +323,12 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
   const [showCetakAbsenGuruModal, setShowCetakAbsenGuruModal] = useState(false);
   const [showCetakAbsenSiswaModal, setShowCetakAbsenSiswaModal] = useState(false);
 
-  const [absenYear, setAbsenYear] = useState(2026);
-  const [absenMonth, setAbsenMonth] = useState(9); // September
-  const [absenHolidays, setAbsenHolidays] = useState<Record<number, string>>(() =>
-    loadHolidaysFromStorage(2026, 9, '5_hari')
-  );
+  const [absenYear, setAbsenYear] = useState<number>(() => new Date().getFullYear());
+  const [absenMonth, setAbsenMonth] = useState<number>(() => new Date().getMonth() + 1);
+  const [absenHolidays, setAbsenHolidays] = useState<Record<number, string>>(() => {
+    const now = new Date();
+    return loadHolidaysFromStorage(now.getFullYear(), now.getMonth() + 1, absenWorkSystem);
+  });
   const [holidaySavedStatus, setHolidaySavedStatus] = useState<boolean>(false);
   const [holidaySuccessToast, setHolidaySuccessToast] = useState<string | null>(null);
 
@@ -271,6 +347,8 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
   const [siswaSemesterCetak, setSiswaSemesterCetak] = useState<string>('Ganjil');
   const [siswaTahunAjaranCetak, setSiswaTahunAjaranCetak] = useState<string>('2026/2027');
   const [siswaShowKopCetak, setSiswaShowKopCetak] = useState<boolean>(false); // Pilihan utama: Tanpa KOP
+  const [siswaIncludeRecordedAbsen, setSiswaIncludeRecordedAbsen] = useState<boolean>(false);
+  const [siswaBlangkoOnly, setSiswaBlangkoOnly] = useState<boolean>(true);
 
   const handleWorkSystemChange = (newSys: '5_hari' | '6_hari') => {
     setAbsenWorkSystem(newSys);
@@ -407,13 +485,51 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
   };
 
   const openCetakGuruModal = () => {
+    const now = new Date();
+    const realYear = now.getFullYear();
+    const realMonth = now.getMonth() + 1;
+    setAbsenYear(realYear);
+    setAbsenMonth(realMonth);
+    setAbsenHolidays(loadHolidaysFromStorage(realYear, realMonth, absenWorkSystem));
     setShowCetakAbsenGuruModal(true);
   };
 
-  const openCetakSiswaModal = (preselectedKelas?: string) => {
+  const buildAttendanceByDayForMonth = (
+    year: number,
+    month: number,
+    kelas: string
+  ): Record<number, Record<string, StatusPresensi>> => {
+    const map: Record<number, Record<string, StatusPresensi>> = {};
+    const prefix = `${year}-${String(month).padStart(2, '0')}-`;
+    presensiSiswaList.forEach((doc) => {
+      if (!doc.tanggal.startsWith(prefix)) return;
+      if (kelas !== 'Semua' && doc.kelas !== 'Semua' && doc.kelas !== kelas) return;
+      const dayNum = parseInt(doc.tanggal.split('-')[2] || '0', 10);
+      if (dayNum >= 1 && dayNum <= 31) {
+        map[dayNum] = { ...(map[dayNum] || {}), ...(doc.records || {}) };
+      }
+    });
+    return map;
+  };
+
+  const openCetakSiswaModal = (
+    preselectedKelas?: string,
+    includeRecorded?: boolean,
+    year?: number,
+    month?: number
+  ) => {
     if (preselectedKelas) {
       setSiswaKelasCetak(preselectedKelas);
     }
+    const useRecorded = includeRecorded === true;
+    setSiswaIncludeRecordedAbsen(useRecorded);
+    setSiswaBlangkoOnly(!useRecorded);
+    const now = new Date();
+    const targetYear = typeof year === 'number' ? year : now.getFullYear();
+    const targetMonth = typeof month === 'number' ? month : now.getMonth() + 1;
+    setAbsenYear(targetYear);
+    setAbsenMonth(targetMonth);
+    setAbsenHolidays(loadHolidaysFromStorage(targetYear, targetMonth, absenWorkSystem));
     setShowCetakAbsenSiswaModal(true);
   };
 
@@ -463,6 +579,10 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
 
   const doPrintAbsenSiswa = () => {
     const bulanNama = `${NAMA_BULAN_INDONESIA[absenMonth - 1]} ${absenYear}`;
+    const attendanceByDay =
+      !siswaBlangkoOnly && siswaIncludeRecordedAbsen
+        ? buildAttendanceByDayForMonth(absenYear, absenMonth, siswaKelasCetak)
+        : undefined;
     const html = buildAbsenSiswaHtml(siswaList, siswaKelasCetak, sekolah, {
       siswaList,
       kelas: siswaKelasCetak,
@@ -477,6 +597,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
       orientation: siswaOrientationCetak,
       paperSize: siswaPaperSizeCetak,
       workSystem: absenWorkSystem,
+      attendanceByDay,
     });
 
     if (siswaOrientationCetak === 'portrait') {
@@ -496,6 +617,10 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
 
   const doExportWordAbsenSiswa = () => {
     const bulanNama = `${NAMA_BULAN_INDONESIA[absenMonth - 1]} ${absenYear}`;
+    const attendanceByDay =
+      !siswaBlangkoOnly && siswaIncludeRecordedAbsen
+        ? buildAttendanceByDayForMonth(absenYear, absenMonth, siswaKelasCetak)
+        : undefined;
     exportAbsenSiswaToWord(
       siswaList,
       siswaKelasCetak,
@@ -514,6 +639,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
         orientation: siswaOrientationCetak,
         paperSize: siswaPaperSizeCetak,
         workSystem: absenWorkSystem,
+        attendanceByDay,
       },
       siswaPaperSizeCetak,
       siswaOrientationCetak
@@ -1088,53 +1214,212 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
           )}
 
           {activeTab === 'guru' ? (
-            <>
-              {/* Tombol Cetak & Unduh Presensi PTK (Paling Atas berdampingan dengan Tambah PTK) */}
-              <button
-                onClick={handlePrintAbsenGuru}
-                className="w-full sm:w-auto sm:min-w-[280px] px-7 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Cetak Presensi PTK</span>
-              </button>
-
-              {/* Tambah Manual PTK */}
-              <button
-                onClick={() => openGuruModal()}
-                className="px-4 py-2.5 bg-indigo-700 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Tambah PTK</span>
-              </button>
-            </>
+            ptkSubTab === 'data_ptk' ? (
+              <>
+                {/* Tambah Manual PTK */}
+                <button
+                  onClick={() => openGuruModal()}
+                  className="px-4 py-2.5 bg-indigo-700 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Tambah PTK</span>
+                </button>
+              </>
+            ) : null
           ) : (
             <>
-              {/* Tombol Cetak Absen Siswa (Paling Atas berdampingan dengan Tambah Siswa) */}
-              <button
-                onClick={() =>
-                  openCetakSiswaModal(
-                    filterKelasSiswa !== 'Semua' ? filterKelasSiswa : (availableKelas[0] || '6A')
-                  )
-                }
-                className="w-full sm:w-auto sm:min-w-[280px] px-7 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
-                title="Cetak Presensi Siswa Bulanan (Format Potret Pilihan Utama / Lanskap & Kostum Libur)"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Cetak Absen Siswa</span>
-              </button>
-
-              {/* Tambah Manual Siswa */}
-              <button
-                onClick={() => openSiswaModal()}
-                className="px-4 py-2.5 bg-indigo-700 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Tambah Siswa</span>
-              </button>
+              {siswaSubTab === 'data_murid' && (
+                <button
+                  onClick={() => openSiswaModal()}
+                  className="px-4 py-2.5 bg-indigo-700 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Tambah Siswa</span>
+                </button>
+              )}
+              {siswaSubTab === 'presensi_murid' && (
+                <button
+                  onClick={() =>
+                    openCetakSiswaModal(
+                      filterKelasSiswa !== 'Semua' ? filterKelasSiswa : (availableKelas[0] || '6A'),
+                      false
+                    )
+                  }
+                  className="px-5 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
+                  title="Cetak Blangko Daftar Hadir Siswa Bulanan (Kosong / Manual)"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Blangko Absen Siswa</span>
+                </button>
+              )}
             </>
           )}
         </div>
       </div>
+
+      {/* 3 Jendela Navigasi untuk Modul Data PTK */}
+      {activeTab === 'guru' && (
+        <div className="bg-white p-1.5 rounded-2xl border border-slate-200/80 shadow-xs grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+          <button
+            type="button"
+            onClick={() => setPtkSubTab('presensi_ptk')}
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              ptkSubTab === 'presensi_ptk'
+                ? 'bg-teal-700 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <ClipboardCheck className="w-4 h-4 shrink-0" />
+            <span>Presensi PTK</span>
+            <span
+              className={`px-2 py-0.5 text-[10px] rounded-md font-bold ${
+                ptkSubTab === 'presensi_ptk'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-slate-200/80 text-slate-700'
+              }`}
+            >
+              {suratKeluarList.filter((s) => s.jenisSurat === 'surat_ijin_guru').length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPtkSubTab('data_ptk')}
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              ptkSubTab === 'data_ptk'
+                ? 'bg-indigo-700 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Users className="w-4 h-4 shrink-0" />
+            <span>Data PTK</span>
+            <span
+              className={`px-2 py-0.5 text-[10px] rounded-md font-bold ${
+                ptkSubTab === 'data_ptk'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-slate-200/80 text-slate-700'
+              }`}
+            >
+              {guruList.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPtkSubTab('loker_ptk')}
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              ptkSubTab === 'loker_ptk'
+                ? 'bg-blue-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <FolderLock className="w-4 h-4 shrink-0" />
+            <span>Loker Room PTK</span>
+            <span
+              className={`px-2 py-0.5 text-[10px] rounded-md font-bold ${
+                ptkSubTab === 'loker_ptk'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-slate-200/80 text-slate-700'
+              }`}
+            >
+              {lokerPtkList.length}
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* 4 Jendela Navigasi untuk Modul Data Murid */}
+      {activeTab === 'siswa' && (
+        <div className="bg-white p-1.5 rounded-2xl border border-slate-200/80 shadow-xs grid grid-cols-2 lg:grid-cols-4 gap-1.5">
+          <button
+            type="button"
+            onClick={() => setSiswaSubTab('data_murid')}
+            className={`px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              siswaSubTab === 'data_murid'
+                ? 'bg-indigo-700 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <GraduationCap className="w-4 h-4 shrink-0" />
+            <span>Data Murid</span>
+            <span
+              className={`px-2 py-0.5 text-[10px] rounded-md font-bold ${
+                siswaSubTab === 'data_murid'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-slate-200/80 text-slate-700'
+              }`}
+            >
+              {siswaList.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSiswaSubTab('presensi_murid')}
+            className={`px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              siswaSubTab === 'presensi_murid'
+                ? 'bg-blue-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <ClipboardList className="w-4 h-4 shrink-0" />
+            <span>Presensi Murid</span>
+            <span
+              className={`px-2 py-0.5 text-[10px] rounded-md font-bold ${
+                siswaSubTab === 'presensi_murid'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-slate-200/80 text-slate-700'
+              }`}
+            >
+              {presensiSiswaList.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSiswaSubTab('daftar_ekstra')}
+            className={`px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              siswaSubTab === 'daftar_ekstra'
+                ? 'bg-emerald-700 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 shrink-0" />
+            <span>Daftar Ekstra</span>
+            <span
+              className={`px-2 py-0.5 text-[10px] rounded-md font-bold ${
+                siswaSubTab === 'daftar_ekstra'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-slate-200/80 text-slate-700'
+              }`}
+            >
+              {ekstraList.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSiswaSubTab('presensi_ekstra')}
+            className={`px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              siswaSubTab === 'presensi_ekstra'
+                ? 'bg-teal-700 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <ClipboardCheck className="w-4 h-4 shrink-0" />
+            <span>Presensi Ekstra</span>
+            <span
+              className={`px-2 py-0.5 text-[10px] rounded-md font-bold ${
+                siswaSubTab === 'presensi_ekstra'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-slate-200/80 text-slate-700'
+              }`}
+            >
+              {presensiEkstraList.length}
+            </span>
+          </button>
+        </div>
+      )}
 
       {/* Hidden File Inputs for CSV Import */}
       <input
@@ -1152,8 +1437,35 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
         className="hidden"
       />
 
-      {activeTab === 'guru' ? (
-        /* ================= TAB A: DATA PTK ================= */
+      {activeTab === 'guru' && ptkSubTab === 'loker_ptk' ? (
+        /* ================= JENDELA 3 PTK: LOKER ROOM PTK ================= */
+        <LokerPtkTab
+          guruList={guruList}
+          lokerPtkList={lokerPtkList}
+          lokerPtkAccessList={lokerPtkAccessList}
+          userRole={userRole}
+          onAddLokerPtk={onAddLokerPtk}
+          onUpdateLokerPtk={onUpdateLokerPtk}
+          onDeleteLokerPtk={onDeleteLokerPtk}
+          onSaveLokerPtkAccess={onSaveLokerPtkAccess}
+          onDeleteLokerLocker={onDeleteLokerLocker}
+        />
+      ) : activeTab === 'guru' && ptkSubTab === 'presensi_ptk' ? (
+        /* ================= JENDELA 2 PTK: PRESENSI PTK ================= */
+        <PresensiPtkTab
+          guruList={guruList}
+          sekolah={sekolah}
+          suratKeluarList={suratKeluarList}
+          arsipList={arsipList}
+          userRole={userRole}
+          onAddSuratKeluar={onAddSuratKeluar}
+          onUpdateSuratKeluar={onUpdateSuratKeluar}
+          onDeleteSuratKeluar={onDeleteSuratKeluar}
+          onPreviewSuratKeluar={onPreviewSuratKeluar}
+          onOpenCetakPresensiPtk={handlePrintAbsenGuru}
+        />
+      ) : activeTab === 'guru' ? (
+        /* ================= JENDELA 1 PTK: DATA PTK ================= */
         <div className="space-y-4">
           {/* Action Bar */}
           <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
@@ -1331,8 +1643,46 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
             </div>
           </div>
         </div>
+      ) : siswaSubTab === 'presensi_murid' ? (
+        /* ================= JENDELA 2: PRESENSI MURID ================= */
+        <PresensiMuridTab
+          siswaList={siswaList}
+          sekolah={sekolah}
+          presensiSiswaList={presensiSiswaList}
+          onSavePresensiSiswa={onSavePresensiSiswa}
+          onOpenCetakAbsenSiswa={(kelas, includeRecorded, year, month) =>
+            openCetakSiswaModal(kelas, includeRecorded, year, month)
+          }
+        />
+      ) : siswaSubTab === 'daftar_ekstra' ? (
+        /* ================= JENDELA 3: DAFTAR EKSTRA ================= */
+        <EkstraManagerTab
+          ekstraList={ekstraList}
+          guruList={guruList}
+          siswaList={siswaList}
+          sekolah={sekolah}
+          onAddEkstra={onAddEkstra}
+          onUpdateEkstra={onUpdateEkstra}
+          onDeleteEkstra={onDeleteEkstra}
+          onOpenPresensiEkstra={(ekstraId) => {
+            setSelectedEkstraForPresensi(ekstraId);
+            setSiswaSubTab('presensi_ekstra');
+          }}
+        />
+      ) : siswaSubTab === 'presensi_ekstra' ? (
+        /* ================= JENDELA 4: PRESENSI EKSTRA ================= */
+        <PresensiEkstraTab
+          ekstraList={ekstraList}
+          siswaList={siswaList}
+          sekolah={sekolah}
+          presensiEkstraList={presensiEkstraList}
+          initialSelectedEkstraId={selectedEkstraForPresensi}
+          onSavePresensiEkstra={onSavePresensiEkstra}
+          onDeletePresensiEkstra={onDeletePresensiEkstra}
+          onGoToDaftarEkstra={() => setSiswaSubTab('daftar_ekstra')}
+        />
       ) : (
-        /* ================= TAB B: DATA SISWA ================= */
+        /* ================= JENDELA 1: DATA MURID ================= */
         <div className="space-y-4">
           {/* Action & Filter Bar */}
           <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs space-y-3">
@@ -2550,7 +2900,11 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                 </div>
                 <div>
                   <h3 className="text-base sm:text-lg font-bold text-slate-900 flex flex-wrap items-center gap-2">
-                    <span>Cetak Presensi Peserta Didik Bulanan</span>
+                    <span>
+                      {siswaBlangkoOnly
+                        ? 'Cetak Blangko Absen Siswa Bulanan'
+                        : 'Cetak Presensi Peserta Didik Bulanan'}
+                    </span>
                     <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full border ${
                       siswaOrientationCetak === 'portrait'
                         ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
@@ -2748,6 +3102,34 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                         />
                       </div>
                     </div>
+
+                    {siswaBlangkoOnly ? (
+                      <div className="p-3 rounded-xl border border-blue-200 bg-blue-50/70 text-xs text-blue-900">
+                        <div className="font-bold">Mode Blangko Kosong</div>
+                        <div className="text-[11px] text-blue-800 mt-0.5">
+                          Dokumen dicetak sebagai blangko daftar hadir kosong (tidak otomatis terisi input presensi harian; hari libur tetap ditandai <strong>L</strong>).
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/80 cursor-pointer hover:bg-slate-100/70 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={siswaIncludeRecordedAbsen}
+                          onChange={(e) => setSiswaIncludeRecordedAbsen(e.target.checked)}
+                          className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                        />
+                        <div className="text-xs">
+                          <div className="font-bold text-slate-800">
+                            Isi Otomatis dari Data Presensi Tercatat
+                          </div>
+                          <div className="text-[11px] text-slate-500 mt-0.5">
+                            {Object.keys(buildAttendanceByDayForMonth(absenYear, absenMonth, siswaKelasCetak)).length > 0
+                              ? `${Object.keys(buildAttendanceByDayForMonth(absenYear, absenMonth, siswaKelasCetak)).length} hari presensi tercatat akan diisikan otomatis (matikan jika ingin blangko kosong).`
+                              : 'Belum ada data presensi harian tersimpan untuk bulan & kelas ini (akan dicetak sebagai blangko kosong).'}
+                          </div>
+                        </div>
+                      </label>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2781,7 +3163,7 @@ export const GuruSiswaView: React.FC<GuruSiswaViewProps> = ({
                   }`}
                 >
                   <Printer className="w-4 h-4" />
-                  <span>Cetak Presensi Siswa</span>
+                  <span>{siswaBlangkoOnly ? 'Cetak Blangko Absen' : 'Cetak Presensi Siswa'}</span>
                 </button>
               </div>
             </div>

@@ -94,6 +94,41 @@ export interface Guru {
 
 export type PTK = Guru;
 
+export type DefaultKategoriLokerPtk = 'kepegawaian' | 'catatan' | 'pembelajaran';
+export type KategoriLokerPtk = string;
+export type VisibilitasLokerPtk = 'privat' | 'terbuka';
+
+export interface LokerPtkItem {
+  id: string;
+  ptkId: string;
+  ptkNama: string;
+  kategori: KategoriLokerPtk;
+  visibilitas?: VisibilitasLokerPtk;
+  judul: string;
+  tanggal: string; // YYYY-MM-DD
+  isiCatatan?: string;
+  fileNama?: string;
+  fileTipe?: string;
+  fileUkuran?: string;
+  fileUrl?: string;
+  linkEksternal?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LokerPtkAccess {
+  id: string; // sanitized ptkId
+  ptkId: string;
+  ptkNama: string;
+  isProtected: boolean;
+  passwordHash: string;
+  passwordHint?: string;
+  defaultVisibilitas?: VisibilitasLokerPtk;
+  cardColor?: string;
+  customFolders?: string[];
+  updatedAt: string;
+}
+
 export interface Siswa {
   id: string;
   nisn: string;
@@ -105,6 +140,39 @@ export interface Siswa {
   tglLahir: string;
   namaOrtu: string;
   alamat: string;
+}
+
+export type StatusPresensi = 'H' | 'S' | 'I' | 'A';
+
+export interface Ekstrakurikuler {
+  id: string;
+  nama: string;
+  pembina: string;
+  hari: string;
+  waktu?: string;
+  tempat?: string;
+  keterangan?: string;
+  pesertaIds: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PresensiSiswaDoc {
+  id: string;
+  tanggal: string; // YYYY-MM-DD
+  kelas: string;
+  records: Record<string, StatusPresensi>;
+  catatan?: string;
+  updatedAt: string;
+}
+
+export interface PresensiEkstraDoc {
+  id: string;
+  ekstraId: string;
+  tanggal: string; // YYYY-MM-DD
+  materi?: string;
+  records: Record<string, StatusPresensi>;
+  updatedAt: string;
 }
 
 export interface SptSiswaItem {

@@ -1,4 +1,14 @@
-import { Guru, Siswa, PengaturanSekolah, SuratKeluar, SuratMasuk, PaperSize } from '../types';
+import {
+  Guru,
+  Siswa,
+  PengaturanSekolah,
+  SuratKeluar,
+  SuratMasuk,
+  PaperSize,
+  Ekstrakurikuler,
+  PresensiEkstraDoc,
+  StatusPresensi,
+} from '../types';
 import { formatDiktumLabel } from './diktumUtils';
 import { sortSiswa } from './csvUtils';
 import {
@@ -1297,6 +1307,32 @@ export function buildKepsekSignatureSpaceHtml(
   `;
 }
 
+function angkaTerbilangIndonesia(n: number): string {
+  const satuan = [
+    '',
+    'satu',
+    'dua',
+    'tiga',
+    'empat',
+    'lima',
+    'enam',
+    'tujuh',
+    'delapan',
+    'sembilan',
+    'sepuluh',
+    'sebelas',
+  ];
+  if (n <= 0) return 'satu';
+  if (n < 12) return satuan[n];
+  if (n < 20) return `${satuan[n - 10]} belas`;
+  if (n < 100) {
+    const puluh = Math.floor(n / 10);
+    const sisa = n % 10;
+    return `${satuan[puluh]} puluh${sisa > 0 ? ` ${satuan[sisa]}` : ''}`;
+  }
+  return String(n);
+}
+
 /**
  * Generates official HTML string for letter templates
  * Format is designed to render pixel-identically in PDF, browser preview, and MS Word (.doc)
@@ -1313,6 +1349,11 @@ export function buildSuratHtml(
   const schoolNameIsi = formatNamaSekolahIsi(sekolah?.namaSekolah);
   const kepsek = resolveKepalaSekolahData(sekolah, guruList, surat);
 
+  const isKepsekPlhSurat =
+    surat.jenisSurat === 'surat_ijin_guru' &&
+    (Boolean(data.isKepalaSekolah) ||
+      /kepala\s+sekolah|^kepala\s+sd/i.test(data.jabatan || ''));
+
   let badanSurat = '';
   let customTtdBlock = '';
 
@@ -1325,6 +1366,135 @@ export function buildSuratHtml(
       const tglMulaiFormatted = formatTanggalIndonesia(tglMulai);
       const tglSelesaiFormatted = formatTanggalIndonesia(tglSelesai);
       const hariMulai = getNamaHariIndonesia(tglMulai);
+      const hariSelesai = getNamaHariIndonesia(tglSelesai);
+
+      let durasiHariCount = 1;
+      if (!isSatuHari) {
+        try {
+          const d1 = new Date(tglMulai.split('T')[0]);
+          const d2 = new Date(tglSelesai.split('T')[0]);
+          const diffTime = d2.getTime() - d1.getTime();
+          const days = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+          if (days > 1) {
+            durasiHariCount = days;
+          }
+        } catch {}
+      }
+
+      if (isKepsekPlhSurat) {
+        const plhNama = (data.plhNama || data.guruPengganti || '-').trim();
+        const plhNip = (data.plhNip || '-').trim() || '-';
+        const plhJabatan = (data.plhJabatan || 'Guru Kelas').trim() || 'Guru Kelas';
+        const namaKepsekPemohon = (data.namaGuru || kepsek.nama || '-').trim();
+        const nipKepsekPemohon = (data.nipGuru || kepsek.nip || '-').trim();
+        const jabatanKepsekDisplay = formatJabatanPenandatangan(
+          data.jabatan || kepsek.jabatan,
+          sekolah?.namaSekolah
+        );
+        const alasanClean = (data.alasan || '').trim() || 'ada keperluan penting';
+
+        const hariTanggalPlh = isSatuHari
+          ? `${hariMulai ? `${hariMulai}, ` : ''}${tglMulaiFormatted}`
+          : `${hariMulai ? `${hariMulai}, ` : ''}${tglMulaiFormatted} s.d. ${
+              hariSelesai ? `${hariSelesai}, ` : ''
+            }${tglSelesaiFormatted}`;
+        const lamaKetidakhadiran = `${durasiHariCount} (${angkaTerbilangIndonesia(
+          durasiHariCount
+        )}) hari`;
+
+        badanSurat = `
+          <div style="text-align: center; margin-top: 6pt; margin-bottom: 12pt; line-height: 1.35;">
+            <p style="margin: 0; text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.4px; line-height: 1.35;">SURAT PEMBERITAHUAN DAN PENUGASAN</p>
+            <p style="margin: 0; text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; letter-spacing: 0.4px; line-height: 1.35;">PELAKSANA HARIAN KEPALA SEKOLAH</p>
+            <p class="nomor-surat" style="margin: 2pt 0 0 0; text-align: center; font-size: 11pt; line-height: 1.4;">Nomor: ${surat.noSurat || '-'}</p>
+          </div>
+
+          <p style="margin: 0 0 4pt 0; text-align: left; font-size: 12pt; line-height: 1.5;">Yang bertanda tangan di bawah ini:</p>
+
+          <table style="margin: 0 0 8pt 28pt; width: 92%; border: none; border-collapse: collapse; line-height: 1.5; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width: 140pt; padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">Nama</td>
+              <td style="width: 15pt; padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">:</td>
+              <td style="padding: 1pt 0; vertical-align: top; font-weight: bold; border: none; font-size: 12pt; line-height: 1.5;">${namaKepsekPemohon}</td>
+            </tr>
+            <tr>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">NIP</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">:</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">${nipKepsekPemohon}</td>
+            </tr>
+            <tr>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">Jabatan</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">:</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">${jabatanKepsekDisplay}</td>
+            </tr>
+          </table>
+
+          <p class="paragraf-surat" style="text-align: justify; margin: 0 0 4pt 0; line-height: 1.5; text-indent: 28pt; font-size: 12pt;">
+            Dengan ini memberitahukan bahwa saya tidak dapat melaksanakan tugas di sekolah karena <strong>${alasanClean}</strong>, pada:
+          </p>
+
+          <table style="margin: 0 0 8pt 28pt; width: 92%; border: none; border-collapse: collapse; line-height: 1.5; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width: 140pt; padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">Hari/Tanggal</td>
+              <td style="width: 15pt; padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">:</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">${hariTanggalPlh}</td>
+            </tr>
+            <tr>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">Lama ketidakhadiran</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">:</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">${lamaKetidakhadiran}</td>
+            </tr>
+          </table>
+
+          <p style="margin: 0 0 4pt 0; text-align: left; font-size: 12pt; line-height: 1.5;">Sehubungan dengan hal tersebut, saya menugaskan:</p>
+
+          <table style="margin: 0 0 8pt 28pt; width: 92%; border: none; border-collapse: collapse; line-height: 1.5; font-size: 12pt;" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width: 140pt; padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">Nama</td>
+              <td style="width: 15pt; padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">:</td>
+              <td style="padding: 1pt 0; vertical-align: top; font-weight: bold; border: none; font-size: 12pt; line-height: 1.5;">${plhNama}</td>
+            </tr>
+            <tr>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">NIP/Nomor Induk</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">:</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">${plhNip}</td>
+            </tr>
+            <tr>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">Jabatan</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">:</td>
+              <td style="padding: 1pt 0; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">${plhJabatan}</td>
+            </tr>
+          </table>
+
+          <p style="text-align: justify; margin: 0 0 4pt 0; line-height: 1.5; font-size: 12pt;">
+            untuk melaksanakan tugas sebagai <strong>Pelaksana Harian (Plh.) Kepala Sekolah</strong> selama saya tidak dapat melaksanakan tugas.
+          </p>
+
+          <p class="paragraf-surat" style="text-align: justify; margin: 0 0 4pt 0; line-height: 1.5; text-indent: 28pt; font-size: 12pt;">
+            Pelaksana Harian (Plh.) bertugas mengoordinasikan dan memastikan kegiatan pembelajaran, administrasi, serta pelayanan sekolah tetap berjalan dengan baik. Dalam hal terdapat permasalahan penting atau mendesak, Plh. wajib segera berkoordinasi dengan Kepala Sekolah sebelum mengambil keputusan.
+          </p>
+
+          <p class="paragraf-surat" style="text-align: justify; margin: 0; line-height: 1.5; text-indent: 28pt; font-size: 12pt;">
+            Demikian surat pemberitahuan dan penugasan ini dibuat untuk dilaksanakan dengan penuh tanggung jawab.
+          </p>
+        `;
+
+        customTtdBlock = `
+          <table class="ttd-table" style="width: 100%; margin-top: 18pt; border: none; border-collapse: collapse; font-size: 12pt; line-height: 1.5;" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width: 52%; border: none;">&nbsp;</td>
+              <td style="width: 48%; text-align: center; vertical-align: top; border: none; font-size: 12pt; line-height: 1.5;">
+                <p style="margin: 0; text-align: center; font-size: 12pt; line-height: 1.5; position: relative; z-index: 10;">${sekolah.desa || 'Pekutatan'}, ${tglIndo}</p>
+                <p style="margin: 0; text-align: center; font-size: 12pt; line-height: 1.5; position: relative; z-index: 10;">${jabatanKepsekDisplay}</p>
+                ${buildKepsekSignatureSpaceHtml(sekolah, stampOptions, '55pt')}
+                <p style="margin: 0; font-weight: bold; text-decoration: underline; text-align: center; font-size: 12pt; line-height: 1.5; position: relative; z-index: 10;">${namaKepsekPemohon}</p>
+                <p style="margin: 0; font-size: 11.5pt; text-align: center; line-height: 1.5; position: relative; z-index: 10;">NIP. ${nipKepsekPemohon}</p>
+              </td>
+            </tr>
+          </table>
+        `;
+        break;
+      }
 
       let kalimatIzin = '';
       if (isSatuHari) {
@@ -2917,11 +3087,13 @@ export function buildSuratHtml(
     </table>
   `;
 
-  // Header Kop: Surat Ijin Guru (Permohonan Tidak Masuk Sekolah perorangan) TIDAK menggunakan kop dinas
+  // Header Kop: Surat Ijin Guru (Permohonan Tidak Masuk Sekolah perorangan) TIDAK menggunakan kop dinas,
+  // KECUALI jika pemohon adalah Kepala Sekolah (Surat Pemberitahuan & Penugasan Plh. Kepala Sekolah) yang wajib menggunakan kop sekolah
   const isSuratIjin =
-    surat.jenisSurat === 'surat_ijin_guru' ||
-    Boolean(surat.perihal && /i[zj]in/i.test(surat.perihal)) ||
-    Boolean(surat.namaKlasifikasi && /i[zj]in/i.test(surat.namaKlasifikasi));
+    !isKepsekPlhSurat &&
+    (surat.jenisSurat === 'surat_ijin_guru' ||
+      Boolean(surat.perihal && /i[zj]in/i.test(surat.perihal)) ||
+      Boolean(surat.namaKlasifikasi && /i[zj]in/i.test(surat.namaKlasifikasi)));
   let kopHtml = '';
 
   if (!isSuratIjin) {
@@ -4172,6 +4344,7 @@ export interface AbsenSiswaOptions {
   orientation?: 'portrait' | 'landscape'; // Default: 'portrait' (Pilihan Utama)
   paperSize?: PaperSize;
   workSystem?: '5_hari' | '6_hari';
+  attendanceByDay?: Record<number, Record<string, StatusPresensi>>; // day (1..31) -> siswaId -> H/S/I/A
 }
 
 /**
@@ -4197,6 +4370,7 @@ export function buildAbsenSiswaHtml(
   let showKop = false; // Default pilihan utama tanpa KOP
   let orientation: 'portrait' | 'landscape' = 'portrait'; // Default pilihan utama: Potret
   let workSystem: '5_hari' | '6_hari' = '5_hari';
+  let attendanceByDay: Record<number, Record<string, StatusPresensi>> = {};
 
   if (typeof bulanOrOptions === 'object') {
     kelas = bulanOrOptions.kelas || kelas;
@@ -4209,6 +4383,7 @@ export function buildAbsenSiswaHtml(
     showKop = bulanOrOptions.showKop ?? false;
     orientation = bulanOrOptions.orientation || 'portrait';
     workSystem = bulanOrOptions.workSystem || '5_hari';
+    attendanceByDay = bulanOrOptions.attendanceByDay || {};
   }
 
   const workSystemLabel = workSystem === '5_hari' ? 'Sistem 5 Hari Kerja (Sabtu & Minggu Libur)' : 'Sistem 6 Hari Kerja (Hanya Minggu Libur)';
@@ -4286,7 +4461,43 @@ export function buildAbsenSiswaHtml(
           </thead>
           <tbody>
             ${filtered
-              .map((s, idx) => `
+              .map((s, idx) => {
+                let countS = 0;
+                let countI = 0;
+                let countA = 0;
+                let hasAny = false;
+                const dayCells = Array.from({ length: totalDays })
+                  .map((_, i) => {
+                    const d = i + 1;
+                    const isHol = !!holidays[d];
+                    const st = !isHol ? attendanceByDay[d]?.[s.id] : undefined;
+                    if (st) {
+                      hasAny = true;
+                      if (st === 'S') countS++;
+                      else if (st === 'I') countI++;
+                      else if (st === 'A') countA++;
+                    }
+                    const statusStyle =
+                      st === 'S'
+                        ? 'color: #b45309; font-weight: bold;'
+                        : st === 'I'
+                        ? 'color: #1d4ed8; font-weight: bold;'
+                        : st === 'A'
+                        ? 'color: #b91c1c; font-weight: bold; background: #fef2f2;'
+                        : st === 'H'
+                        ? 'color: #15803d; font-weight: bold;'
+                        : '';
+                    return `
+                      <td style="width: 13.5px; min-width: 13.5px; max-width: 13.5px; box-sizing: border-box; border: 1px solid #000; height: 18px; text-align: center; font-size: 6.5pt; ${
+                        isHol ? 'background: #fecaca; color: #b91c1c; font-weight: bold;' : statusStyle
+                      }">
+                        ${isHol ? 'L' : st || ''}
+                      </td>
+                    `;
+                  })
+                  .join('');
+                const totalAbsen = countS + countI + countA;
+                return `
               <tr>
                 <td style="padding: 2px 1px; text-align: center; border: 1px solid #000; font-size: 7pt;">${idx + 1}</td>
                 <td style="padding: 2px 1px; text-align: center; font-size: 6.5pt; border: 1px solid #000; line-height: 1.1;">
@@ -4297,25 +4508,14 @@ export function buildAbsenSiswaHtml(
                   ${s.nama}
                 </td>
                 <td style="padding: 2px 1px; text-align: center; border: 1px solid #000; font-size: 7pt;">${s.jenisKelamin}</td>
-                ${Array.from({ length: totalDays })
-                  .map((_, i) => {
-                    const d = i + 1;
-                    const isHol = !!holidays[d];
-                    return `
-                      <td style="width: 13.5px; min-width: 13.5px; max-width: 13.5px; box-sizing: border-box; border: 1px solid #000; height: 18px; text-align: center; font-size: 6.5pt; ${
-                        isHol ? 'background: #fecaca; color: #b91c1c; font-weight: bold;' : ''
-                      }">
-                        ${isHol ? 'L' : ''}
-                      </td>
-                    `;
-                  })
-                  .join('')}
-                <td style="border: 1px solid #000;"></td>
-                <td style="border: 1px solid #000;"></td>
-                <td style="border: 1px solid #000;"></td>
-                <td style="border: 1px solid #000;"></td>
+                ${dayCells}
+                <td style="border: 1px solid #000; text-align: center; font-size: 6.5pt;">${hasAny ? (countS || '') : ''}</td>
+                <td style="border: 1px solid #000; text-align: center; font-size: 6.5pt;">${hasAny ? (countI || '') : ''}</td>
+                <td style="border: 1px solid #000; text-align: center; font-size: 6.5pt;">${hasAny ? (countA || '') : ''}</td>
+                <td style="border: 1px solid #000; text-align: center; font-size: 6.5pt; font-weight: bold;">${hasAny ? (totalAbsen || 0) : ''}</td>
               </tr>
-            `)
+            `;
+              })
               .join('')}
           </tbody>
         </table>
@@ -4410,7 +4610,43 @@ export function buildAbsenSiswaHtml(
         </thead>
         <tbody>
           ${filtered
-            .map((s, idx) => `
+            .map((s, idx) => {
+              let countS = 0;
+              let countI = 0;
+              let countA = 0;
+              let hasAny = false;
+              const dayCells = Array.from({ length: totalDays })
+                .map((_, i) => {
+                  const d = i + 1;
+                  const isHol = !!holidays[d];
+                  const st = !isHol ? attendanceByDay[d]?.[s.id] : undefined;
+                  if (st) {
+                    hasAny = true;
+                    if (st === 'S') countS++;
+                    else if (st === 'I') countI++;
+                    else if (st === 'A') countA++;
+                  }
+                  const statusStyle =
+                    st === 'S'
+                      ? 'color: #b45309; font-weight: bold;'
+                      : st === 'I'
+                      ? 'color: #1d4ed8; font-weight: bold;'
+                      : st === 'A'
+                      ? 'color: #b91c1c; font-weight: bold; background: #fef2f2;'
+                      : st === 'H'
+                      ? 'color: #15803d; font-weight: bold;'
+                      : '';
+                  return `
+                    <td style="width: 20px; min-width: 20px; max-width: 20px; box-sizing: border-box; border: 1px solid #000; height: 19px; text-align: center; font-size: 7pt; ${
+                      isHol ? 'background: #fecaca; color: #b91c1c; font-weight: bold;' : statusStyle
+                    }">
+                      ${isHol ? 'L' : st || ''}
+                    </td>
+                  `;
+                })
+                .join('');
+              const totalAbsen = countS + countI + countA;
+              return `
             <tr>
               <td style="padding: 3px 2px; text-align: center; border: 1px solid #000;">${idx + 1}</td>
               <td style="padding: 2px 3px; text-align: center; font-size: 7.5pt; border: 1px solid #000; line-height: 1.15;">
@@ -4420,25 +4656,14 @@ export function buildAbsenSiswaHtml(
                 ${s.nama}
               </td>
               <td style="padding: 3px 2px; text-align: center; border: 1px solid #000;">${s.jenisKelamin}</td>
-              ${Array.from({ length: totalDays })
-                .map((_, i) => {
-                  const d = i + 1;
-                  const isHol = !!holidays[d];
-                  return `
-                    <td style="width: 20px; min-width: 20px; max-width: 20px; box-sizing: border-box; border: 1px solid #000; height: 19px; text-align: center; font-size: 7pt; ${
-                      isHol ? 'background: #fecaca; color: #b91c1c; font-weight: bold;' : ''
-                    }">
-                      ${isHol ? 'L' : ''}
-                    </td>
-                  `;
-                })
-                .join('')}
-              <td style="border: 1px solid #000;"></td>
-              <td style="border: 1px solid #000;"></td>
-              <td style="border: 1px solid #000;"></td>
-              <td style="border: 1px solid #000;"></td>
+              ${dayCells}
+              <td style="border: 1px solid #000; text-align: center; font-size: 7.5pt;">${hasAny ? (countS || '') : ''}</td>
+              <td style="border: 1px solid #000; text-align: center; font-size: 7.5pt;">${hasAny ? (countI || '') : ''}</td>
+              <td style="border: 1px solid #000; text-align: center; font-size: 7.5pt;">${hasAny ? (countA || '') : ''}</td>
+              <td style="border: 1px solid #000; text-align: center; font-size: 7.5pt; font-weight: bold;">${hasAny ? (totalAbsen || 0) : ''}</td>
             </tr>
-          `)
+          `;
+            })
             .join('')}
         </tbody>
       </table>
@@ -4593,3 +4818,321 @@ export function exportSiswaToCsv(data: Siswa[]) {
   a.click();
   document.body.removeChild(a);
 }
+
+/**
+ * Builds printable Daftar Peserta Ekstrakurikuler HTML
+ */
+export function buildDaftarPesertaEkstraHtml(
+  ekstra: Ekstrakurikuler,
+  pesertaSiswa: Siswa[],
+  sekolah: PengaturanSekolah,
+  showKop: boolean = true
+): string {
+  const sorted = sortSiswa(pesertaSiswa);
+  const jmlL = sorted.filter((s) => s.jenisKelamin === 'L').length;
+  const jmlP = sorted.filter((s) => s.jenisKelamin === 'P').length;
+  const kopHtml = showKop ? buildOfficialKopHtml(sekolah, true) : '';
+
+  return `
+    <div style="font-family: 'Times New Roman', serif; color: #000; width: 100%; box-sizing: border-box;">
+      ${kopHtml}
+      <div style="text-align: center; margin-top: 4pt; margin-bottom: 10pt;">
+        <h3 style="margin: 0; text-decoration: underline; font-size: 12pt; font-weight: bold; text-transform: uppercase;">
+          DAFTAR PESERTA KEGIATAN EKSTRAKURIKULER
+        </h3>
+        <p style="margin: 4pt 0 0 0; font-size: 10.5pt; font-weight: bold;">
+          ${ekstra.nama.toUpperCase()}
+        </p>
+        <p style="margin: 2pt 0 0 0; font-size: 9.5pt;">
+          Pembina: <strong>${ekstra.pembina || '-'}</strong> &nbsp;|&nbsp;
+          Jadwal: <strong>${ekstra.hari || '-'}${ekstra.waktu ? ` (${ekstra.waktu})` : ''}</strong>
+          ${ekstra.tempat ? ` &nbsp;|&nbsp; Tempat: <strong>${ekstra.tempat}</strong>` : ''}
+        </p>
+      </div>
+
+      <table style="width: 100%; border-collapse: collapse; font-size: 9.5pt;" border="1" cellpadding="0" cellspacing="0">
+        <thead>
+          <tr style="background: #f1f5f9; text-align: center;">
+            <th style="width: 32px; padding: 5px 4px; border: 1px solid #000;">No</th>
+            <th style="width: 90px; padding: 5px 4px; border: 1px solid #000;">NIS / NISN</th>
+            <th style="padding: 5px 8px; border: 1px solid #000; text-align: left;">Nama Peserta Didik</th>
+            <th style="width: 55px; padding: 5px 4px; border: 1px solid #000;">Kelas</th>
+            <th style="width: 38px; padding: 5px 4px; border: 1px solid #000;">L/P</th>
+            <th style="width: 120px; padding: 5px 6px; border: 1px solid #000;">Keterangan</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${
+            sorted.length > 0
+              ? sorted
+                  .map(
+                    (s, idx) => `
+              <tr>
+                <td style="padding: 4px; text-align: center; border: 1px solid #000;">${idx + 1}</td>
+                <td style="padding: 4px; text-align: center; border: 1px solid #000; font-size: 8.5pt;">
+                  ${s.nis || '-'}${s.nisn ? `<br/><span style="color: #555;">${s.nisn}</span>` : ''}
+                </td>
+                <td style="padding: 4px 8px; border: 1px solid #000; font-weight: 600;">${s.nama}</td>
+                <td style="padding: 4px; text-align: center; border: 1px solid #000;">Kelas ${s.kelas}</td>
+                <td style="padding: 4px; text-align: center; border: 1px solid #000;">${s.jenisKelamin}</td>
+                <td style="padding: 4px 6px; border: 1px solid #000;"></td>
+              </tr>
+            `
+                  )
+                  .join('')
+              : `<tr><td colspan="6" style="padding: 12px; text-align: center; border: 1px solid #000; color: #666;">Belum ada peserta terdaftar.</td></tr>`
+          }
+        </tbody>
+      </table>
+
+      <table width="100%" border="0" cellpadding="0" cellspacing="0" style="width: 100%; margin-top: 14pt; border-collapse: collapse; border: none; font-size: 9.5pt;">
+        <tr>
+          <td style="width: 36%; vertical-align: top; border: none; line-height: 1.4;">
+            <strong>Rekap Peserta:</strong><br/>
+            Laki-laki: <strong>${jmlL}</strong> orang<br/>
+            Perempuan: <strong>${jmlP}</strong> orang<br/>
+            Total: <strong>${sorted.length}</strong> peserta
+          </td>
+          <td style="width: 32%; vertical-align: top; text-align: center; border: none; line-height: 1.25;">
+            <p style="margin: 0;">Mengetahui,</p>
+            <p style="margin: 0; font-weight: bold;">Kepala ${formatNamaSekolahIsi(sekolah?.namaSekolah)},</p>
+            <div style="height: 44pt; line-height: 44pt; font-size: 1pt;">&nbsp;</div>
+            <p style="margin: 0; font-weight: bold; text-decoration: underline;">${sekolah?.kepalaSekolah || 'Gede Ariasa, S.Pd'}</p>
+            <p style="margin: 2pt 0 0 0; font-size: 8.5pt;">NIP. ${sekolah?.nipKepalaSekolah || '198906232014031002'}</p>
+          </td>
+          <td style="width: 32%; vertical-align: top; text-align: center; border: none; line-height: 1.25;">
+            <p style="margin: 0;">${sekolah?.desa || 'Pekutatan'}, ${formatTanggalIndonesia(new Date().toISOString())}</p>
+            <p style="margin: 0; font-weight: bold;">Pembina Ekstrakurikuler,</p>
+            <div style="height: 44pt; line-height: 44pt; font-size: 1pt;">&nbsp;</div>
+            <p style="margin: 0; font-weight: bold; text-decoration: underline;">${ekstra.pembina || '................................................'}</p>
+            <p style="margin: 2pt 0 0 0; font-size: 8.5pt;">NIP. ........................................</p>
+          </td>
+        </tr>
+      </table>
+    </div>
+  `;
+}
+
+export function exportDaftarPesertaEkstraToWord(
+  ekstra: Ekstrakurikuler,
+  pesertaSiswa: Siswa[],
+  sekolah: PengaturanSekolah,
+  paperSize: PaperSize = 'F4',
+  showKop: boolean = true
+) {
+  const html = buildDaftarPesertaEkstraHtml(ekstra, pesertaSiswa, sekolah, showKop);
+  const safeName = ekstra.nama.replace(/[^a-zA-Z0-9]+/g, '_');
+  exportToWord(`Daftar_Peserta_Ekstra_${safeName}`, html, paperSize, 'portrait');
+}
+
+/**
+ * Builds printable Daftar Hadir / Presensi Ekstrakurikuler HTML
+ */
+export function buildPresensiEkstraHtml(options: {
+  ekstra: Ekstrakurikuler;
+  pesertaSiswa: Siswa[];
+  presensiDocs: PresensiEkstraDoc[];
+  sekolah: PengaturanSekolah;
+  year: number;
+  month: number;
+  showKop?: boolean;
+  semester?: string;
+  tahunAjaran?: string;
+}): string {
+  const {
+    ekstra,
+    pesertaSiswa,
+    presensiDocs,
+    sekolah,
+    year,
+    month,
+    showKop = false,
+    semester = 'Ganjil',
+    tahunAjaran = '2026/2027',
+  } = options;
+
+  const sorted = sortSiswa(pesertaSiswa);
+  const bulanNama = `${NAMA_BULAN_INDONESIA[month - 1]} ${year}`;
+  const monthPrefix = `${year}-${String(month).padStart(2, '0')}-`;
+  const monthDocs = [...presensiDocs]
+    .filter((d) => d.ekstraId === ekstra.id && d.tanggal.startsWith(monthPrefix))
+    .sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+
+  // Jika ada catatan pertemuan pada bulan ini, gunakan tanggal pertemuan tercatat;
+  // jika belum ada pertemuan sama sekali, sediakan 8 kolom pertemuan kosong (P1..P8) siap isi manual.
+  const useBlankGrid = monthDocs.length === 0;
+  const colHeaders = useBlankGrid
+    ? Array.from({ length: 8 }).map((_, i) => ({ label: `P${i + 1}`, sub: '..../....', doc: null as PresensiEkstraDoc | null }))
+    : monthDocs.map((doc, i) => {
+        const parts = doc.tanggal.split('-');
+        const dd = parts[2] || '';
+        const mm = parts[1] || '';
+        return { label: `P${i + 1}`, sub: `${dd}/${mm}`, doc };
+      });
+
+  const jmlL = sorted.filter((s) => s.jenisKelamin === 'L').length;
+  const jmlP = sorted.filter((s) => s.jenisKelamin === 'P').length;
+  const kopHtml = showKop ? buildOfficialKopHtml(sekolah, true) : '';
+
+  return `
+    <div style="font-family: 'Times New Roman', serif; color: #000; width: 100%; box-sizing: border-box;">
+      ${kopHtml}
+
+      <div style="text-align: center; margin-top: ${showKop ? '2pt' : '4pt'}; margin-bottom: 8pt;">
+        <h3 style="margin: 0; text-decoration: underline; font-size: 11.5pt; font-weight: bold; text-transform: uppercase;">
+          DAFTAR HADIR / PRESENSI KEGIATAN EKSTRAKURIKULER
+        </h3>
+        <p style="margin: 3pt 0 0 0; font-size: 9.5pt;">
+          Ekstrakurikuler: <strong>${ekstra.nama}</strong> &nbsp;|&nbsp;
+          Bulan: <strong>${bulanNama}</strong> &nbsp;|&nbsp;
+          Semester: <strong>${semester}</strong> &nbsp;|&nbsp;
+          Tahun Ajaran <strong>${tahunAjaran}</strong>
+        </p>
+        <p style="margin: 2pt 0 0 0; font-size: 8.5pt; color: #222;">
+          Pembina: <strong>${ekstra.pembina || '-'}</strong> &nbsp;|&nbsp;
+          Jadwal: <strong>${ekstra.hari || '-'}${ekstra.waktu ? ` (${ekstra.waktu})` : ''}</strong>
+          ${ekstra.tempat ? ` &nbsp;|&nbsp; Tempat: <strong>${ekstra.tempat}</strong>` : ''}
+        </p>
+      </div>
+
+      <table style="width: 100%; border-collapse: collapse; font-size: 8pt;" border="1" cellpadding="0" cellspacing="0">
+        <thead>
+          <tr style="background: #f1f5f9; text-align: center;">
+            <th rowspan="2" style="width: 24px; padding: 4px 2px; border: 1px solid #000;">No</th>
+            <th rowspan="2" style="width: 68px; padding: 4px 2px; border: 1px solid #000;">NIS / NISN</th>
+            <th rowspan="2" style="padding: 4px 6px; border: 1px solid #000; text-align: left;">Nama Peserta Didik</th>
+            <th rowspan="2" style="width: 38px; padding: 4px 2px; border: 1px solid #000;">Kelas</th>
+            <th rowspan="2" style="width: 26px; padding: 4px 2px; border: 1px solid #000;">L/P</th>
+            <th colspan="${colHeaders.length}" style="padding: 3px 2px; border: 1px solid #000;">Pertemuan / Tanggal</th>
+            <th colspan="4" style="padding: 3px 2px; border: 1px solid #000;">Rekap</th>
+          </tr>
+          <tr style="background: #f8fafc; text-align: center; font-size: 7pt;">
+            ${colHeaders
+              .map(
+                (c) => `
+              <th style="min-width: 28px; padding: 2px; border: 1px solid #000; line-height: 1.1;">
+                <div>${c.label}</div>
+                <div style="font-weight: normal; font-size: 6.5pt; color: #444;">${c.sub}</div>
+              </th>
+            `
+              )
+              .join('')}
+            <th style="width: 22px; padding: 2px; border: 1px solid #000; background: #dcfce7;">H</th>
+            <th style="width: 22px; padding: 2px; border: 1px solid #000; background: #fef3c7;">S</th>
+            <th style="width: 22px; padding: 2px; border: 1px solid #000; background: #dbeafe;">I</th>
+            <th style="width: 22px; padding: 2px; border: 1px solid #000; background: #fee2e2;">A</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${
+            sorted.length > 0
+              ? sorted
+                  .map((s, idx) => {
+                    let h = 0;
+                    let sk = 0;
+                    let iz = 0;
+                    let al = 0;
+                    const cells = colHeaders
+                      .map((c) => {
+                        const st = c.doc ? c.doc.records[s.id] : undefined;
+                        if (st === 'H') h++;
+                        else if (st === 'S') sk++;
+                        else if (st === 'I') iz++;
+                        else if (st === 'A') al++;
+                        const stStyle =
+                          st === 'H'
+                            ? 'color: #15803d; font-weight: bold;'
+                            : st === 'S'
+                            ? 'color: #b45309; font-weight: bold;'
+                            : st === 'I'
+                            ? 'color: #1d4ed8; font-weight: bold;'
+                            : st === 'A'
+                            ? 'color: #b91c1c; font-weight: bold; background: #fef2f2;'
+                            : '';
+                        return `<td style="border: 1px solid #000; text-align: center; padding: 3px 2px; ${stStyle}">${st || ''}</td>`;
+                      })
+                      .join('');
+                    return `
+                  <tr>
+                    <td style="padding: 3px 2px; text-align: center; border: 1px solid #000;">${idx + 1}</td>
+                    <td style="padding: 3px 2px; text-align: center; font-size: 7pt; border: 1px solid #000; line-height: 1.1;">
+                      ${s.nis || '-'}${s.nisn ? `<br/><span style="color: #555;">${s.nisn}</span>` : ''}
+                    </td>
+                    <td style="padding: 3px 6px; border: 1px solid #000; font-weight: 600;">${s.nama}</td>
+                    <td style="padding: 3px 2px; text-align: center; border: 1px solid #000;">${s.kelas}</td>
+                    <td style="padding: 3px 2px; text-align: center; border: 1px solid #000;">${s.jenisKelamin}</td>
+                    ${cells}
+                    <td style="border: 1px solid #000; text-align: center; font-weight: bold;">${!useBlankGrid ? h : ''}</td>
+                    <td style="border: 1px solid #000; text-align: center;">${!useBlankGrid ? (sk || '') : ''}</td>
+                    <td style="border: 1px solid #000; text-align: center;">${!useBlankGrid ? (iz || '') : ''}</td>
+                    <td style="border: 1px solid #000; text-align: center;">${!useBlankGrid ? (al || '') : ''}</td>
+                  </tr>
+                `;
+                  })
+                  .join('')
+              : `<tr><td colspan="${9 + colHeaders.length}" style="padding: 12px; text-align: center; border: 1px solid #000; color: #666;">Belum ada peserta terdaftar pada ekstrakurikuler ini.</td></tr>`
+          }
+        </tbody>
+      </table>
+
+      ${
+        monthDocs.some((d) => d.materi && d.materi.trim())
+          ? `
+        <div style="margin-top: 8pt; font-size: 8pt; line-height: 1.35;">
+          <strong>Catatan / Materi Pertemuan:</strong><br/>
+          ${monthDocs
+            .filter((d) => d.materi && d.materi.trim())
+            .map((d) => `• <strong>${formatTanggalIndonesia(d.tanggal)}:</strong> ${d.materi}`)
+            .join('<br/>')}
+        </div>
+      `
+          : ''
+      }
+
+      <table width="100%" border="0" cellpadding="0" cellspacing="0" style="width: 100%; margin-top: 12pt; border-collapse: collapse; border: none; font-size: 8pt;">
+        <tr>
+          <td style="width: 40%; vertical-align: top; border: none; line-height: 1.35; padding-right: 8px;">
+            <strong>Keterangan Presensi:</strong><br/>
+            • <strong>H</strong> : Hadir &nbsp;|&nbsp; <strong>S</strong> : Sakit &nbsp;|&nbsp; <strong>I</strong> : Izin &nbsp;|&nbsp; <strong>A</strong> : Alpa<br/>
+            • Jumlah Peserta: <strong>L: ${jmlL}</strong>, <strong>P: ${jmlP}</strong>, <strong>Total: ${sorted.length} Orang</strong><br/>
+            • Jumlah Pertemuan Tercatat: <strong>${monthDocs.length} Kali</strong>
+          </td>
+          <td style="width: 30%; vertical-align: top; text-align: center; border: none; line-height: 1.2;">
+            <p style="margin: 0;">Mengetahui,</p>
+            <p style="margin: 0; font-weight: bold;">Kepala ${formatNamaSekolahIsi(sekolah?.namaSekolah)},</p>
+            <div style="height: 38pt; line-height: 38pt; font-size: 1pt;">&nbsp;</div>
+            <p style="margin: 0; font-weight: bold; text-decoration: underline;">${sekolah?.kepalaSekolah || 'Gede Ariasa, S.Pd'}</p>
+            <p style="margin: 2pt 0 0 0; font-size: 7.5pt;">NIP. ${sekolah?.nipKepalaSekolah || '198906232014031002'}</p>
+          </td>
+          <td style="width: 30%; vertical-align: top; text-align: center; border: none; line-height: 1.2;">
+            <p style="margin: 0;">${sekolah?.desa || 'Pekutatan'}, ${formatTanggalIndonesia(new Date().toISOString())}</p>
+            <p style="margin: 0; font-weight: bold;">Pembina Ekstrakurikuler,</p>
+            <div style="height: 38pt; line-height: 38pt; font-size: 1pt;">&nbsp;</div>
+            <p style="margin: 0; font-weight: bold; text-decoration: underline;">${ekstra.pembina || '................................................'}</p>
+            <p style="margin: 2pt 0 0 0; font-size: 7.5pt;">NIP. ........................................</p>
+          </td>
+        </tr>
+      </table>
+    </div>
+  `;
+}
+
+export function exportPresensiEkstraToWord(options: {
+  ekstra: Ekstrakurikuler;
+  pesertaSiswa: Siswa[];
+  presensiDocs: PresensiEkstraDoc[];
+  sekolah: PengaturanSekolah;
+  year: number;
+  month: number;
+  paperSize?: PaperSize;
+  showKop?: boolean;
+  semester?: string;
+  tahunAjaran?: string;
+}) {
+  const html = buildPresensiEkstraHtml(options);
+  const paperSize = options.paperSize || 'F4';
+  const bulanNama = `${NAMA_BULAN_INDONESIA[options.month - 1]}_${options.year}`;
+  const safeName = options.ekstra.nama.replace(/[^a-zA-Z0-9]+/g, '_');
+  exportToWord(`Presensi_Ekstra_${safeName}_${bulanNama}`, html, paperSize, 'portrait');
+}
+

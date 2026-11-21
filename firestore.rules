@@ -58,5 +58,139 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+
+    function isValidEkstrakurikuler(data) {
+      return data.keys().hasAll(['nama', 'pembina', 'hari', 'pesertaIds'])
+        && data.keys().hasOnly(['id', 'nama', 'pembina', 'hari', 'waktu', 'tempat', 'keterangan', 'pesertaIds', 'createdAt', 'updatedAt'])
+        && (!('id' in data) || (data.id is string && data.id.size() <= 128))
+        && data.nama is string && data.nama.size() > 0 && data.nama.size() <= 150
+        && data.pembina is string && data.pembina.size() <= 150
+        && data.hari is string && data.hari.size() <= 60
+        && (!('waktu' in data) || (data.waktu is string && data.waktu.size() <= 80))
+        && (!('tempat' in data) || (data.tempat is string && data.tempat.size() <= 150))
+        && (!('keterangan' in data) || (data.keterangan is string && data.keterangan.size() <= 500))
+        && data.pesertaIds is list && data.pesertaIds.size() <= 500
+        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 50))
+        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 50));
+    }
+
+    function isValidPresensiSiswa(data) {
+      return data.keys().hasAll(['tanggal', 'kelas', 'records', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'tanggal', 'kelas', 'records', 'catatan', 'updatedAt'])
+        && (!('id' in data) || (data.id is string && data.id.size() <= 128))
+        && data.tanggal is string && data.tanggal.size() > 0 && data.tanggal.size() <= 30
+        && data.kelas is string && data.kelas.size() > 0 && data.kelas.size() <= 30
+        && data.records is map && data.records.size() <= 500
+        && (!('catatan' in data) || (data.catatan is string && data.catatan.size() <= 500))
+        && data.updatedAt is string && data.updatedAt.size() <= 50;
+    }
+
+    function isValidPresensiEkstra(data) {
+      return data.keys().hasAll(['ekstraId', 'tanggal', 'records', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'ekstraId', 'tanggal', 'materi', 'records', 'updatedAt'])
+        && (!('id' in data) || (data.id is string && data.id.size() <= 128))
+        && data.ekstraId is string && data.ekstraId.size() > 0 && data.ekstraId.size() <= 128
+        && data.tanggal is string && data.tanggal.size() > 0 && data.tanggal.size() <= 30
+        && (!('materi' in data) || (data.materi is string && data.materi.size() <= 500))
+        && data.records is map && data.records.size() <= 500
+        && data.updatedAt is string && data.updatedAt.size() <= 50;
+    }
+
+    function isValidLokerPtk(data) {
+      return data.keys().hasAll(['ptkId', 'ptkNama', 'kategori', 'judul', 'tanggal', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'id',
+          'ptkId',
+          'ptkNama',
+          'kategori',
+          'visibilitas',
+          'judul',
+          'tanggal',
+          'isiCatatan',
+          'fileNama',
+          'fileTipe',
+          'fileUkuran',
+          'fileUrl',
+          'linkEksternal',
+          'createdAt',
+          'updatedAt'
+        ])
+        && (!('id' in data) || (data.id is string && data.id.size() <= 128))
+        && data.ptkId is string && data.ptkId.size() > 0 && data.ptkId.size() <= 128
+        && data.ptkNama is string && data.ptkNama.size() > 0 && data.ptkNama.size() <= 200
+        && data.kategori is string && data.kategori.size() > 0 && data.kategori.size() <= 100
+        && (!('visibilitas' in data) || data.visibilitas in ['privat', 'terbuka'])
+        && data.judul is string && data.judul.size() > 0 && data.judul.size() <= 200
+        && data.tanggal is string && data.tanggal.size() > 0 && data.tanggal.size() <= 30
+        && (!('isiCatatan' in data) || (data.isiCatatan is string && data.isiCatatan.size() <= 10000))
+        && (!('fileNama' in data) || (data.fileNama is string && data.fileNama.size() <= 255))
+        && (!('fileTipe' in data) || (data.fileTipe is string && data.fileTipe.size() <= 150))
+        && (!('fileUkuran' in data) || (data.fileUkuran is string && data.fileUkuran.size() <= 50))
+        && (!('fileUrl' in data) || (data.fileUrl is string && data.fileUrl.size() <= 950000))
+        && (!('linkEksternal' in data) || (data.linkEksternal is string && data.linkEksternal.size() <= 1000))
+        && data.createdAt is string && data.createdAt.size() <= 50
+        && data.updatedAt is string && data.updatedAt.size() <= 50;
+    }
+
+    function isValidLokerPtkAccess(data) {
+      return data.keys().hasAll(['ptkId', 'ptkNama', 'isProtected', 'passwordHash', 'updatedAt'])
+        && data.keys().hasOnly([
+          'id',
+          'ptkId',
+          'ptkNama',
+          'isProtected',
+          'passwordHash',
+          'passwordHint',
+          'defaultVisibilitas',
+          'cardColor',
+          'customFolders',
+          'updatedAt'
+        ])
+        && (!('id' in data) || (data.id is string && data.id.size() <= 128))
+        && data.ptkId is string && data.ptkId.size() > 0 && data.ptkId.size() <= 128
+        && data.ptkNama is string && data.ptkNama.size() > 0 && data.ptkNama.size() <= 200
+        && data.isProtected is bool
+        && data.passwordHash is string && data.passwordHash.size() <= 200
+        && (!('passwordHint' in data) || (data.passwordHint is string && data.passwordHint.size() <= 200))
+        && (!('defaultVisibilitas' in data) || data.defaultVisibilitas in ['privat', 'terbuka'])
+        && (!('cardColor' in data) || (data.cardColor is string && data.cardColor.size() <= 30))
+        && (!('customFolders' in data) || (data.customFolders is list && data.customFolders.size() <= 20 && (data.customFolders.size() == 0 || (data.customFolders[0] is string && data.customFolders[0].size() > 0 && data.customFolders[0].size() <= 60))))
+        && data.updatedAt is string && data.updatedAt.size() <= 50;
+    }
+
+    // Rules for Ekstrakurikuler
+    match /ekstrakurikuler/{ekstraId} {
+      allow read: if true;
+      allow create, update: if isValidId(ekstraId) && isValidEkstrakurikuler(request.resource.data);
+      allow delete: if isValidId(ekstraId);
+    }
+
+    // Rules for Presensi Siswa
+    match /presensiSiswa/{presensiId} {
+      allow read: if true;
+      allow create, update: if isValidId(presensiId) && isValidPresensiSiswa(request.resource.data);
+      allow delete: if isValidId(presensiId);
+    }
+
+    // Rules for Presensi Ekstrakurikuler
+    match /presensiEkstra/{presensiId} {
+      allow read: if true;
+      allow create, update: if isValidId(presensiId) && isValidPresensiEkstra(request.resource.data);
+      allow delete: if isValidId(presensiId);
+    }
+
+    // Rules for Loker Room PTK
+    match /lokerPtk/{itemId} {
+      allow read: if true;
+      allow create, update: if isValidId(itemId) && isValidLokerPtk(request.resource.data);
+      allow delete: if isValidId(itemId);
+    }
+
+    // Rules for Pengaturan Akses & Password Loker PTK
+    match /lokerPtkAccess/{ptkId} {
+      allow read: if true;
+      allow create, update: if isValidId(ptkId) && isValidLokerPtkAccess(request.resource.data);
+      allow delete: if isValidId(ptkId);
+    }
   }
 }

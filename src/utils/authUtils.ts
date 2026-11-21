@@ -290,3 +290,23 @@ export function logoutAdmin(): void {
     // fallback
   }
 }
+
+/**
+ * Menghasilkan hash SHA-256 tersalt untuk password Loker Room pribadi PTK
+ */
+export async function hashLokerPassword(ptkId: string, password: string): Promise<string> {
+  const payload = `esurat_loker:${ptkId}:${password}`;
+  if (typeof crypto !== 'undefined' && crypto.subtle) {
+    const encoded = new TextEncoder().encode(payload);
+    const buf = await crypto.subtle.digest('SHA-256', encoded);
+    return Array.from(new Uint8Array(buf))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  }
+  let h1 = 0x811c9dc5;
+  for (let i = 0; i < payload.length; i++) {
+    h1 ^= payload.charCodeAt(i);
+    h1 = Math.imul(h1, 0x01000193);
+  }
+  return 'h_' + (h1 >>> 0).toString(16).padStart(8, '0');
+}

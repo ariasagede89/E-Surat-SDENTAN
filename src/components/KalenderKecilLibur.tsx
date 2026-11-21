@@ -228,11 +228,28 @@ export const KalenderKecilLibur: React.FC<KalenderKecilLiburProps> = ({
             }}
             className="text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
           >
-            {[2025, 2026, 2027, 2028, 2029].map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
+            {(() => {
+              const realYear = new Date().getFullYear();
+              const yearSet = new Set<number>([
+                2025,
+                2026,
+                2027,
+                2028,
+                2029,
+                realYear - 1,
+                realYear,
+                realYear + 1,
+                realYear + 2,
+                year,
+              ]);
+              return Array.from(yearSet)
+                .sort((a, b) => a - b)
+                .map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ));
+            })()}
           </select>
         </div>
       </div>

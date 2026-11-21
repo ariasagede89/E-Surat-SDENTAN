@@ -49,6 +49,11 @@ import {
   PengaturanSekolah,
   KlasifikasiMendagriItem,
   UserRole,
+  Ekstrakurikuler,
+  PresensiSiswaDoc,
+  PresensiEkstraDoc,
+  LokerPtkItem,
+  LokerPtkAccess,
 } from './types';
 import {
   initialSekolah,
@@ -103,6 +108,9 @@ function stripHeavyBase64ForCache(value: unknown): unknown {
         const copy: Record<string, any> = { ...(item as Record<string, any>) };
         if (typeof copy.lampiranUrl === 'string' && copy.lampiranUrl.length > 50_000) {
           delete copy.lampiranUrl;
+        }
+        if (typeof copy.fileUrl === 'string' && copy.fileUrl.length > 50_000) {
+          delete copy.fileUrl;
         }
         return copy;
       }
@@ -307,6 +315,31 @@ export default function App() {
     return Array.isArray(items) ? sortSiswa(items) : [];
   });
 
+  const [ekstraList, setEkstraList] = useState<Ekstrakurikuler[]>(() => {
+    const parsed = safeReadJsonFromStorage<Ekstrakurikuler[] | null>('simas_ekstra', null);
+    return Array.isArray(parsed) ? parsed : [];
+  });
+
+  const [presensiSiswaList, setPresensiSiswaList] = useState<PresensiSiswaDoc[]>(() => {
+    const parsed = safeReadJsonFromStorage<PresensiSiswaDoc[] | null>('simas_presensi_siswa', null);
+    return Array.isArray(parsed) ? parsed : [];
+  });
+
+  const [presensiEkstraList, setPresensiEkstraList] = useState<PresensiEkstraDoc[]>(() => {
+    const parsed = safeReadJsonFromStorage<PresensiEkstraDoc[] | null>('simas_presensi_ekstra', null);
+    return Array.isArray(parsed) ? parsed : [];
+  });
+
+  const [lokerPtkList, setLokerPtkList] = useState<LokerPtkItem[]>(() => {
+    const parsed = safeReadJsonFromStorage<LokerPtkItem[] | null>('simas_loker_ptk', null);
+    return Array.isArray(parsed) ? parsed : [];
+  });
+
+  const [lokerPtkAccessList, setLokerPtkAccessList] = useState<LokerPtkAccess[]>(() => {
+    const parsed = safeReadJsonFromStorage<LokerPtkAccess[] | null>('simas_loker_ptk_access', null);
+    return Array.isArray(parsed) ? parsed : [];
+  });
+
   // Modals & Navigation Helpers
   const [isAutoNumberModalOpen, setIsAutoNumberModalOpen] = useState(false);
   const [autoNumberEditContext, setAutoNumberEditContext] = useState<AutoNumberEditContext | null>(null);
@@ -365,6 +398,21 @@ export default function App() {
     const unsubSiswa = subscribeToCollection<Siswa>('siswa', (items) => {
       setSiswaList(sortSiswa(items));
     });
+    const unsubEkstra = subscribeToCollection<Ekstrakurikuler>('ekstrakurikuler', (items) => {
+      setEkstraList([...items].sort((a, b) => a.nama.localeCompare(b.nama)));
+    });
+    const unsubPresensiSiswa = subscribeToCollection<PresensiSiswaDoc>('presensiSiswa', (items) => {
+      setPresensiSiswaList([...items].sort((a, b) => b.tanggal.localeCompare(a.tanggal)));
+    });
+    const unsubPresensiEkstra = subscribeToCollection<PresensiEkstraDoc>('presensiEkstra', (items) => {
+      setPresensiEkstraList([...items].sort((a, b) => b.tanggal.localeCompare(a.tanggal)));
+    });
+    const unsubLokerPtk = subscribeToCollection<LokerPtkItem>('lokerPtk', (items) => {
+      setLokerPtkList([...items].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || '')));
+    });
+    const unsubLokerPtkAccess = subscribeToCollection<LokerPtkAccess>('lokerPtkAccess', (items) => {
+      setLokerPtkAccessList(items);
+    });
     const unsubSettings = subscribeToSettings((data) => {
       if (data && data.namaSekolah) {
         const merged: PengaturanSekolah = { ...initialSekolah, ...data };
@@ -408,6 +456,11 @@ export default function App() {
       unsubArsip();
       unsubGuru();
       unsubSiswa();
+      unsubEkstra();
+      unsubPresensiSiswa();
+      unsubPresensiEkstra();
+      unsubLokerPtk();
+      unsubLokerPtkAccess();
       unsubSettings();
       unsubAdminAuth();
     };
@@ -437,6 +490,26 @@ export default function App() {
   useEffect(() => {
     safeWriteJsonToStorage('simas_siswa', siswaList);
   }, [siswaList]);
+
+  useEffect(() => {
+    safeWriteJsonToStorage('simas_ekstra', ekstraList);
+  }, [ekstraList]);
+
+  useEffect(() => {
+    safeWriteJsonToStorage('simas_presensi_siswa', presensiSiswaList);
+  }, [presensiSiswaList]);
+
+  useEffect(() => {
+    safeWriteJsonToStorage('simas_presensi_ekstra', presensiEkstraList);
+  }, [presensiEkstraList]);
+
+  useEffect(() => {
+    safeWriteJsonToStorage('simas_loker_ptk', lokerPtkList);
+  }, [lokerPtkList]);
+
+  useEffect(() => {
+    safeWriteJsonToStorage('simas_loker_ptk_access', lokerPtkAccessList);
+  }, [lokerPtkAccessList]);
 
   // Handlers for Surat Masuk with Firestore Sync
   const handleAddSuratMasuk = async (newItem: Omit<SuratMasuk, 'id' | 'createdAt'>) => {
@@ -480,6 +553,7 @@ export default function App() {
 
   const handleUpdateSuratKeluar = async (updated: SuratKeluar) => {
     setSuratKeluarList((prev) => prev.map((s) => (s.id === updated.id ? updated : s)).sort(compareSuratKeluarDesc));
+    setPreviewSuratKeluar((prev) => (prev && prev.id === updated.id ? updated : prev));
     const ok = await syncDocToFirestore('suratKeluar', updated);
     if (ok) {
       showToast('Perubahan Surat Keluar disimpan ke Cloud Firestore', 'success');
@@ -715,6 +789,215 @@ export default function App() {
     showToast('Data siswa berhasil dikembalikan ke data awal SDN 1 Pekutatan', 'success');
   };
 
+  // Handlers for Ekstrakurikuler & Presensi with Firestore Sync
+  const handleAddEkstra = async (
+    item: Omit<Ekstrakurikuler, 'id' | 'createdAt' | 'updatedAt'>
+  ) => {
+    const now = new Date().toISOString();
+    const id = 'ekstra_' + Date.now();
+    const created: Ekstrakurikuler = {
+      id,
+      nama: item.nama,
+      pembina: item.pembina,
+      hari: item.hari,
+      waktu: item.waktu || '',
+      tempat: item.tempat || '',
+      keterangan: item.keterangan || '',
+      pesertaIds: Array.isArray(item.pesertaIds) ? item.pesertaIds : [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    setEkstraList((prev) => [...prev, created].sort((a, b) => a.nama.localeCompare(b.nama)));
+    const ok = await syncDocToFirestore('ekstrakurikuler', created);
+    showToast(
+      ok
+        ? `Ekstrakurikuler "${created.nama}" berhasil disimpan ke Cloud Firestore`
+        : `Ekstrakurikuler "${created.nama}" disimpan di penyimpanan lokal`,
+      ok ? 'success' : 'info'
+    );
+  };
+
+  const handleUpdateEkstra = async (item: Ekstrakurikuler) => {
+    const updated: Ekstrakurikuler = {
+      id: item.id,
+      nama: item.nama,
+      pembina: item.pembina,
+      hari: item.hari,
+      waktu: item.waktu || '',
+      tempat: item.tempat || '',
+      keterangan: item.keterangan || '',
+      pesertaIds: Array.isArray(item.pesertaIds) ? item.pesertaIds : [],
+      createdAt: item.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setEkstraList((prev) =>
+      prev.map((e) => (e.id === updated.id ? updated : e)).sort((a, b) => a.nama.localeCompare(b.nama))
+    );
+    const ok = await syncDocToFirestore('ekstrakurikuler', updated);
+    if (ok) {
+      showToast(`Ekstrakurikuler "${updated.nama}" berhasil diperbarui`, 'success');
+    }
+  };
+
+  const handleDeleteEkstra = async (id: string) => {
+    setEkstraList((prev) => prev.filter((e) => e.id !== id));
+    await removeDocFromFirestore('ekstrakurikuler', id);
+    showToast('Ekstrakurikuler berhasil dihapus', 'info');
+  };
+
+  const handleSavePresensiSiswa = async (
+    docInput: Omit<PresensiSiswaDoc, 'id' | 'updatedAt'> & { id?: string }
+  ) => {
+    const safeKelas = (docInput.kelas || 'Semua').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const safeTanggal = (docInput.tanggal || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const id = docInput.id && /^[a-zA-Z0-9_-]+$/.test(docInput.id)
+      ? docInput.id
+      : `ps_${safeKelas}_${safeTanggal}`;
+    const savedDoc: PresensiSiswaDoc = {
+      id,
+      tanggal: docInput.tanggal,
+      kelas: docInput.kelas,
+      records: docInput.records || {},
+      catatan: docInput.catatan || '',
+      updatedAt: new Date().toISOString(),
+    };
+    setPresensiSiswaList((prev) => {
+      const exists = prev.some((p) => p.id === savedDoc.id);
+      const next = exists
+        ? prev.map((p) => (p.id === savedDoc.id ? savedDoc : p))
+        : [savedDoc, ...prev];
+      return next.sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+    });
+    const ok = await syncDocToFirestore('presensiSiswa', savedDoc);
+    showToast(
+      ok
+        ? `Presensi Kelas ${savedDoc.kelas} tanggal ${savedDoc.tanggal} tersimpan ke Cloud Firestore`
+        : `Presensi Kelas ${savedDoc.kelas} disimpan di penyimpanan lokal`,
+      ok ? 'success' : 'info'
+    );
+  };
+
+  const handleSavePresensiEkstra = async (
+    docInput: Omit<PresensiEkstraDoc, 'id' | 'updatedAt'> & { id?: string }
+  ) => {
+    const safeEkstraId = (docInput.ekstraId || 'ekstra').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const safeTanggal = (docInput.tanggal || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const id = docInput.id && /^[a-zA-Z0-9_-]+$/.test(docInput.id)
+      ? docInput.id
+      : `pe_${safeEkstraId}_${safeTanggal}`;
+    const savedDoc: PresensiEkstraDoc = {
+      id,
+      ekstraId: docInput.ekstraId,
+      tanggal: docInput.tanggal,
+      materi: docInput.materi || '',
+      records: docInput.records || {},
+      updatedAt: new Date().toISOString(),
+    };
+    setPresensiEkstraList((prev) => {
+      const exists = prev.some((p) => p.id === savedDoc.id);
+      const next = exists
+        ? prev.map((p) => (p.id === savedDoc.id ? savedDoc : p))
+        : [savedDoc, ...prev];
+      return next.sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+    });
+    const ok = await syncDocToFirestore('presensiEkstra', savedDoc);
+    showToast(
+      ok
+        ? `Presensi Ekstrakurikuler tanggal ${savedDoc.tanggal} tersimpan ke Cloud Firestore`
+        : `Presensi Ekstrakurikuler disimpan di penyimpanan lokal`,
+      ok ? 'success' : 'info'
+    );
+  };
+
+  const handleDeletePresensiEkstra = async (id: string) => {
+    setPresensiEkstraList((prev) => prev.filter((p) => p.id !== id));
+    await removeDocFromFirestore('presensiEkstra', id);
+    showToast('Catatan presensi ekstra dihapus', 'info');
+  };
+
+  // Handlers for Loker Room PTK with Firestore Sync
+  const handleAddLokerPtk = async (
+    item: Omit<LokerPtkItem, 'id' | 'createdAt' | 'updatedAt'>
+  ) => {
+    const now = new Date().toISOString();
+    const id = 'loker_' + Date.now();
+    const created: LokerPtkItem = {
+      ...item,
+      id,
+      createdAt: now,
+      updatedAt: now,
+    };
+    setLokerPtkList((prev) => [created, ...prev]);
+    const ok = await syncDocToFirestore('lokerPtk', created);
+    showToast(
+      ok
+        ? `"${created.judul}" tersimpan ke Loker PTK (Cloud Firestore)`
+        : `"${created.judul}" disimpan di penyimpanan lokal browser`,
+      ok ? 'success' : 'info'
+    );
+  };
+
+  const handleUpdateLokerPtk = async (item: LokerPtkItem) => {
+    const updated: LokerPtkItem = {
+      ...item,
+      updatedAt: new Date().toISOString(),
+    };
+    setLokerPtkList((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+    const ok = await syncDocToFirestore('lokerPtk', updated);
+    if (ok) {
+      showToast(`"${updated.judul}" berhasil diperbarui di Loker PTK`, 'success');
+    }
+  };
+
+  const handleDeleteLokerPtk = async (id: string) => {
+    setLokerPtkList((prev) => prev.filter((x) => x.id !== id));
+    await removeDocFromFirestore('lokerPtk', id);
+    showToast('Item dihapus dari Loker Room PTK', 'info');
+  };
+
+  const handleSaveLokerPtkAccess = async (access: LokerPtkAccess) => {
+    setLokerPtkAccessList((prev) => {
+      const exists = prev.some((a) => a.ptkId === access.ptkId || a.id === access.id);
+      return exists
+        ? prev.map((a) => (a.ptkId === access.ptkId || a.id === access.id ? access : a))
+        : [...prev, access];
+    });
+    const ok = await syncDocToFirestore('lokerPtkAccess', access);
+    showToast(
+      ok
+        ? `Pengaturan akses Loker ${access.ptkNama} disimpan ke Cloud Firestore`
+        : `Pengaturan akses Loker ${access.ptkNama} disimpan di penyimpanan lokal`,
+      ok ? 'success' : 'info'
+    );
+  };
+
+  const handleDeleteLokerLocker = async (ptkId: string) => {
+    const itemsToDelete = lokerPtkList.filter((x) => x.ptkId === ptkId);
+    const accessesToDelete = lokerPtkAccessList.filter((a) => a.ptkId === ptkId);
+    const sanitizedAccessId = ptkId.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    setLokerPtkList((prev) => prev.filter((x) => x.ptkId !== ptkId));
+    setLokerPtkAccessList((prev) => prev.filter((a) => a.ptkId !== ptkId));
+
+    const deleteTasks: Promise<boolean>[] = [];
+    itemsToDelete.forEach((item) => {
+      deleteTasks.push(removeDocFromFirestore('lokerPtk', item.id));
+    });
+    const deletedAccessIds = new Set<string>();
+    accessesToDelete.forEach((acc) => {
+      if (acc.id && !deletedAccessIds.has(acc.id)) {
+        deletedAccessIds.add(acc.id);
+        deleteTasks.push(removeDocFromFirestore('lokerPtkAccess', acc.id));
+      }
+    });
+    if (sanitizedAccessId && !deletedAccessIds.has(sanitizedAccessId)) {
+      deleteTasks.push(removeDocFromFirestore('lokerPtkAccess', sanitizedAccessId));
+    }
+
+    await Promise.all(deleteTasks);
+    showToast('Loker PTK beserta seluruh isinya berhasil dihapus', 'info');
+  };
+
   // Handler for Pengaturan Sekolah with Firestore Sync
   const handleSaveSekolah = async (updated: PengaturanSekolah) => {
     setSekolah(updated);
@@ -752,6 +1035,11 @@ export default function App() {
       guru: guruList,
       siswa: siswaList,
       sekolah,
+      ekstrakurikuler: ekstraList,
+      presensiSiswa: presensiSiswaList,
+      presensiEkstra: presensiEkstraList,
+      lokerPtk: lokerPtkList,
+      lokerPtkAccess: lokerPtkAccessList,
     });
     if (res.errors === 0) {
       showToast(res.message, 'success');
@@ -815,7 +1103,7 @@ export default function App() {
   const navItems = [
     { id: 'beranda' as const, label: 'Beranda', icon: Home, isLocked: false, count: null },
     { id: 'surat_masuk' as const, label: 'Surat Masuk', icon: Inbox, isLocked: false, count: suratMasukList.length },
-    { id: 'surat_keluar' as const, label: 'Surat Keluar', icon: Send, isLocked: false, count: suratKeluarList.length },
+    { id: 'surat_keluar' as const, label: 'Surat Keluar', icon: Send, isLocked: false, count: suratKeluarList.filter((s) => s.jenisSurat !== 'surat_ijin_guru').length },
     { id: 'data_ptk' as const, label: 'Data PTK', icon: Users, isLocked: false, count: guruList.length },
     { id: 'data_murid' as const, label: 'Data Murid', icon: GraduationCap, isLocked: false, count: siswaList.length },
     { id: 'filter' as const, label: 'Filter & Laporan', icon: Filter, isLocked: false, count: null },
@@ -1094,6 +1382,7 @@ export default function App() {
         {(activeTab === 'data_ptk' || activeTab === 'data_murid') && (
           <GuruSiswaView
             mode={activeTab === 'data_ptk' ? 'guru' : 'siswa'}
+            userRole={userRole}
             guruList={guruList}
             siswaList={siswaList}
             sekolah={sekolah}
@@ -1107,6 +1396,28 @@ export default function App() {
             onImportSiswa={handleImportSiswa}
             onClearAllSiswa={handleClearAllSiswa}
             onResetSiswaDefault={handleResetSiswaDefault}
+            ekstraList={ekstraList}
+            presensiSiswaList={presensiSiswaList}
+            presensiEkstraList={presensiEkstraList}
+            onAddEkstra={handleAddEkstra}
+            onUpdateEkstra={handleUpdateEkstra}
+            onDeleteEkstra={handleDeleteEkstra}
+            onSavePresensiSiswa={handleSavePresensiSiswa}
+            onSavePresensiEkstra={handleSavePresensiEkstra}
+            onDeletePresensiEkstra={handleDeletePresensiEkstra}
+            lokerPtkList={lokerPtkList}
+            lokerPtkAccessList={lokerPtkAccessList}
+            onAddLokerPtk={handleAddLokerPtk}
+            onUpdateLokerPtk={handleUpdateLokerPtk}
+            onDeleteLokerPtk={handleDeleteLokerPtk}
+            onSaveLokerPtkAccess={handleSaveLokerPtkAccess}
+            onDeleteLokerLocker={handleDeleteLokerLocker}
+            suratKeluarList={suratKeluarList}
+            arsipList={arsipList}
+            onAddSuratKeluar={handleAddSuratKeluar}
+            onUpdateSuratKeluar={handleUpdateSuratKeluar}
+            onDeleteSuratKeluar={handleDeleteSuratKeluar}
+            onPreviewSuratKeluar={(sk) => setPreviewSuratKeluar(sk)}
           />
         )}
 
@@ -1277,6 +1588,8 @@ export default function App() {
         sekolah={sekolah}
         guruList={guruList}
         siswaList={siswaList}
+        userRole={userRole}
+        onUpdateSuratKeluar={handleUpdateSuratKeluar}
         onClose={() => setPreviewSuratKeluar(null)}
       />
 

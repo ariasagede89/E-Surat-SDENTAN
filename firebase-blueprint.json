@@ -128,6 +128,93 @@
         "ttdKepalaSekolahUrl": { "type": "string", "maxLength": 900000 }
       },
       "required": ["namaSekolah", "kepalaSekolah"]
+    },
+    "Ekstrakurikuler": {
+      "title": "Ekstrakurikuler",
+      "description": "Data kegiatan ekstrakurikuler dan daftar peserta murid SDN 1 Pekutatan",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "nama": { "type": "string", "maxLength": 150 },
+        "pembina": { "type": "string", "maxLength": 150 },
+        "hari": { "type": "string", "maxLength": 60 },
+        "waktu": { "type": "string", "maxLength": 80 },
+        "tempat": { "type": "string", "maxLength": 150 },
+        "keterangan": { "type": "string", "maxLength": 500 },
+        "pesertaIds": { "type": "array" },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["nama", "pembina", "hari", "pesertaIds"]
+    },
+    "PresensiSiswaDoc": {
+      "title": "PresensiSiswaDoc",
+      "description": "Catatan presensi harian murid per kelas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "tanggal": { "type": "string", "maxLength": 30 },
+        "kelas": { "type": "string", "maxLength": 30 },
+        "records": { "type": "object" },
+        "catatan": { "type": "string", "maxLength": 500 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["tanggal", "kelas", "records", "updatedAt"]
+    },
+    "PresensiEkstraDoc": {
+      "title": "PresensiEkstraDoc",
+      "description": "Catatan presensi pertemuan kegiatan ekstrakurikuler murid",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "ekstraId": { "type": "string", "maxLength": 128 },
+        "tanggal": { "type": "string", "maxLength": 30 },
+        "materi": { "type": "string", "maxLength": 500 },
+        "records": { "type": "object" },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["ekstraId", "tanggal", "records", "updatedAt"]
+    },
+    "LokerPtkItem": {
+      "title": "LokerPtkItem",
+      "description": "Loker pribadi PTK untuk administrasi kepegawaian, catatan penting, dan administrasi pembelajaran",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "ptkId": { "type": "string", "maxLength": 128 },
+        "ptkNama": { "type": "string", "maxLength": 200 },
+        "kategori": { "type": "string", "maxLength": 100 },
+        "visibilitas": { "type": "string", "enum": ["privat", "terbuka"] },
+        "judul": { "type": "string", "maxLength": 200 },
+        "tanggal": { "type": "string", "maxLength": 30 },
+        "isiCatatan": { "type": "string", "maxLength": 10000 },
+        "fileNama": { "type": "string", "maxLength": 255 },
+        "fileTipe": { "type": "string", "maxLength": 150 },
+        "fileUkuran": { "type": "string", "maxLength": 50 },
+        "fileUrl": { "type": "string", "maxLength": 950000 },
+        "linkEksternal": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["ptkId", "ptkNama", "kategori", "judul", "tanggal", "createdAt", "updatedAt"]
+    },
+    "LokerPtkAccess": {
+      "title": "LokerPtkAccess",
+      "description": "Pengaturan akses, proteksi password, dan visibilitas bawaan untuk Loker Room PTK",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "ptkId": { "type": "string", "maxLength": 128 },
+        "ptkNama": { "type": "string", "maxLength": 200 },
+        "isProtected": { "type": "boolean" },
+        "passwordHash": { "type": "string", "maxLength": 200 },
+        "passwordHint": { "type": "string", "maxLength": 200 },
+        "defaultVisibilitas": { "type": "string", "enum": ["privat", "terbuka"] },
+        "cardColor": { "type": "string", "maxLength": 30 },
+        "customFolders": { "type": "array", "description": "Daftar nama folder tambahan di dalam loker PTK" },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["ptkId", "ptkNama", "isProtected", "passwordHash", "updatedAt"]
     }
   },
   "firestore": {
@@ -154,6 +241,26 @@
     "/settings/identitas": {
       "schema": "PengaturanSekolah",
       "description": "Data identitas sekolah dan kop"
+    },
+    "/ekstrakurikuler/{ekstraId}": {
+      "schema": "Ekstrakurikuler",
+      "description": "Koleksi daftar ekstrakurikuler sekolah dan anggota siswa"
+    },
+    "/presensiSiswa/{presensiId}": {
+      "schema": "PresensiSiswaDoc",
+      "description": "Koleksi presensi harian siswa per kelas"
+    },
+    "/presensiEkstra/{presensiId}": {
+      "schema": "PresensiEkstraDoc",
+      "description": "Koleksi presensi pertemuan ekstrakurikuler"
+    },
+    "/lokerPtk/{itemId}": {
+      "schema": "LokerPtkItem",
+      "description": "Koleksi dokumen dan catatan pribadi pada Loker Room PTK"
+    },
+    "/lokerPtkAccess/{ptkId}": {
+      "schema": "LokerPtkAccess",
+      "description": "Pengaturan akses & password Loker Room per PTK"
     }
   }
 }

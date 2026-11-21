@@ -2492,6 +2492,8 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
 
   const filteredSuratKeluar = suratKeluarList
     .filter((sk) => {
+      if (sk.jenisSurat === 'surat_ijin_guru') return false;
+
       const matchesSearch =
         sk.noSurat.toLowerCase().includes(searchTerm.toLowerCase()) ||
         stripRichTags(sk.perihal).toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -2587,7 +2589,6 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                 className="text-xs border border-slate-300 rounded-lg px-2.5 py-2 focus:ring-2 focus:ring-emerald-600 focus:outline-none bg-white hidden md:block"
               >
                 <option value="Semua">Semua Jenis Surat</option>
-                <option value="surat_ijin_guru">Surat Ijin Guru</option>
                 <option value="surat_keterangan">Surat Keterangan</option>
                 <option value="surat_undangan">Surat Undangan Dinas</option>
                 <option value="surat_keputusan">Surat Keputusan (SK)</option>
@@ -3002,8 +3003,8 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
 
       {/* MODAL FORM: BUAT / EDIT SURAT KELUAR (5 FORMAT DINAS RESMI) */}
       {showFormModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl lg:max-w-6xl overflow-hidden flex flex-col max-h-[94vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-[96vw] max-w-[96vw] min-h-[88vh] overflow-hidden flex flex-col max-h-[95vh]">
             {/* Modal Header */}
             <div className="bg-emerald-950 px-6 sm:px-8 py-5 text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -3034,15 +3035,14 @@ export const SuratKeluarView: React.FC<SuratKeluarViewProps> = ({
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                   {[
-                    { id: 'surat_ijin_guru', label: '1. Permohonan Izin Tidak Masuk' },
-                    { id: 'surat_keterangan', label: '2. Surat Keterangan' },
-                    { id: 'surat_undangan', label: '3. Surat Undangan Dinas' },
-                    { id: 'surat_keputusan', label: '4. Surat Keputusan (SK)' },
-                    { id: 'surat_tugas', label: '5. Surat Perintah Tugas (SPT)' },
-                    { id: 'surat_pengantar', label: '6. Surat Pengantar' },
-                    { id: 'surat_rekomendasi', label: '7. Surat Rekomendasi' },
-                    { id: 'surat_permohonan', label: '8. Surat Permohonan' },
-                    { id: 'surat_eksternal', label: '9. Surat Lainnya' },
+                    { id: 'surat_keterangan', label: '1. Surat Keterangan' },
+                    { id: 'surat_undangan', label: '2. Surat Undangan Dinas' },
+                    { id: 'surat_keputusan', label: '3. Surat Keputusan (SK)' },
+                    { id: 'surat_tugas', label: '4. Surat Perintah Tugas (SPT)' },
+                    { id: 'surat_pengantar', label: '5. Surat Pengantar' },
+                    { id: 'surat_rekomendasi', label: '6. Surat Rekomendasi' },
+                    { id: 'surat_permohonan', label: '7. Surat Permohonan' },
+                    { id: 'surat_eksternal', label: '8. Surat Lainnya' },
                   ].map((fmt) => (
                     <button
                       type="button"

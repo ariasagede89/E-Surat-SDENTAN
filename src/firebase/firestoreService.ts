@@ -16,6 +16,11 @@ import {
   Guru,
   Siswa,
   PengaturanSekolah,
+  Ekstrakurikuler,
+  PresensiSiswaDoc,
+  PresensiEkstraDoc,
+  LokerPtkItem,
+  LokerPtkAccess,
 } from '../types';
 
 export enum OperationType {
@@ -371,6 +376,11 @@ export async function syncAllLocalDataToFirestore(data: {
   guru?: Guru[];
   siswa?: Siswa[];
   sekolah?: PengaturanSekolah;
+  ekstrakurikuler?: Ekstrakurikuler[];
+  presensiSiswa?: PresensiSiswaDoc[];
+  presensiEkstra?: PresensiEkstraDoc[];
+  lokerPtk?: LokerPtkItem[];
+  lokerPtkAccess?: LokerPtkAccess[];
 }): Promise<{ totalSynced: number; errors: number; message: string }> {
   const { db, isOnline } = getFirebaseInstance();
   if (!db || !isOnline) {
@@ -432,6 +442,51 @@ export async function syncAllLocalDataToFirestore(data: {
     if (data.siswa && data.siswa.length > 0) {
       for (const s of data.siswa) {
         const ok = await syncDocToFirestore('siswa', s);
+        if (ok) total++;
+        else errCount++;
+      }
+    }
+
+    // 7. Ekstrakurikuler
+    if (data.ekstrakurikuler && data.ekstrakurikuler.length > 0) {
+      for (const ek of data.ekstrakurikuler) {
+        const ok = await syncDocToFirestore('ekstrakurikuler', ek);
+        if (ok) total++;
+        else errCount++;
+      }
+    }
+
+    // 8. Presensi Siswa
+    if (data.presensiSiswa && data.presensiSiswa.length > 0) {
+      for (const ps of data.presensiSiswa) {
+        const ok = await syncDocToFirestore('presensiSiswa', ps);
+        if (ok) total++;
+        else errCount++;
+      }
+    }
+
+    // 9. Presensi Ekstra
+    if (data.presensiEkstra && data.presensiEkstra.length > 0) {
+      for (const pe of data.presensiEkstra) {
+        const ok = await syncDocToFirestore('presensiEkstra', pe);
+        if (ok) total++;
+        else errCount++;
+      }
+    }
+
+    // 10. Loker Room PTK
+    if (data.lokerPtk && data.lokerPtk.length > 0) {
+      for (const lk of data.lokerPtk) {
+        const ok = await syncDocToFirestore('lokerPtk', lk);
+        if (ok) total++;
+        else errCount++;
+      }
+    }
+
+    // 11. Pengaturan Akses & Password Loker PTK
+    if (data.lokerPtkAccess && data.lokerPtkAccess.length > 0) {
+      for (const acc of data.lokerPtkAccess) {
+        const ok = await syncDocToFirestore('lokerPtkAccess', acc);
         if (ok) total++;
         else errCount++;
       }
